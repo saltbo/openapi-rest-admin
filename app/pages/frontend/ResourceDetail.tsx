@@ -14,7 +14,7 @@ import {
   Modal,
   Tooltip
 } from 'antd';
-import { ArrowLeftOutlined, EyeOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { EyeOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { JsonViewer } from '../../components/JsonViewer';
 import { apiService } from '../../services/api';
 import type { OpenAPIAnalysis, ParsedResource } from '../../types/api';
@@ -286,17 +286,21 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
     columns.push({
       title: '操作',
       key: 'actions',
-      width: 100,
+      width: 120,
       fixed: 'right' as const,
       render: (_: any, record: ResourceItem) => (
         <Space size="small">
           <Button 
-            type="link" 
+            type="primary" 
             size="small"
             icon={<EyeOutlined />} 
             onClick={(e) => {
               e.stopPropagation();
               handleSubResourceItemClick(subResourceName, record);
+            }}
+            style={{
+              borderRadius: '6px',
+              fontWeight: '500'
             }}
           >
             查看
@@ -322,14 +326,16 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
           return (
             <Tooltip title="点击查看完整JSON数据">
               <Tag 
-                color="blue"
+                color="processing"
                 onClick={() => setShowJsonModal(true)} 
                 style={{ 
                   cursor: 'pointer',
                   maxWidth: '200px',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  display: 'inline-block'
+                  display: 'inline-block',
+                  borderRadius: '8px',
+                  fontFamily: 'Monaco, Consolas, monospace'
                 }}
               >
                 {JSON.stringify(value).substring(0, 50)}...
@@ -425,200 +431,371 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
 
   return (
     <div style={{ 
-      padding: '24px',
-      maxWidth: '100%',
-      overflow: 'hidden'
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      padding: '0'
     }}>
-      {/* 面包屑导航 */}
-      <Breadcrumb style={{ marginBottom: '24px' }}>
-        <Breadcrumb.Item>
-          <Link to="/">首页</Link>
-        </Breadcrumb.Item>
-        <Breadcrumb.Item>
-          <Link to={`/services/${encodeURIComponent(sName!)}`}>{sName}</Link>
-        </Breadcrumb.Item>
-        {isSubResourceDetail && parentResourceName ? (
-          <>
-            <Breadcrumb.Item>
-              <Link to={`/services/${encodeURIComponent(sName!)}/resources/${parentResourceName}`}>
-                {parentResourceName}
-              </Link>
-            </Breadcrumb.Item>
-            <Breadcrumb.Item>
-              <Link to={`/services/${encodeURIComponent(sName!)}/resources/${parentResourceName}/${parentItemId}`}>
-                {parentItemId}
-              </Link>
-            </Breadcrumb.Item>
-            <Breadcrumb.Item>
-              <Link to={`/services/${encodeURIComponent(sName!)}/resources/${currentResourceName}`}>
-                {currentResourceName}
-              </Link>
-            </Breadcrumb.Item>
-            <Breadcrumb.Item>{currentItemId}</Breadcrumb.Item>
-          </>
-        ) : (
-          <>
-            <Breadcrumb.Item>
-              <Link to={`/services/${encodeURIComponent(sName!)}/resources/${currentResourceName}`}>
-                {currentResource.name}
-              </Link>
-            </Breadcrumb.Item>
-            <Breadcrumb.Item>{currentItemId}</Breadcrumb.Item>
-          </>
-        )}
-      </Breadcrumb>
+      {/* 顶部导航栏 */}
+      <div style={{
+        background: '#fff',
+        padding: '16px 24px',
+        borderBottom: '1px solid #f0f0f0',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+      }}>
+        <Breadcrumb>
+          <Breadcrumb.Item>
+            <Link to="/" style={{ color: '#1890ff' }}>首页</Link>
+          </Breadcrumb.Item>
+          <Breadcrumb.Item>
+            <Link to={`/services/${encodeURIComponent(sName!)}`} style={{ color: '#1890ff' }}>
+              {sName}
+            </Link>
+          </Breadcrumb.Item>
+          {isSubResourceDetail && parentResourceName ? (
+            <>
+              <Breadcrumb.Item>
+                <Link to={`/services/${encodeURIComponent(sName!)}/resources/${parentResourceName}`} 
+                      style={{ color: '#1890ff' }}>
+                  {parentResourceName}
+                </Link>
+              </Breadcrumb.Item>
+              <Breadcrumb.Item>
+                <Link to={`/services/${encodeURIComponent(sName!)}/resources/${parentResourceName}/${parentItemId}`} 
+                      style={{ color: '#1890ff' }}>
+                  {parentItemId}
+                </Link>
+              </Breadcrumb.Item>
+              <Breadcrumb.Item>
+                <Link to={`/services/${encodeURIComponent(sName!)}/resources/${currentResourceName}`} 
+                      style={{ color: '#1890ff' }}>
+                  {currentResourceName}
+                </Link>
+              </Breadcrumb.Item>
+              <Breadcrumb.Item>{currentItemId}</Breadcrumb.Item>
+            </>
+          ) : (
+            <>
+              <Breadcrumb.Item>
+                <Link to={`/services/${encodeURIComponent(sName!)}/resources/${currentResourceName}`} 
+                      style={{ color: '#1890ff' }}>
+                  {currentResource.name}
+                </Link>
+              </Breadcrumb.Item>
+              <Breadcrumb.Item>{currentItemId}</Breadcrumb.Item>
+            </>
+          )}
+        </Breadcrumb>
+      </div>
 
-      {/* 页面头部 */}
-      <Card 
-        bordered={false}
-        style={{
-          marginBottom: '24px',
-          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)',
-        }}
-      >
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'flex-start',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            flex: 1, 
-            minWidth: '300px' 
-          }}>
-            <Button 
-              icon={<ArrowLeftOutlined />} 
-              onClick={() => {
-                if (isSubResourceDetail && parentResourceName && parentItemId) {
-                  // 如果是子资源详情，返回到父资源详情页
-                  navigate(`/services/${encodeURIComponent(sName!)}/resources/${parentResourceName}/${parentItemId}`);
-                } else {
-                  // 如果是顶级资源详情，返回到资源列表页
-                  navigate(`/services/${encodeURIComponent(sName!)}/resources/${currentResourceName}`);
-                }
-              }}
-              style={{ marginRight: '16px' }}
-            >
-              {isSubResourceDetail ? '返回父资源' : '返回列表'}
-            </Button>
-            <div>
-              <Title level={2} style={{ margin: 0, marginBottom: '4px' }}>
-                {currentResource.name} 详情
-              </Title>
-              <Text type="secondary">
-                ID: {currentItemId}
-              </Text>
-            </div>
-          </div>
-          <Space wrap>
-            <Button icon={<EditOutlined />}>编辑</Button>
-            <Button danger icon={<DeleteOutlined />}>删除</Button>
-            <Button type="primary" onClick={() => setShowJsonModal(true)}>
-              查看原始数据
-            </Button>
-          </Space>
-        </div>
-      </Card>
-
-      {/* 资源详情信息 */}
-      <Card 
-        title="基本信息" 
-        bordered={false}
-        style={{
-          marginBottom: '24px',
-          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)',
-        }}
-      >
-        <Descriptions 
-          bordered 
-          size="middle" 
-          column={{ xxl: 3, xl: 3, lg: 2, md: 2, sm: 1, xs: 1 }}
-          labelStyle={{ 
-            backgroundColor: '#fafafa',
-            fontWeight: 500,
-            width: '120px'
-          }}
-          contentStyle={{
-            backgroundColor: '#fff'
+      {/* 主内容区域 */}
+      <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+        {/* 页面头部卡片 */}
+        <Card 
+          bordered={false}
+          style={{
+            marginBottom: '24px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: '#fff',
+            overflow: 'hidden'
           }}
         >
-          {generateItemDescriptions()}
-        </Descriptions>
-      </Card>
-
-      {/* 子资源列表 */}
-      {subResources.length > 0 && (
-        <div>
-          <Title level={3} style={{ marginBottom: '16px', color: '#262626' }}>
-            关联资源
-          </Title>
-          {subResources.map((subResource) => {
-            const data = subResourceData[subResource.name] || [];
-            return (
-              <Card 
-                key={subResource.name}
-                title={
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Space>
-                      <Text strong>{subResource.name}</Text>
-                      <Tag color="blue">{data.length} 项</Tag>
-                    </Space>
-                    <Button 
-                      type="primary" 
-                      size="small" 
-                      icon={<PlusOutlined />}
-                      onClick={() => {
-                        // 导航到新建子资源页面
-                        navigate(`/services/${encodeURIComponent(sName!)}/resources/${subResource.name}/new?parent=${currentResourceName}&parentId=${currentItemId}`);
-                      }}
-                    >
-                      新增
-                    </Button>
-                  </div>
-                }
-                bordered={false}
-                style={{ 
-                  marginBottom: '16px',
-                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)',
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              flex: 1, 
+              minWidth: '300px' 
+            }}>
+              <div>
+                <Title level={1} style={{ 
+                  margin: 0, 
+                  marginBottom: '8px', 
+                  color: '#fff',
+                  fontSize: '32px',
+                  fontWeight: '600'
+                }}>
+                  {currentResource.name}
+                </Title>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '16px' }}>
+                    ID: {currentItemId}
+                  </Text>
+                  {isSubResourceDetail && (
+                    <Tag color="rgba(255, 255, 255, 0.2)" style={{ 
+                      color: '#fff',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      borderRadius: '12px',
+                      padding: '2px 8px'
+                    }}>
+                      子资源
+                    </Tag>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Space wrap size="middle">
+              <Button 
+                icon={<EditOutlined />} 
+                size="large"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  color: '#fff'
                 }}
               >
-                <Table
-                  columns={generateSubResourceColumns(subResource.name, data)}
-                  dataSource={data}
-                  rowKey="id"
-                  size="middle"
-                  scroll={{ x: 'max-content' }}
-                  pagination={{ 
-                    pageSize: 5, 
-                    showSizeChanger: false,
-                    showTotal: (total, range) => 
-                      `显示 ${range[0]}-${range[1]} 条，共 ${total} 条`
-                  }}
-                  onRow={(record) => ({
-                    style: { cursor: 'pointer' },
-                    onClick: () => handleSubResourceItemClick(subResource.name, record),
-                  })}
-                />
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                编辑
+              </Button>
+              <Button 
+                danger 
+                icon={<DeleteOutlined />}
+                size="large"
+                style={{
+                  background: 'rgba(255, 77, 79, 0.8)',
+                  border: '1px solid rgba(255, 77, 79, 0.3)',
+                  color: '#fff'
+                }}
+              >
+                删除
+              </Button>
+              <Button 
+                type="primary" 
+                onClick={() => setShowJsonModal(true)}
+                size="large"
+                style={{
+                  background: '#fff',
+                  color: '#667eea',
+                  border: 'none',
+                  fontWeight: '500'
+                }}
+              >
+                查看原始数据
+              </Button>
+            </Space>
+          </div>
+        </Card>
 
-      {/* JSON数据模态框 */}
-      <Modal
-        title="原始数据"
-        open={showJsonModal}
-        onCancel={() => setShowJsonModal(false)}
-        footer={null}
-        width="80%"
-        style={{ top: 20 }}
-      >
-        <JsonViewer data={currentItem} />
-      </Modal>
+        {/* 资源详情信息 */}
+        <Card 
+          title={
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px',
+              padding: '8px 0'
+            }}>
+              <div style={{
+                width: '4px',
+                height: '24px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '2px'
+              }} />
+              <Text style={{ fontSize: '18px', fontWeight: '600', color: '#262626' }}>
+                基本信息
+              </Text>
+            </div>
+          }
+          bordered={false}
+          style={{
+            marginBottom: '24px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.08)',
+            background: '#fff'
+          }}
+          headStyle={{
+            borderBottom: '1px solid #f0f0f0',
+            padding: '16px 24px'
+          }}
+          bodyStyle={{
+            padding: '24px'
+          }}
+        >
+          <Descriptions 
+            bordered 
+            size="middle" 
+            column={{ xxl: 3, xl: 3, lg: 2, md: 2, sm: 1, xs: 1 }}
+            labelStyle={{ 
+              backgroundColor: '#fafafa',
+              fontWeight: 600,
+              width: '140px',
+              color: '#262626',
+              borderRight: '1px solid #e8e8e8'
+            }}
+            contentStyle={{
+              backgroundColor: '#fff',
+              padding: '12px 16px'
+            }}
+            style={{
+              background: '#fff'
+            }}
+          >
+            {generateItemDescriptions()}
+          </Descriptions>
+        </Card>
+
+        {/* 子资源列表 */}
+        {subResources.length > 0 && (
+          <div>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px',
+              marginBottom: '20px' 
+            }}>
+              <div style={{
+                width: '4px',
+                height: '24px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '2px'
+              }} />
+              <Title level={3} style={{ 
+                margin: 0, 
+                color: '#262626',
+                fontSize: '20px',
+                fontWeight: '600'
+              }}>
+                关联资源
+              </Title>
+            </div>
+            <div style={{ display: 'grid', gap: '20px' }}>
+              {subResources.map((subResource) => {
+                const data = subResourceData[subResource.name] || [];
+                return (
+                  <Card 
+                    key={subResource.name}
+                    title={
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        padding: '4px 0'
+                      }}>
+                        <Space align="center">
+                          <Text style={{ fontSize: '16px', fontWeight: '600', color: '#262626' }}>
+                            {subResource.name}
+                          </Text>
+                          <Tag 
+                            color="processing" 
+                            style={{ 
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: '500'
+                            }}
+                          >
+                            {data.length} 项
+                          </Tag>
+                        </Space>
+                        <Button 
+                          type="primary" 
+                          size="middle" 
+                          icon={<PlusOutlined />}
+                          onClick={() => {
+                            navigate(`/services/${encodeURIComponent(sName!)}/resources/${subResource.name}/new?parent=${currentResourceName}&parentId=${currentItemId}`);
+                          }}
+                          style={{
+                            borderRadius: '8px',
+                            fontWeight: '500',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            border: 'none'
+                          }}
+                        >
+                          新增
+                        </Button>
+                      </div>
+                    }
+                    bordered={false}
+                    style={{ 
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.08)',
+                      background: '#fff',
+                      overflow: 'hidden'
+                    }}
+                    headStyle={{
+                      borderBottom: '1px solid #f0f0f0',
+                      background: '#fafafa',
+                      padding: '16px 24px'
+                    }}
+                    bodyStyle={{
+                      padding: '0'
+                    }}
+                  >
+                    <div style={{ padding: '0 24px 24px 24px' }}>
+                      <Table
+                        columns={generateSubResourceColumns(subResource.name, data)}
+                        dataSource={data}
+                        rowKey="id"
+                        size="middle"
+                        scroll={{ x: 'max-content' }}
+                        pagination={{ 
+                          pageSize: 5, 
+                          showSizeChanger: false,
+                          showTotal: (total, range) => 
+                            `显示 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+                          style: { 
+                            marginTop: '16px',
+                            paddingTop: '16px',
+                            borderTop: '1px solid #f0f0f0'
+                          }
+                        }}
+                        onRow={(record) => ({
+                          style: { cursor: 'pointer' },
+                          onClick: () => handleSubResourceItemClick(subResource.name, record),
+                        })}
+                        style={{
+                          background: '#fff'
+                        }}
+                      />
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* JSON数据模态框 */}
+        <Modal
+          title={
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px',
+              fontSize: '18px',
+              fontWeight: '600'
+            }}>
+              <div style={{
+                width: '4px',
+                height: '20px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '2px'
+              }} />
+              原始数据
+            </div>
+          }
+          open={showJsonModal}
+          onCancel={() => setShowJsonModal(false)}
+          footer={null}
+          width="80%"
+          style={{ top: 20 }}
+          styles={{
+            header: {
+              borderBottom: '1px solid #f0f0f0',
+              padding: '16px 24px'
+            },
+            body: {
+              padding: '24px'
+            }
+          }}
+        >
+          <JsonViewer data={currentItem} />
+        </Modal>
+      </div>
     </div>
   );
 };

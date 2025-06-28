@@ -23,7 +23,7 @@ interface AppLayoutProps {
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
-  const [selectedApiId, setSelectedApiId] = useState<string>('petstore'); // 默认选择第一个API
+  const [selectedApiId, setSelectedApiId] = useState<string>('multi-clusters-api'); // 默认选择第一个API
   
   const {
     token: { colorBgContainer, borderRadiusLG },
