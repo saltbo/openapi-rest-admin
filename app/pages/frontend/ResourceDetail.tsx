@@ -7,7 +7,6 @@ import {
   Alert, 
   Button, 
   Space, 
-  Breadcrumb,
   Descriptions,
   Table,
   Tag,
@@ -16,6 +15,10 @@ import {
 } from 'antd';
 import { EyeOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { JsonViewer } from '../../components/JsonViewer';
+import { ResourceBreadcrumb } from '../../components/ResourceBreadcrumb';
+import { parseResourcePath, buildDetailLink, buildSubResourceDetailLink, buildNewResourceLink } from '../../utils/resourceRouting';
+import { findResourceInAll } from '../../utils/resourceUtils';
+import { generateTableColumnsFromData } from '../../utils/tableUtils';
 import { apiService } from '../../services/api';
 import type { OpenAPIAnalysis, ParsedResource } from '../../types/api';
 
@@ -47,30 +50,34 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
   const [subResources, setSubResources] = useState<ParsedResource[]>([]);
   const [subResourceData, setSubResourceData] = useState<{ [key: string]: ResourceItem[] }>({});
   const [showJsonModal, setShowJsonModal] = useState(false);
-
-  // 从splat中解析资源路径
-  // URL可能是: /{itemId} 或 /{parentId}/{subResource}/{subResourceId}
+  
+  // 使用工具函数解析资源路径
+  const { 
+    currentResourceName, 
+    parentContext, 
+    resourceHierarchy 
+  } = parseResourcePath(splat, rName || '');
+  
+  // 保留原有的 pathSegments 用于调试日志
   const pathSegments = splat ? splat.split('/').filter(Boolean) : [];
-  const isSubResourceDetail = pathSegments.length >= 3; // 至少3段表示是子资源详情
   
-  let currentResourceName: string;
-  let currentItemId: string;
-  let parentResourceName: string | null = null;
-  let parentItemId: string | null = null;
+  // 当前资源信息（层次结构的最后一级）
+  const currentLevel = resourceHierarchy[resourceHierarchy.length - 1];
+  const currentItemId = currentLevel.itemId || '';
   
-  if (isSubResourceDetail) {
-    // 子资源详情: /parentId/subResourceName/subResourceId
-    parentItemId = pathSegments[0];
-    currentResourceName = pathSegments[1];
-    currentItemId = pathSegments[2];
-    parentResourceName = rName || null; // rName是父资源名
-  } else {
-    // 顶级资源详情: /itemId
-    currentResourceName = rName || '';
-    currentItemId = pathSegments[0] || '';
-  }
+  // 是否为子资源详情
+  const isSubResourceDetail = resourceHierarchy.length > 1;
 
   useEffect(() => {
+    // 调试日志：显示解析的资源层次结构
+    console.log('=== ResourceDetail Debug Info ===');
+    console.log('URL参数:', { sName, rName, splat });
+    console.log('路径段:', pathSegments);
+    console.log('资源层次结构:', resourceHierarchy);
+    console.log('当前资源:', { currentResourceName, currentItemId });
+    console.log('是否为子资源详情:', isSubResourceDetail);
+    console.log('=================================');
+    
     if (sName && currentResourceName && currentItemId) {
       loadData();
     }
@@ -91,8 +98,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
         currentResourceName, 
         currentItemId, 
         isSubResourceDetail,
-        parentResourceName,
-        parentItemId,
+        resourceHierarchy,
         pathSegments,
         splat
       });
@@ -118,23 +124,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
       const analysisResponse = await apiService.getOpenAPIAnalysis(apiConfig.id);
       setAnalysis(analysisResponse.data);
       
-      // 查找当前资源（支持在所有层级中查找，包括子资源）
-      const findResourceInAll = (resources: ParsedResource[], targetName: string): ParsedResource | null => {
-        for (const resource of resources) {
-          if (resource.name === targetName) {
-            return resource;
-          }
-          // 递归查找子资源
-          if (resource.sub_resources && resource.sub_resources.length > 0) {
-            const found = findResourceInAll(resource.sub_resources, targetName);
-            if (found) {
-              return found;
-            }
-          }
-        }
-        return null;
-      };
-
+      // 使用工具函数查找当前资源
       const resource = findResourceInAll(analysisResponse.data.resources, currentResourceName);
       if (!resource) {
         throw new Error(`Resource ${currentResourceName} not found`);
@@ -176,107 +166,23 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
   };
 
   const handleSubResourceItemClick = (subResourceName: string, record: ResourceItem) => {
-    // 导航到子资源的详情页面，保持父资源的上下文
-    // URL格式: /services/{sName}/resources/{parentResource}/{parentId}/{subResource}/{subResourceId}
-    navigate(`/services/${encodeURIComponent(sName!)}/resources/${currentResourceName}/${currentItemId}/${subResourceName}/${record.id}`);
+    // 使用工具函数构建子资源详情链接
+    const path = buildSubResourceDetailLink(sName!, resourceHierarchy, subResourceName, record.id);
+    navigate(path);
   };
 
   const generateSubResourceColumns = (subResourceName: string, data: ResourceItem[]) => {
-    if (data.length === 0) return [];
-    
-    // 基于数据生成列
-    const sampleData = data[0];
-    const fieldNames = Object.keys(sampleData);
-    
-    // 计算每列的合适宽度
-    const getColumnWidth = (fieldName: string, data: any[]) => {
-      const maxLength = Math.max(
-        fieldName.length,
-        ...data.slice(0, 5).map(item => {
-          const value = item[fieldName];
-          if (value === null || value === undefined) return 1;
-          return String(value).length;
-        })
-      );
-      return Math.min(Math.max(maxLength * 8 + 32, 80), 150);
-    };
-    
-    const columns = fieldNames.slice(0, 4).map((fieldName) => ({ // 只显示前4个字段
-      title: fieldName.charAt(0).toUpperCase() + fieldName.slice(1),
-      dataIndex: fieldName,
-      key: fieldName,
-      width: getColumnWidth(fieldName, data),
-      ellipsis: {
-        showTitle: false,
-      },
-      render: (text: any) => {
-        if (text === null || text === undefined) return <Text type="secondary">-</Text>;
-        if (typeof text === 'object') {
-          const jsonStr = JSON.stringify(text);
-          return (
-            <Tooltip title={jsonStr}>
-              <Tag color="blue" style={{ 
-                maxWidth: '120px', 
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis',
-                cursor: 'pointer'
-              }}>
-                {jsonStr.substring(0, 20)}...
-              </Tag>
-            </Tooltip>
-          );
+    return generateTableColumnsFromData({
+      data,
+      maxColumns: 4,
+      showActions: true,
+      actionHandlers: {
+        onDetail: (record: ResourceItem) => {
+          handleSubResourceItemClick(subResourceName, record);
+          return ''; // 我们手动处理导航，所以返回空字符串
         }
-        const textStr = String(text);
-        if (textStr.length > 30) {
-          return (
-            <Tooltip title={textStr}>
-              <Text 
-                style={{ 
-                  display: 'block',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  maxWidth: '120px',
-                  cursor: 'pointer'
-                }}
-              >
-                {textStr}
-              </Text>
-            </Tooltip>
-          );
-        }
-        return textStr;
-      },
-    }));
-
-    // 添加操作列
-    columns.push({
-      title: '操作',
-      key: 'actions',
-      width: 120,
-      fixed: 'right' as const,
-      render: (_: any, record: ResourceItem) => (
-        <Space size="small">
-          <Button 
-            type="primary" 
-            size="small"
-            icon={<EyeOutlined />} 
-            onClick={(e) => {
-              e.stopPropagation();
-              handleSubResourceItemClick(subResourceName, record);
-            }}
-            style={{
-              borderRadius: '6px',
-              fontWeight: '500'
-            }}
-          >
-            查看
-          </Button>
-        </Space>
-      ),
-    } as any);
-
-    return columns;
+      }
+    });
   };
 
   const generateItemDescriptions = () => {
@@ -409,49 +315,11 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
         borderBottom: '1px solid #f0f0f0',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
       }}>
-        <Breadcrumb>
-          <Breadcrumb.Item>
-            <Link to="/" style={{ color: '#1890ff' }}>首页</Link>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>
-            <Link to={`/services/${encodeURIComponent(sName!)}`} style={{ color: '#1890ff' }}>
-              {sName}
-            </Link>
-          </Breadcrumb.Item>
-          {isSubResourceDetail && parentResourceName ? (
-            <>
-              <Breadcrumb.Item>
-                <Link to={`/services/${encodeURIComponent(sName!)}/resources/${parentResourceName}`} 
-                      style={{ color: '#1890ff' }}>
-                  {parentResourceName}
-                </Link>
-              </Breadcrumb.Item>
-              <Breadcrumb.Item>
-                <Link to={`/services/${encodeURIComponent(sName!)}/resources/${parentResourceName}/${parentItemId}`} 
-                      style={{ color: '#1890ff' }}>
-                  {parentItemId}
-                </Link>
-              </Breadcrumb.Item>
-              <Breadcrumb.Item>
-                <Link to={`/services/${encodeURIComponent(sName!)}/resources/${currentResourceName}`} 
-                      style={{ color: '#1890ff' }}>
-                  {currentResourceName}
-                </Link>
-              </Breadcrumb.Item>
-              <Breadcrumb.Item>{currentItemId}</Breadcrumb.Item>
-            </>
-          ) : (
-            <>
-              <Breadcrumb.Item>
-                <Link to={`/services/${encodeURIComponent(sName!)}/resources/${currentResourceName}`} 
-                      style={{ color: '#1890ff' }}>
-                  {currentResource.name}
-                </Link>
-              </Breadcrumb.Item>
-              <Breadcrumb.Item>{currentItemId}</Breadcrumb.Item>
-            </>
-          )}
-        </Breadcrumb>
+        <ResourceBreadcrumb 
+          serviceName={sName} 
+          topLevelResource={rName} 
+          nestedPath={splat}
+        />
       </div>
 
       {/* 主内容区域 */}
@@ -501,7 +369,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
                       borderRadius: '12px',
                       padding: '2px 8px'
                     }}>
-                      子资源
+                      {resourceHierarchy.length > 2 ? `${resourceHierarchy.length}级子资源` : '子资源'}
                     </Tag>
                   )}
                 </div>
@@ -663,7 +531,9 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
                           size="middle" 
                           icon={<PlusOutlined />}
                           onClick={() => {
-                            navigate(`/services/${encodeURIComponent(sName!)}/resources/${subResource.name}/new?parent=${currentResourceName}&parentId=${currentItemId}`);
+                            // 使用工具函数构建新建页面链接
+                            const newResourceUrl = buildNewResourceLink(sName!, subResource.name, resourceHierarchy);
+                            navigate(newResourceUrl);
                           }}
                           style={{
                             borderRadius: '8px',

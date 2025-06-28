@@ -123,35 +123,26 @@ export class OpenAPIParserService {
     const resources = new Map<string, ParsedResource>();
     const pathsByResource = new Map<string, string[]>();
     
-    // 首先收集所有路径并按资源分组
+    // 首先收集所有路径并按完整资源链分组
     Object.keys(api.paths).forEach(path => {
       const resourceInfo = this.extractResourceInfo(path);
       
-      if (resourceInfo.parentResource) {
-        // 嵌套资源
-        const childKey = `${resourceInfo.parentResource}.${resourceInfo.resourceName}`;
+      if (resourceInfo.resourceChain && resourceInfo.resourceChain.length > 0) {
+        // 使用完整的资源链作为键
+        const resourceKey = resourceInfo.resourceChain.join('.');
         
-        if (!pathsByResource.has(childKey)) {
-          pathsByResource.set(childKey, []);
+        if (!pathsByResource.has(resourceKey)) {
+          pathsByResource.set(resourceKey, []);
         }
-        pathsByResource.get(childKey)!.push(path);
-        
-        // 注意：不在这里强制创建父资源，只有当父资源有自己的路径时才会被创建
-      } else {
-        // 顶级资源
-        const key = resourceInfo.resourceName;
-        if (!pathsByResource.has(key)) {
-          pathsByResource.set(key, []);
-        }
-        pathsByResource.get(key)!.push(path);
+        pathsByResource.get(resourceKey)!.push(path);
       }
     });
     
     // 创建所有资源
     pathsByResource.forEach((paths, resourceKey) => {
-      const isNested = resourceKey.includes('.');
-      const resourceName = isNested ? resourceKey.split('.')[1] : resourceKey;
-      const parentResourceName = isNested ? resourceKey.split('.')[0] : null;
+      const resourceChain = resourceKey.split('.');
+      const resourceName = resourceChain[resourceChain.length - 1];
+      const parentResourceName = resourceChain.length > 1 ? resourceChain[resourceChain.length - 2] : null;
       
       const resource: ParsedResource = {
         id: resourceKey,
@@ -177,9 +168,7 @@ export class OpenAPIParserService {
       if (!pathItem || typeof pathItem !== 'object') return;
       
       const resourceInfo = this.extractResourceInfo(path);
-      const resourceKey = resourceInfo.parentResource ? 
-        `${resourceInfo.parentResource}.${resourceInfo.resourceName}` : 
-        resourceInfo.resourceName;
+      const resourceKey = resourceInfo.resourceChain ? resourceInfo.resourceChain.join('.') : resourceInfo.resourceName;
       
       const resource = resources.get(resourceKey);
       if (!resource) return;
@@ -207,27 +196,55 @@ export class OpenAPIParserService {
       resource.schema = this.extractSchema(api, pathItem, resource.operations);
     });
     
-    // 构建嵌套关系
+    // 构建嵌套关系（支持任意深度）
     const rootResources: ParsedResource[] = [];
     const allResources = Array.from(resources.values());
     
+    // 先按层级深度排序，确保父资源在子资源之前处理
+    allResources.sort((a, b) => {
+      const aDepth = a.id.split('.').length;
+      const bDepth = b.id.split('.').length;
+      return aDepth - bDepth;
+    });
+    
     allResources.forEach(resource => {
-      if (resource.parent_resource) {
-        // 找到父资源并添加到子资源中
-        // 查找名称匹配的父资源（可能是顶级资源或子资源）
-        const parentResource = allResources.find(r => r.name === resource.parent_resource);
+      const resourceChain = resource.id.split('.');
+      
+      if (resourceChain.length === 1) {
+        // 顶级资源
+        rootResources.push(resource);
+      } else {
+        // 嵌套资源：寻找直接父资源
+        const parentChain = resourceChain.slice(0, -1);
+        const parentKey = parentChain.join('.');
+        const parentResource = resources.get(parentKey);
+        
         if (parentResource) {
           if (!parentResource.sub_resources) {
             parentResource.sub_resources = [];
           }
           parentResource.sub_resources.push(resource);
         } else {
-          // 如果找不到父资源，当作顶级资源处理
-          rootResources.push(resource);
+          // 如果找不到直接父资源，尝试寻找最近的祖先资源
+          let ancestorFound = false;
+          for (let i = parentChain.length - 1; i >= 0; i--) {
+            const ancestorKey = parentChain.slice(0, i + 1).join('.');
+            const ancestorResource = resources.get(ancestorKey);
+            if (ancestorResource) {
+              if (!ancestorResource.sub_resources) {
+                ancestorResource.sub_resources = [];
+              }
+              ancestorResource.sub_resources.push(resource);
+              ancestorFound = true;
+              break;
+            }
+          }
+          
+          // 如果找不到任何祖先资源，当作顶级资源处理
+          if (!ancestorFound) {
+            rootResources.push(resource);
+          }
         }
-      } else {
-        // 顶级资源
-        rootResources.push(resource);
       }
     });
     
@@ -235,53 +252,51 @@ export class OpenAPIParserService {
   }
 
   /**
-   * 提取资源信息，包括是否为嵌套资源
+   * 提取资源信息，支持无限级嵌套
    */
-  private extractResourceInfo(path: string): { resourceName: string; parentResource?: string } {
+  private extractResourceInfo(path: string): { 
+    resourceName: string; 
+    parentResource?: string;
+    resourceChain?: string[]; // 完整的资源链
+  } {
     // 移除参数部分 {id}, :id 等
     const cleanPath = path.replace(/[{:][^}/:]+[}]?/g, '');
     
     // 分割路径并过滤空段
     const segments = cleanPath.split('/').filter(Boolean);
     
-    if (segments.length === 0) return { resourceName: 'root' };
+    if (segments.length === 0) return { resourceName: 'root', resourceChain: ['root'] };
     
     // 特殊处理：某些端点虽然看起来像操作，但实际上是资源
-    // 比如 status 可能是一个可读取的资源集合
     const operationSegments = ['actions', 'status', 'health', 'metrics', 'search'];
     
     let resourceName = segments[segments.length - 1];
+    let resourceChain: string[] = [];
     let parentResource: string | undefined;
     
     // 检查最后一段是否为操作端点
     if (operationSegments.includes(resourceName.toLowerCase())) {
       if (segments.length >= 2) {
         resourceName = segments[segments.length - 2];
-        // 寻找父资源（再往前一段）
-        if (segments.length >= 3) {
-          parentResource = segments[segments.length - 3];
-        }
+        resourceChain = segments.slice(0, -1); // 排除操作端点
+      } else {
+        resourceChain = [resourceName];
       }
     } else {
-      // 正常情况：最后一段是资源名
-      // 对于多级嵌套，我们需要正确识别父资源
-      if (segments.length >= 2) {
-        // 对于形如 /parent/{id}/child 的路径，parent 是父资源，child 是子资源
-        // 对于形如 /parent/{id}/child/{id}/grandchild 的路径，child 是父资源，grandchild 是子资源
-        
-        if (segments.length === 2) {
-          // /parent/child -> child 资源，parent 是父资源
-          parentResource = segments[0];
-        } else if (segments.length >= 3) {
-          // /parent/{id}/child 或 /parent/{id}/child/{id}/grandchild
-          // 找到最后一个非参数段之前的资源段
-          parentResource = segments[segments.length - 2];
-        }
-      }
+      // 正常情况：所有段都是资源名
+      resourceChain = segments;
     }
     
-    // 直接使用原始名称，不做复数转单数的转换
-    return parentResource ? { resourceName, parentResource } : { resourceName };
+    // 确定父资源
+    if (resourceChain.length > 1) {
+      parentResource = resourceChain[resourceChain.length - 2];
+    }
+    
+    return { 
+      resourceName, 
+      parentResource, 
+      resourceChain 
+    };
   }
 
   /**

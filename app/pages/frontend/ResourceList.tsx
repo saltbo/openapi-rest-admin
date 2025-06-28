@@ -22,9 +22,14 @@ import {
   FilterOutlined,
   ReloadOutlined
 } from '@ant-design/icons';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { JsonViewer } from '../../components/JsonViewer';
+import { ResourceBreadcrumb } from '../../components/ResourceBreadcrumb';
+import { parseResourcePath, buildDetailLink } from '../../utils/resourceRouting';
+import { findResourceInAll } from '../../utils/resourceUtils';
+import { generateTableColumnsFromFields } from '../../utils/tableUtils';
+import { useServiceData, useResourceData } from '../../hooks/useAPIData';
 import type { ResourceDataItem, FieldDefinition } from '../../types/api';
 
 const { Title, Paragraph } = Typography;
@@ -33,9 +38,10 @@ const { Search } = Input;
 interface ResourceListProps {
   apiId?: string;
   resourceId?: string;
+  nestedPath?: string; // 用于处理嵌套的子资源列表
 }
 
-export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId }) => {
+export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId, nestedPath }) => {
   const params = useParams<{ sName: string; rName: string }>();
   const queryClient = useQueryClient();
   
@@ -43,51 +49,38 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId })
   const sName = apiId || params.sName;
   const rName = resourceId || params.rName;
   
+  // 使用工具函数解析嵌套路径
+  const { 
+    currentResourceName, 
+    parentContext, 
+    resourceHierarchy 
+  } = parseResourcePath(nestedPath, rName || '');
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 获取 API 配置
-  const { data: apiConfig } = useQuery({
-    queryKey: ['apiConfig', sName],
-    queryFn: () => apiService.getAPIConfig(sName!).then(res => res.data),
-    enabled: !!sName,
-  });
+  // 使用自定义 hooks 获取数据
+  const { apiConfig, analysis } = useServiceData(sName);
+  
+  // 获取资源定义（使用工具函数查找）
+  const resource = analysis?.resources ? findResourceInAll(analysis.resources, currentResourceName) : null;
 
-  // 获取 API 分析结果
-  const { data: analysis } = useQuery({
-    queryKey: ['openApiAnalysis', sName],
-    queryFn: () => apiService.getOpenAPIAnalysis(sName!).then(res => res.data),
-    enabled: !!sName,
-  });
-
-  // 获取资源定义
-  const resource = analysis?.resources.find(r => r.id === rName);
-
-  // 获取资源数据
+  // 获取资源数据（支持嵌套上下文）
   const { 
     data: resourceData, 
     isLoading, 
     error,
     refetch 
-  } = useQuery({
-    queryKey: ['resourceData', sName, rName, currentPage, pageSize, searchQuery],
-    queryFn: () => {
-      if (searchQuery) {
-        return apiService.searchResources(sName!, rName!, searchQuery, currentPage, pageSize);
-      }
-      return apiService.listResources(sName!, rName!, currentPage, pageSize);
-    },
-    enabled: !!sName && !!rName,
-  });
+  } = useResourceData(sName, currentResourceName, currentPage, pageSize, searchQuery, nestedPath);
 
   // 删除资源项
   const deleteMutation = useMutation({
     mutationFn: (itemId: string | number) => 
-      apiService.deleteResource(sName!, rName!, itemId),
+      apiService.deleteResource(sName!, currentResourceName, itemId),
     onSuccess: () => {
       message.success('删除成功');
-      queryClient.invalidateQueries({ queryKey: ['resourceData', sName, rName] });
+      queryClient.invalidateQueries({ queryKey: ['resourceData', sName, currentResourceName] });
     },
     onError: () => {
       message.error('删除失败');
@@ -109,70 +102,23 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId })
     });
   };
 
-  // 生成表格列
+  // 使用工具函数生成详情页面链接
+  const generateDetailLink = (itemId: string | number) => {
+    return buildDetailLink(sName!, rName!, nestedPath, itemId);
+  };
+
+  // 使用工具函数生成表格列配置
   const generateColumns = (fields: FieldDefinition[]) => {
-    const columns = fields.slice(0, 6).map(field => ({
-      title: field.name,
-      dataIndex: field.name,
-      key: field.name,
-      ellipsis: true,
-      render: (value: any) => {
-        if (value === null || value === undefined) return '-';
-        
-        switch (field.type) {
-          case 'boolean':
-            return <Tag color={value ? 'green' : 'red'}>{value ? '是' : '否'}</Tag>;
-          case 'date':
-          case 'datetime':
-            return new Date(value).toLocaleDateString();
-          case 'array':
-            return Array.isArray(value) ? `${value.length} 项` : '-';
-          case 'object':
-            return typeof value === 'object' ? 'Object' : '-';
-          default:
-            return String(value).length > 50 
-              ? String(value).substring(0, 50) + '...' 
-              : String(value);
-        }
-      },
-    }));
-
-    // 添加操作列
-    columns.push({
-      title: '操作',
-      key: 'action',
-      width: 200,
-      render: (_: any, record: ResourceDataItem) => (
-        <Space size="small">
-          <Link to={`/services/${sName}/resources/${rName}/${record.id}`}>
-            <Button 
-              type="link" 
-              size="small"
-              icon={<EyeOutlined />}
-            >
-              详情
-            </Button>
-          </Link>
-          <Link to={`/services/${sName}/resources/${rName}/${record.id}`}>
-            <Button type="link" size="small" icon={<EditOutlined />}>
-              编辑
-            </Button>
-          </Link>
-          <Button 
-            type="link" 
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record)}
-            loading={deleteMutation.isPending}
-          >
-            删除
-          </Button>
-        </Space>
-      ),
-    } as any);
-
-    return columns;
+    return generateTableColumnsFromFields({
+      fields,
+      maxColumns: 6,
+      showActions: true,
+      actionHandlers: {
+        onDetail: (record: ResourceDataItem) => generateDetailLink(record.id),
+        onEdit: (record: ResourceDataItem) => generateDetailLink(record.id),
+        onDelete: handleDelete,
+      }
+    });
   };
 
   if (error) {
@@ -198,7 +144,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId })
       <div style={{ padding: '24px' }}>
         <Alert
           message="资源不存在"
-          description={`找不到资源 "${rName}"`}
+          description={`找不到资源 "${currentResourceName}"`}
           type="warning"
           showIcon
         />
@@ -210,15 +156,32 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId })
 
   return (
     <div style={{ padding: '24px' }}>
+      <ResourceBreadcrumb 
+        serviceName={sName} 
+        topLevelResource={rName} 
+        nestedPath={nestedPath}
+        style={{ marginBottom: '16px' }}
+      />
+      
       <div style={{ marginBottom: '24px' }}>
         <Space align="start">
           <DatabaseOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
           <div>
             <Title level={2} style={{ margin: 0 }}>
               {resource.displayName}
+              {parentContext && (
+                <Tag color="blue" style={{ marginLeft: '8px' }}>
+                  子资源
+                </Tag>
+              )}
             </Title>
             <Paragraph type="secondary">
               {apiConfig?.name} - {resource.path}
+              {parentContext && (
+                <span style={{ marginLeft: '8px' }}>
+                  (属于 {parentContext[parentContext.length - 1]?.resourceName}: {parentContext[parentContext.length - 1]?.itemId})
+                </span>
+              )}
             </Paragraph>
           </div>
         </Space>
