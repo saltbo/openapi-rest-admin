@@ -1,245 +1,282 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, List, Avatar, Button, Space, Typography, Divider } from 'antd';
-import { ApiOutlined, DatabaseOutlined, EyeOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Avatar, Button, Typography, Spin } from 'antd';
+import { ApiOutlined, EyeOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { apiService } from '../../services/api';
-import type { APIConfig, ResourceSummary } from '../../types/api';
+import type { APIConfig } from '../../types/api';
 
 const { Title, Text } = Typography;
 
-interface HomeStats {
-  totalAPIs: number;
-  totalResources: number;
-  totalRecords: number;
-}
-
 export default function Home() {
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<HomeStats>({
-    totalAPIs: 0,
-    totalResources: 0,
-    totalRecords: 0
-  });
   const [apiConfigs, setApiConfigs] = useState<APIConfig[]>([]);
-  const [recentResources, setRecentResources] = useState<ResourceSummary[]>([]);
 
   useEffect(() => {
-    loadHomeData();
+    loadAPIConfigs();
   }, []);
 
-  const loadHomeData = async () => {
+  const loadAPIConfigs = async () => {
     try {
       setLoading(true);
-      
-      // 获取 API 配置列表
-      const configsResponse = await apiService.getAPIConfigs();
-      const configs = configsResponse.data;
-      setApiConfigs(configs);
-
-      // 计算统计数据
-      let totalResources = 0;
-      let totalRecords = 0;
-      const recentResourcesList: ResourceSummary[] = [];
-
-      // 遍历每个 API 配置，获取资源统计
-      for (const config of configs) {
-        try {
-          const resources = await apiService.getResourceDefinitions(config.id);
-          totalResources += resources.length;
-          
-          // 模拟每个资源的记录数（在真实环境中应该从实际数据源获取）
-          const configRecords = resources.reduce((sum, resource) => {
-            const mockCount = Math.floor(Math.random() * 1000) + 10;
-            return sum + mockCount;
-          }, 0);
-          totalRecords += configRecords;
-
-          // 添加到最近资源列表（取前几个）
-          resources.slice(0, 2).forEach(resource => {
-            recentResourcesList.push({
-              ...resource,
-              apiConfigId: config.id,
-              apiConfigName: config.name,
-              recordCount: Math.floor(Math.random() * 1000) + 10
-            });
-          });
-        } catch (error) {
-          console.warn(`Failed to load resources for API ${config.name}:`, error);
-        }
-      }
-
-      setStats({
-        totalAPIs: configs.length,
-        totalResources,
-        totalRecords
-      });
-
-      // 只显示前6个最近资源
-      setRecentResources(recentResourcesList.slice(0, 6));
+      const response = await apiService.getAPIConfigs();
+      setApiConfigs(response.data);
     } catch (error) {
-      console.error('Failed to load home data:', error);
+      console.error('Failed to load API configs:', error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ 
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '40px 24px'
+    }}>
       {/* 页面标题 */}
-      <div style={{ marginBottom: '24px' }}>
-        <Title level={2}>OpenAPI Admin</Title>
-        <Text type="secondary">统一管理和查看多个 OpenAPI/Swagger 文档的资源数据</Text>
+      <div style={{ 
+        marginBottom: '48px', 
+        textAlign: 'center',
+        color: 'white',
+        maxWidth: '800px',
+        margin: '0 auto 48px auto'
+      }}>
+        <Title level={1} style={{ 
+          color: 'white', 
+          marginBottom: '20px',
+          fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
+          fontWeight: '700',
+          textShadow: '0 4px 8px rgba(0,0,0,0.3)',
+          letterSpacing: '-0.02em'
+        }}>
+          OpenAPI Admin
+        </Title>
+        <div style={{
+          background: 'rgba(255,255,255,0.15)',
+          borderRadius: '20px',
+          padding: '16px 32px',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          display: 'inline-block'
+        }}>
+          <Text style={{ 
+            color: 'rgba(255,255,255,0.95)', 
+            fontSize: '18px',
+            fontWeight: '500',
+            lineHeight: '1.5'
+          }}>
+            🚀 选择一个 API 服务开始管理和查看资源数据
+          </Text>
+        </div>
       </div>
 
-      {/* 统计卡片 */}
-      <Row gutter={16} style={{ marginBottom: '24px' }}>
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title="API 配置数量"
-              value={stats.totalAPIs}
-              prefix={<ApiOutlined />}
-              loading={loading}
-            />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title="资源类型数量"
-              value={stats.totalResources}
-              prefix={<DatabaseOutlined />}
-              loading={loading}
-            />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title="总记录数"
-              value={stats.totalRecords}
-              prefix={<EyeOutlined />}
-              loading={loading}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        {/* API 配置列表 */}
-        <Col span={12}>
-          <Card
-            title="API 配置"
-            extra={
-              <Link to="/admin/apis">
-                <Button type="link">查看全部</Button>
-              </Link>
-            }
-          >
-            <List
-              loading={loading}
-              dataSource={apiConfigs}
-              renderItem={(config) => (
-                <List.Item
-                  actions={[
-                    <Link to={`/admin/api-detail/${config.id}`} key="detail">
-                      <Button type="link" size="small">详情</Button>
-                    </Link>,
-                    <Link to={`/frontend/resource-list/${config.id}`} key="resources">
-                      <Button type="link" size="small">资源</Button>
-                    </Link>
-                  ]}
-                >
-                  <List.Item.Meta
-                    avatar={<Avatar icon={<ApiOutlined />} />}
-                    title={config.name}
-                    description={
-                      <Space direction="vertical" size={0}>
-                        <Text type="secondary">{config.description}</Text>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                          {config.openapi_url}
-                        </Text>
-                      </Space>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
-          </Card>
-        </Col>
-
-        {/* 最近资源 */}
-        <Col span={12}>
-          <Card title="最近资源">
-            <List
-              loading={loading}
-              dataSource={recentResources}
-              renderItem={(resource) => (
-                <List.Item
-                  actions={[
-                    <Link 
-                      to={`/frontend/resource-list/${resource.apiConfigId}?resource=${resource.name}`} 
-                      key="view"
-                    >
-                      <Button type="link" size="small">查看</Button>
-                    </Link>
-                  ]}
-                >
-                  <List.Item.Meta
-                    avatar={<Avatar icon={<DatabaseOutlined />} />}
-                    title={resource.displayName || resource.name}
-                    description={
-                      <Space direction="vertical" size={0}>
-                        <Text type="secondary">来自: {resource.apiConfigName}</Text>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                          约 {resource.recordCount} 条记录
-                        </Text>
-                      </Space>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 快速导航 */}
-      <Divider />
-      <Card title="快速导航" style={{ marginTop: '24px' }}>
-        <Row gutter={16}>
-          <Col span={6}>
+      {/* API 服务卡片 */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        {loading ? (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '80px',
+            background: 'rgba(255,255,255,0.95)',
+            borderRadius: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <Spin size="large" />
+            <div style={{ marginTop: '24px' }}>
+              <Text style={{ fontSize: '16px', color: '#666' }}>加载 API 服务中...</Text>
+            </div>
+          </div>
+        ) : apiConfigs.length > 0 ? (
+          <Row gutter={[32, 32]} justify="start">
+            {apiConfigs.map(config => (
+              <Col xs={24} sm={12} md={8} lg={6} key={config.id}>
+                <Link to={`/services/${config.id}`} style={{ textDecoration: 'none' }}>
+                  <Card 
+                    hoverable
+                    style={{ 
+                      height: '240px',
+                      borderRadius: '20px',
+                      border: 'none',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                      background: 'rgba(255,255,255,0.98)',
+                      backdropFilter: 'blur(10px)',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      overflow: 'hidden',
+                      cursor: 'pointer'
+                    }}
+                    bodyStyle={{
+                      padding: '24px',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      textAlign: 'center'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-8px)';
+                      e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
+                    }}
+                  >
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center'
+                    }}>
+                      <div style={{
+                        width: '72px',
+                        height: '72px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '16px',
+                        boxShadow: '0 8px 20px rgba(102, 126, 234, 0.3)'
+                      }}>
+                        <ApiOutlined style={{ fontSize: '28px', color: 'white' }} />
+                      </div>
+                      <Title level={4} style={{ 
+                        margin: '0 0 8px 0',
+                        color: '#1a1a1a',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        lineHeight: '1.2'
+                      }}>
+                        {config.name}
+                      </Title>
+                      <Text style={{ 
+                        fontSize: '13px',
+                        color: '#666',
+                        lineHeight: '1.4',
+                        marginBottom: '12px',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        height: '34px'
+                      }}>
+                        {config.description || '暂无描述'}
+                      </Text>
+                    </div>
+                    
+                    <div style={{
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginTop: '8px'
+                    }}>
+                      {config.version ? (
+                        <div style={{
+                          background: 'linear-gradient(135deg, #e8f4fd, #d1f2eb)',
+                          padding: '6px 12px',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(102, 126, 234, 0.1)'
+                        }}>
+                          <Text style={{ 
+                            fontSize: '11px',
+                            color: '#0369a1',
+                            fontWeight: '500'
+                          }}>
+                            v{config.version}
+                          </Text>
+                        </div>
+                      ) : (
+                        <div style={{
+                          padding: '6px 12px',
+                          borderRadius: '12px',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white'
+                        }}>
+                          <Text style={{ 
+                            fontSize: '11px',
+                            color: 'white',
+                            fontWeight: '500'
+                          }}>
+                            <EyeOutlined style={{ marginRight: '4px' }} />
+                            查看
+                          </Text>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </Link>
+              </Col>
+            ))}
+          </Row>
+        ) : (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '80px 40px',
+            background: 'rgba(255,255,255,0.98)',
+            borderRadius: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+            backdropFilter: 'blur(10px)',
+            maxWidth: '600px',
+            margin: '0 auto'
+          }}>
+            <div style={{
+              fontSize: '72px',
+              marginBottom: '24px',
+              opacity: 0.7,
+              filter: 'grayscale(20%)'
+            }}>
+              📋
+            </div>
+            <Title level={2} style={{ 
+              color: '#374151', 
+              marginBottom: '16px',
+              fontSize: '24px',
+              fontWeight: '600'
+            }}>
+              暂无 API 服务配置
+            </Title>
+            <Text style={{ 
+              fontSize: '16px', 
+              color: '#6b7280', 
+              marginBottom: '40px',
+              display: 'block',
+              lineHeight: '1.6'
+            }}>
+              还没有配置任何 API 服务，点击下方按钮开始配置您的第一个服务
+            </Text>
             <Link to="/admin/apis">
-              <Card hoverable size="small" style={{ textAlign: 'center' }}>
-                <ApiOutlined style={{ fontSize: '24px', marginBottom: '8px' }} />
-                <div>API 配置管理</div>
-              </Card>
+              <Button 
+                type="primary" 
+                size="large"
+                style={{
+                  borderRadius: '16px',
+                  height: '56px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)',
+                  paddingLeft: '40px',
+                  paddingRight: '40px',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 12px 32px rgba(102, 126, 234, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.3)';
+                }}
+              >
+                🚀 开始配置
+              </Button>
             </Link>
-          </Col>
-          <Col span={6}>
-            <Link to="/admin/dashboard">
-              <Card hoverable size="small" style={{ textAlign: 'center' }}>
-                <DatabaseOutlined style={{ fontSize: '24px', marginBottom: '8px' }} />
-                <div>数据统计</div>
-              </Card>
-            </Link>
-          </Col>
-          <Col span={6}>
-            <Link to="/admin/settings">
-              <Card hoverable size="small" style={{ textAlign: 'center' }}>
-                <EyeOutlined style={{ fontSize: '24px', marginBottom: '8px' }} />
-                <div>系统设置</div>
-              </Card>
-            </Link>
-          </Col>
-          <Col span={6}>
-            <Card size="small" style={{ textAlign: 'center', opacity: 0.6 }}>
-              <ApiOutlined style={{ fontSize: '24px', marginBottom: '8px' }} />
-              <div>更多功能</div>
-            </Card>
-          </Col>
-        </Row>
-      </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
