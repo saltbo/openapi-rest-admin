@@ -74,9 +74,9 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId })
     queryKey: ['resourceData', sName, rName, currentPage, pageSize, searchQuery],
     queryFn: () => {
       if (searchQuery) {
-        return apiService.searchResourceData(sName!, rName!, searchQuery, currentPage, pageSize);
+        return apiService.searchResources(sName!, rName!, searchQuery, currentPage, pageSize);
       }
-      return apiService.getResourceData(sName!, rName!, currentPage, pageSize);
+      return apiService.listResources(sName!, rName!, currentPage, pageSize);
     },
     enabled: !!sName && !!rName,
   });
@@ -84,7 +84,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId })
   // 删除资源项
   const deleteMutation = useMutation({
     mutationFn: (itemId: string | number) => 
-      apiService.deleteResourceItem(sName!, rName!, itemId),
+      apiService.deleteResource(sName!, rName!, itemId),
     onSuccess: () => {
       message.success('删除成功');
       queryClient.invalidateQueries({ queryKey: ['resourceData', sName, rName] });

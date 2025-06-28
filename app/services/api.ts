@@ -58,12 +58,12 @@ class APIService {
         };
       }
 
-      // 解析 OpenAPI 文档
+      // 解析文档
       const analysis = await openAPIParser.parseOpenAPI(apiId, config.openapi_url);
       
       // 缓存结果
       this.analysisCache.set(apiId, analysis);
-      
+
       return {
         data: analysis,
         success: true
@@ -77,7 +77,7 @@ class APIService {
   /**
    * 获取资源数据列表
    */
-  async getResourceData(
+  async listResources(
     apiId: string, 
     resourceId: string, 
     page: number = 1, 
@@ -90,8 +90,24 @@ class APIService {
       const analysisResponse = await this.getOpenAPIAnalysis(apiId);
       const analysis = analysisResponse.data;
       
-      // 找到对应的资源
-      const resource = analysis.resources.find(r => r.id === resourceId);
+      // 找到对应的资源（支持通过ID或名称查找，包括子资源）
+      const findResourceInAll = (resources: ParsedResource[], targetName: string): ParsedResource | null => {
+        for (const resource of resources) {
+          if (resource.id === targetName || resource.name === targetName) {
+            return resource;
+          }
+          // 递归查找子资源
+          if (resource.sub_resources && resource.sub_resources.length > 0) {
+            const found = findResourceInAll(resource.sub_resources, targetName);
+            if (found) {
+              return found;
+            }
+          }
+        }
+        return null;
+      };
+
+      const resource = findResourceInAll(analysis.resources, resourceId);
       if (!resource) {
         throw new Error(`Resource "${resourceId}" not found in API "${apiId}"`);
       }
@@ -108,9 +124,9 @@ class APIService {
   }
 
   /**
-   * 获取API的所有资源列表
+   * 获取API的所有资源定义列表
    */
-  async getResources(apiId: string): Promise<ParsedResource[]> {
+  async getResourceDefinitions(apiId: string): Promise<ParsedResource[]> {
     try {
       // 获取 API 分析结果
       const analysisResponse = await this.getOpenAPIAnalysis(apiId);
@@ -126,7 +142,7 @@ class APIService {
   /**
    * 获取单个资源详情
    */
-  async getResourceItem(
+  async getResource(
     apiId: string, 
     resourceId: string, 
     itemId: string | number
@@ -134,17 +150,36 @@ class APIService {
     await this.delay(300);
 
     try {
-      // 获取资源数据列表
-      const listResponse = await this.getResourceData(apiId, resourceId, 1, 50);
-      const items = listResponse.data;
+      // 获取 API 分析结果
+      const analysisResponse = await this.getOpenAPIAnalysis(apiId);
+      const analysis = analysisResponse.data;
       
-      // 查找指定的项目
-      const item = items.find(item => item.id.toString() === itemId.toString());
-      if (!item) {
-        throw new Error(`Item "${itemId}" not found in resource "${resourceId}"`);
+      // 找到对应的资源定义
+      const findResourceInAll = (resources: ParsedResource[], targetName: string): ParsedResource | null => {
+        for (const resource of resources) {
+          if (resource.id === targetName || resource.name === targetName) {
+            return resource;
+          }
+          // 递归查找子资源
+          if (resource.sub_resources && resource.sub_resources.length > 0) {
+            const found = findResourceInAll(resource.sub_resources, targetName);
+            if (found) {
+              return found;
+            }
+          }
+        }
+        return null;
+      };
+
+      const resource = findResourceInAll(analysis.resources, resourceId);
+      if (!resource) {
+        throw new Error(`Resource "${resourceId}" not found in API "${apiId}"`);
       }
 
-      return mockDataService.generateSingleResponse(item);
+      // 直接生成单个资源的Mock数据，模拟通过ID获取的行为
+      const mockItem = mockDataService.generateSingleResourceItem(resource, itemId);
+      
+      return mockDataService.generateSingleResponse(mockItem);
     } catch (error) {
       console.error(`Failed to get resource item for ${apiId}/${resourceId}/${itemId}:`, error);
       throw error;
@@ -154,18 +189,20 @@ class APIService {
   /**
    * 创建资源项目
    */
-  async createResourceItem(
+  async createResource(
     apiId: string, 
     resourceId: string, 
     data: Partial<ResourceDataItem>
   ): Promise<APIResponse<ResourceDataItem>> {
     await this.delay(400);
 
-    // 生成新的 ID
+    // 生成新的ID
     const newId = Date.now();
     const newItem: ResourceDataItem = {
       id: newId,
-      ...data
+      ...data,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     return mockDataService.generateSingleResponse(newItem);
@@ -174,18 +211,18 @@ class APIService {
   /**
    * 更新资源项目
    */
-  async updateResourceItem(
+  async updateResource(
     apiId: string, 
     resourceId: string, 
-    itemId: string | number,
+    itemId: string | number, 
     data: Partial<ResourceDataItem>
   ): Promise<APIResponse<ResourceDataItem>> {
     await this.delay(400);
 
-    // 模拟更新
     const updatedItem: ResourceDataItem = {
       id: itemId,
-      ...data
+      ...data,
+      updatedAt: new Date().toISOString()
     };
 
     return mockDataService.generateSingleResponse(updatedItem);
@@ -194,7 +231,7 @@ class APIService {
   /**
    * 删除资源项目
    */
-  async deleteResourceItem(
+  async deleteResource(
     apiId: string, 
     resourceId: string, 
     itemId: string | number
@@ -207,7 +244,7 @@ class APIService {
   /**
    * 搜索资源数据
    */
-  async searchResourceData(
+  async searchResources(
     apiId: string, 
     resourceId: string, 
     query: string,
@@ -218,11 +255,11 @@ class APIService {
 
     try {
       // 获取所有数据
-      const allDataResponse = await this.getResourceData(apiId, resourceId, 1, 100);
+      const allDataResponse = await this.listResources(apiId, resourceId, 1, 100);
       const allData = allDataResponse.data;
       
       // 简单的文本搜索
-      const filteredData = allData.filter(item => {
+      const filteredData = allData.filter((item: ResourceDataItem) => {
         const searchableText = Object.values(item)
           .filter(value => typeof value === 'string' || typeof value === 'number')
           .join(' ')

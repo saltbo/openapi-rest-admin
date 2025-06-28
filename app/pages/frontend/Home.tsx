@@ -44,7 +44,7 @@ export default function Home() {
       // 遍历每个 API 配置，获取资源统计
       for (const config of configs) {
         try {
-          const resources = await apiService.getResources(config.id);
+          const resources = await apiService.getResourceDefinitions(config.id);
           totalResources += resources.length;
           
           // 模拟每个资源的记录数（在真实环境中应该从实际数据源获取）

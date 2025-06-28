@@ -30,11 +30,148 @@ export class MockDataService {
         id: i,
         ...this.generateFieldValues(resource.schema, i)
       };
+
+      // 如果是子资源，添加父资源关联字段
+      if (resource.parent_resource) {
+        item.parentId = Math.floor(Math.random() * 10) + 1; // 随机父资源ID
+        item.parentResource = resource.parent_resource;
+        
+        // 添加一些子资源特有的字段
+        item.name = item.name || `${resource.name} Item ${i}`;
+        item.description = item.description || `${resource.name} associated with ${resource.parent_resource}`;
+        item.status = item.status || ['active', 'inactive', 'pending'][Math.floor(Math.random() * 3)];
+        item.createdAt = item.createdAt || new Date(Date.now() - Math.random() * 86400000 * 30).toISOString();
+        item.updatedAt = item.updatedAt || new Date(Date.now() - Math.random() * 86400000 * 7).toISOString();
+        item.type = item.type || resource.name;
+      }
+      
       data.push(item);
     }
 
     this.cache.set(cacheKey, data);
     return data;
+  }
+
+  /**
+   * 为子资源生成 Mock 数据
+   */
+  generateSubResourceMockData(
+    subResource: ParsedResource, 
+    parentResourceId: string,
+    parentItemId: string | number,
+    count: number = 10
+  ): ResourceDataItem[] {
+    const cacheKey = `sub_${subResource.id}_${parentResourceId}_${parentItemId}_${count}`;
+    
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey)!;
+    }
+
+    const data: ResourceDataItem[] = [];
+    
+    for (let i = 1; i <= count; i++) {
+      const item: ResourceDataItem = {
+        id: `${subResource.name}_${parentItemId}_${i}`,
+        parentId: parentItemId,
+        parentResource: parentResourceId,
+        ...this.generateFieldValues(subResource.schema, i),
+        // 添加一些特定于子资源的字段
+        name: `${subResource.name} Item ${i}`,
+        description: `${subResource.name} associated with ${parentResourceId} (ID: ${parentItemId})`,
+        status: ['active', 'inactive', 'pending', 'completed'][Math.floor(Math.random() * 4)],
+        createdAt: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
+        updatedAt: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString(),
+        type: subResource.name,
+        category: `${subResource.name}_category_${(i % 3) + 1}`,
+        priority: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)],
+        owner: `user_${Math.floor(Math.random() * 10) + 1}`,
+        tags: [`tag_${i}`, `${subResource.name}_tag`]
+      };
+      data.push(item);
+    }
+
+    this.cache.set(cacheKey, data);
+    return data;
+  }
+
+  /**
+   * 生成单个子资源项
+   */
+  generateSingleSubResourceItem(
+    subResource: ParsedResource,
+    parentResourceId: string,
+    parentItemId: string | number,
+    subItemId: string | number
+  ): ResourceDataItem {
+    const index = typeof subItemId === 'string' ? 
+      parseInt(subItemId.split('_').pop() || '1') : 
+      Number(subItemId);
+      
+    const item: ResourceDataItem = {
+      id: subItemId,
+      parentId: parentItemId,
+      parentResource: parentResourceId,
+      ...this.generateFieldValues(subResource.schema, index),
+      // 添加一些特定的字段
+      name: `${subResource.name} Item ${subItemId}`,
+      description: `Detailed ${subResource.name} associated with ${parentResourceId} (ID: ${parentItemId})`,
+      status: ['active', 'inactive', 'pending', 'completed'][index % 4],
+      createdAt: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
+      updatedAt: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString(),
+      lastModifiedBy: `user_${Math.floor(Math.random() * 10) + 1}`,
+      type: subResource.name,
+      category: `${subResource.name}_category_${(index % 3) + 1}`,
+      priority: ['low', 'medium', 'high'][index % 3],
+      owner: `user_${Math.floor(Math.random() * 10) + 1}`,
+      tags: [`tag_${index}`, `${subResource.name}_tag`, 'detailed'],
+      metadata: {
+        source: 'sub_resource_generator',
+        parentRef: `${parentResourceId}:${parentItemId}`,
+        generatedAt: new Date().toISOString(),
+        version: '1.0'
+      },
+      // 添加一些可能的业务字段
+      ...(Math.random() > 0.5 && { cost: Math.floor(Math.random() * 10000) }),
+      ...(Math.random() > 0.5 && { duration: Math.floor(Math.random() * 100) + 1 }),
+      ...(Math.random() > 0.5 && { progress: Math.floor(Math.random() * 101) }),
+      ...(Math.random() > 0.5 && { rating: Math.floor(Math.random() * 5) + 1 }),
+      ...(Math.random() > 0.5 && { isPublic: Math.random() > 0.5 })
+    };
+
+    return item;
+  }
+
+  /**
+   * 生成单个资源项
+   */
+  generateSingleResourceItem(
+    resource: ParsedResource,
+    itemId: string | number
+  ): ResourceDataItem {
+    const index = typeof itemId === 'string' ? 
+      parseInt(itemId.toString()) || 1 : 
+      Number(itemId);
+      
+    const item: ResourceDataItem = {
+      id: itemId,
+      ...this.generateFieldValues(resource.schema, index),
+    };
+
+    // 如果是子资源，添加父资源关联字段
+    if (resource.parent_resource) {
+      item.parentId = Math.floor(Math.random() * 10) + 1; // 随机父资源ID
+      item.parentResource = resource.parent_resource;
+      
+      // 添加一些子资源特有的字段
+      item.name = item.name || `${resource.name} Item ${itemId}`;
+      item.description = item.description || `${resource.name} associated with ${resource.parent_resource}`;
+      item.status = item.status || ['active', 'inactive', 'pending'][Math.floor(Math.random() * 3)];
+      item.createdAt = item.createdAt || new Date(Date.now() - Math.random() * 86400000 * 30).toISOString();
+      item.updatedAt = item.updatedAt || new Date(Date.now() - Math.random() * 86400000 * 7).toISOString();
+      item.type = item.type || resource.name;
+    }
+
+    return item;
   }
 
   /**
@@ -297,6 +434,79 @@ export class MockDataService {
    */
   clearCache(): void {
     this.cache.clear();
+  }
+
+  /**
+   * 生成后备子资源数据（当无法找到资源定义时使用）
+   */
+  generateFallbackSubResourceData(
+    subResourceName: string,
+    parentResourceId: string,
+    parentItemId: string | number,
+    count: number = 5
+  ): ResourceDataItem[] {
+    const data: ResourceDataItem[] = [];
+    
+    for (let i = 1; i <= count; i++) {
+      const item: ResourceDataItem = {
+        id: `${subResourceName}_${parentItemId}_${i}`,
+        parentId: parentItemId,
+        parentResource: parentResourceId,
+        name: `${subResourceName} Item ${i}`,
+        description: `${subResourceName} associated with ${parentResourceId} (ID: ${parentItemId})`,
+        status: ['active', 'inactive', 'pending', 'completed'][Math.floor(Math.random() * 4)],
+        createdAt: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
+        updatedAt: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString(),
+        type: subResourceName,
+        category: `${subResourceName}_category`,
+        priority: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)],
+        owner: `user_${Math.floor(Math.random() * 10) + 1}`,
+        tags: [`${subResourceName}_tag`],
+        // 添加一些随机字段
+        ...(Math.random() > 0.5 && { value: Math.floor(Math.random() * 1000) }),
+        ...(Math.random() > 0.5 && { isEnabled: Math.random() > 0.5 })
+      };
+      data.push(item);
+    }
+
+    return data;
+  }
+
+  /**
+   * 生成后备单个子资源项（当无法找到资源定义时使用）
+   */
+  generateFallbackSingleSubResourceItem(
+    subResourceName: string,
+    parentResourceId: string,
+    parentItemId: string | number,
+    subItemId: string | number
+  ): ResourceDataItem {
+    const index = typeof subItemId === 'string' ? 
+      parseInt(subItemId.split('_').pop() || '1') : 
+      Number(subItemId);
+      
+    const item: ResourceDataItem = {
+      id: subItemId,
+      parentId: parentItemId,
+      parentResource: parentResourceId,
+      name: `${subResourceName} Item ${subItemId}`,
+      description: `${subResourceName} associated with ${parentResourceId} (ID: ${parentItemId})`,
+      status: ['active', 'inactive', 'pending', 'completed'][index % 4],
+      createdAt: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
+      updatedAt: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString(),
+      type: subResourceName,
+      category: `${subResourceName}_category`,
+      priority: ['low', 'medium', 'high'][index % 3],
+      owner: `user_${Math.floor(Math.random() * 10) + 1}`,
+      tags: [`${subResourceName}_tag`],
+      // 添加一些基本字段
+      value: Math.floor(Math.random() * 1000),
+      isEnabled: Math.random() > 0.5,
+      lastModified: new Date().toISOString(),
+      version: '1.0'
+    };
+
+    return item;
   }
 }
 

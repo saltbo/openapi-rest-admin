@@ -142,32 +142,8 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
       setCurrentResource(resource);
       
       // 加载当前资源项的详情
-      let itemResponse;
-      if (isSubResourceDetail && parentResourceName && parentItemId) {
-        // 对于子资源，我们目前使用模拟数据，因为真实的子资源API可能需要不同的实现
-        // 这里先使用主资源的数据作为示例
-        const parentDataResponse = await apiService.getResourceData(apiConfig.id, parentResourceName, 1, 50);
-        const parentItem = parentDataResponse.data.find((item: any) => item.id.toString() === parentItemId);
-        if (!parentItem) {
-          throw new Error(`Parent resource item with id ${parentItemId} not found`);
-        }
-        // 模拟子资源项数据
-        setCurrentItem({
-          id: currentItemId,
-          parentId: parentItemId,
-          parentResource: parentResourceName,
-          name: `${currentResourceName}_${currentItemId}`,
-          description: `This is a sub-resource item of ${parentResourceName}`,
-          // 添加一些模拟字段
-          status: 'active',
-          createdAt: new Date().toISOString(),
-          type: currentResourceName
-        });
-      } else {
-        // 对于顶级资源，直接获取项目详情
-        itemResponse = await apiService.getResourceItem(apiConfig.id, currentResourceName, currentItemId);
-        setCurrentItem(itemResponse.data);
-      }
+      const itemResponse = await apiService.getResource(apiConfig.id, currentResourceName, currentItemId);
+      setCurrentItem(itemResponse.data);
       
       // 查找并加载子资源（支持多级嵌套）
       if (resource.sub_resources && resource.sub_resources.length > 0) {
@@ -176,23 +152,14 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
         // 加载每个子资源的数据
         const subResourceDataMap: { [key: string]: ResourceItem[] } = {};
         for (const subResource of resource.sub_resources) {
-          try {
-            // 由于子资源的API实现可能比较复杂，这里先使用模拟数据
-            // 在实际应用中，你可能需要实现专门的子资源API
-            const mockSubResourceData: ResourceItem[] = Array.from({ length: 3 }, (_, index) => ({
-              id: `${subResource.name}_${index + 1}`,
-              name: `${subResource.name} Item ${index + 1}`,
-              description: `This is a ${subResource.name} related to ${currentResourceName}`,
-              status: index % 2 === 0 ? 'active' : 'inactive',
-              createdAt: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
-              parentId: currentItemId,
-              parentResource: currentResourceName
-            }));
-            subResourceDataMap[subResource.name] = mockSubResourceData;
-          } catch (error) {
-            console.warn(`Failed to load sub-resource ${subResource.name}:`, error);
-            subResourceDataMap[subResource.name] = [];
-          }
+          // 使用统一的资源数据API获取数据
+          const subResourceResponse = await apiService.listResources(
+            apiConfig.id, 
+            subResource.name, 
+            1, 
+            10
+          );
+          subResourceDataMap[subResource.name] = subResourceResponse.data;
         }
         setSubResourceData(subResourceDataMap);
       } else {
