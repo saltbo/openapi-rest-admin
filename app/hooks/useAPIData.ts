@@ -40,9 +40,6 @@ export function useResourceData(
   return useQuery({
     queryKey: ['resourceData', serviceName, resourceName, currentPage, pageSize, searchQuery, nestedPath],
     queryFn: () => {
-      if (searchQuery) {
-        return frontendAPIService.searchResources(serviceName!, resourceName!, searchQuery, currentPage, pageSize);
-      }
       return frontendAPIService.listResources(serviceName!, resourceName!, currentPage, pageSize);
     },
     enabled: !!serviceName && !!resourceName,

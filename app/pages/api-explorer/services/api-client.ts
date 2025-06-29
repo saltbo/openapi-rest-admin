@@ -1,4 +1,4 @@
-import type { OpenAPIDocument, OpenAPIAnalysis, ResourceDataItem, APIResponse, ParsedResource } from '~/types/api';
+import type { OpenAPIAnalysis, ResourceDataItem, APIResponse } from '~/types/api';
 import { openAPIDocumentClient } from '~/lib/client';
 import { openAPIParser, mockDataService } from './';
 
@@ -29,78 +29,81 @@ class FrontendAPIService {
     return null;
   }
 
-
-
   /**
-   * 分析 OpenAPI 文档并缓存结果
+   * 获取 OpenAPI 分析结果
    */
-  async analyzeOpenAPI(apiId: string): Promise<OpenAPIAnalysis> {
+  async getOpenAPIAnalysis(apiId: string): Promise<APIResponse<OpenAPIAnalysis>> {
     // 检查缓存
     if (this.analysisCache.has(apiId)) {
       const cached = this.analysisCache.get(apiId);
-      if (cached) return cached;
+      if (cached) {
+        return {
+          data: cached,
+          success: true
+        };
+      }
     }
 
     try {
       // 获取 API 配置
-      console.log(`[analyzeOpenAPI] 获取 API 配置: ${apiId}`);
       const config = await openAPIDocumentClient.getConfig(apiId);
-      console.log(`[analyzeOpenAPI] API 配置:`, config);
-
+      
       // 解析 OpenAPI 文档
-      console.log(`[analyzeOpenAPI] 开始解析 OpenAPI 文档: ${config.openapi_url}`);
       const analysis = await openAPIParser.parseOpenAPI(apiId, config.openapi_url);
       
       // 缓存结果
       this.analysisCache.set(apiId, analysis);
       
-      return analysis;
+      return {
+        data: analysis,
+        success: true
+      };
     } catch (error) {
-      throw new Error(`Failed to analyze OpenAPI: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to get OpenAPI analysis: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * 获取资源列表数据
+   * 列出资源数据
    */
-  async getResourceData(
+  async listResources(
     apiId: string, 
     resourceName: string, 
-    params?: Record<string, any>
+    page: number = 1, 
+    pageSize: number = 10
   ): Promise<APIResponse<ResourceDataItem[]>> {
     try {
       // 分析 API 获取资源定义
-      const analysis = await this.analyzeOpenAPI(apiId);
-      const resource = this.findResourceByName(analysis.resources, resourceName);
+      const analysisResponse = await this.getOpenAPIAnalysis(apiId);
+      const resource = this.findResourceByName(analysisResponse.data.resources, resourceName);
       
       if (!resource) {
         throw new Error(`Resource '${resourceName}' not found in API '${apiId}'`);
       }
 
-      // 如果有真实的 API 端点，可以在这里添加逻辑
       // 目前直接使用模拟数据
-      const mockData = mockDataService.generateMockData(resource, 10);
+      const mockData = mockDataService.generateMockData(resource, pageSize);
       return {
         data: mockData,
         success: true
       };
     } catch (error) {
-      throw new Error(`Failed to get resource data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to list resources: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * 获取单个资源项详情
+   * 获取单个资源
    */
-  async getResourceItem(
+  async getResource(
     apiId: string, 
     resourceName: string, 
     itemId: string
   ): Promise<APIResponse<ResourceDataItem>> {
     try {
       // 分析 API 获取资源定义
-      const analysis = await this.analyzeOpenAPI(apiId);
-      const resource = this.findResourceByName(analysis.resources, resourceName);
+      const analysisResponse = await this.getOpenAPIAnalysis(apiId);
+      const resource = this.findResourceByName(analysisResponse.data.resources, resourceName);
       
       if (!resource) {
         throw new Error(`Resource '${resourceName}' not found in API '${apiId}'`);
@@ -118,133 +121,7 @@ class FrontendAPIService {
         success: true
       };
     } catch (error) {
-      throw new Error(`Failed to get resource item: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * 获取嵌套资源数据
-   */
-  async getNestedResourceData(
-    apiId: string,
-    parentResource: string,
-    parentId: string,
-    childResource: string,
-    params?: Record<string, any>
-  ): Promise<APIResponse<ResourceDataItem[]>> {
-    try {
-      // 分析 API 获取资源定义
-      const analysis = await this.analyzeOpenAPI(apiId);
-      // 查找嵌套资源（简化实现）
-      const resource = this.findResourceByName(analysis.resources, childResource);
-      
-      if (!resource) {
-        throw new Error(`Nested resource '${childResource}' under '${parentResource}' not found in API '${apiId}'`);
-      }
-
-      // 生成模拟数据（实际实现中可以调用真实 API）
-      const mockData = mockDataService.generateMockData(resource, 5);
-      return {
-        data: mockData,
-        success: true
-      };
-    } catch (error) {
-      throw new Error(`Failed to get nested resource data: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * 获取 OpenAPI 分析结果（兼容原 apiService 接口）
-   */
-  async getOpenAPIAnalysis(apiId: string): Promise<APIResponse<OpenAPIAnalysis>> {
-    try {
-      const analysis = await this.analyzeOpenAPI(apiId);
-      return {
-        data: analysis,
-        success: true
-      };
-    } catch (error) {
-      throw new Error(`Failed to get OpenAPI analysis: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * 列出资源数据（兼容原 apiService 接口）
-   */
-  async listResources(
-    apiId: string, 
-    resourceName: string, 
-    page: number = 1, 
-    pageSize: number = 10
-  ): Promise<APIResponse<ResourceDataItem[]>> {
-    try {
-      // 调用内部 getResourceData 方法
-      const result = await this.getResourceData(apiId, resourceName, { page, pageSize });
-      return result;
-    } catch (error) {
-      throw new Error(`Failed to list resources: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * 获取单个资源（兼容原 apiService 接口）
-   */
-  async getResource(
-    apiId: string, 
-    resourceName: string, 
-    itemId: string
-  ): Promise<APIResponse<ResourceDataItem>> {
-    try {
-      // 调用内部 getResourceItem 方法
-      const result = await this.getResourceItem(apiId, resourceName, itemId);
-      return result;
-    } catch (error) {
       throw new Error(`Failed to get resource: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * 搜索资源数据（兼容原 apiService 接口）
-   */
-  async searchResources(
-    apiId: string, 
-    resourceName: string, 
-    searchQuery: string,
-    page: number = 1, 
-    pageSize: number = 10
-  ): Promise<APIResponse<ResourceDataItem[]>> {
-    try {
-      // 调用内部 getResourceData 方法，添加搜索参数
-      const result = await this.getResourceData(apiId, resourceName, { 
-        page, 
-        pageSize, 
-        search: searchQuery 
-      });
-      
-      // 简单的客户端搜索过滤（实际应该在服务端处理）
-      if (searchQuery && result.data) {
-        const filteredData = result.data.filter((item: any) => {
-          return Object.values(item).some((value: any) => 
-            String(value).toLowerCase().includes(searchQuery.toLowerCase())
-          );
-        });
-        result.data = filteredData;
-      }
-      
-      return result;
-    } catch (error) {
-      throw new Error(`Failed to search resources: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * 清除分析缓存
-   */
-  clearCache(apiId?: string): void {
-    if (apiId) {
-      this.analysisCache.delete(apiId);
-    } else {
-      this.analysisCache.clear();
     }
   }
 }
