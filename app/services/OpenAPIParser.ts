@@ -10,15 +10,15 @@
  * This is a pure parsing service with no state management or business logic.
  */
 
-import type {
-  OpenAPISpec,
-  OpenAPIAnalysis,
-  ParsedResource,
-  FieldDefinition,
-  OperationInfo,
-  FieldType,
-  Parameter,
-} from "~/types/openapi";
+import type { 
+  OpenAPISpec, 
+  FieldDefinition, 
+  FieldType, 
+  Parameter, 
+  OperationInfo, 
+  ParsedResource, 
+  OpenAPIAnalysis 
+} from '~/types/openapi';
 
 export interface ParsedPath {
   path: string;
@@ -100,7 +100,7 @@ export class OpenAPIParser {
     
     const baseInfo = this.extractBaseInfo(spec);
     const parsedPaths = this.parsePaths(spec, opts);
-    const resources = this.buildResourceHierarchy(parsedPaths, opts);
+    const resources = this.buildResourceHierarchy(parsedPaths, opts, spec);
     const stats = this.calculateStats(spec, resources);
     
     return {
@@ -160,10 +160,12 @@ export class OpenAPIParser {
 
   /**
    * Build hierarchical resource structure from parsed paths
+   * Extract resources from RESTful GET endpoints' response bodies
    */
   private static buildResourceHierarchy(
     pathMap: Map<string, ParsedPath>,
-    options: ParseOptions
+    options: ParseOptions,
+    spec: OpenAPISpec
   ): ParsedResource[] {
     // Group paths by resource chain
     const resourceGroups = new Map<string, ParsedPath[]>();
@@ -176,7 +178,7 @@ export class OpenAPIParser {
       resourceGroups.get(resourceKey)!.push(parsedPath);
     });
     
-    // Create resource objects
+    // Create resource objects from RESTful list endpoints
     const allResources = new Map<string, ParsedResource>();
     
     resourceGroups.forEach((paths, resourceKey) => {
@@ -186,8 +188,10 @@ export class OpenAPIParser {
         ? resourceChain.slice(0, -1).join('.')
         : undefined;
       
-      const resource = this.createResource(resourceKey, resourceName, paths, parentResourceName);
-      allResources.set(resourceKey, resource);
+      const resource = this.createResourceFromListEndpoint(resourceKey, resourceName, paths, parentResourceName, spec);
+      if (resource) {
+        allResources.set(resourceKey, resource);
+      }
     });
     
     // Build hierarchy
@@ -195,21 +199,43 @@ export class OpenAPIParser {
   }
 
   /**
-   * Create a single resource from grouped paths
+   * Create a resource from RESTful list endpoint (GET /resources)
+   * Extract resource schema from response body according to RESTful conventions
    */
-  private static createResource(
+  private static createResourceFromListEndpoint(
     id: string,
     name: string,
     paths: ParsedPath[],
-    parentId?: string
-  ): ParsedResource {
-    // Select the main path (simplest one)
-    const mainPath = this.selectMainPath(paths.map(p => p.path));
+    parentId?: string,
+    spec?: OpenAPISpec
+  ): ParsedResource | null {
+    // Find the list endpoint (GET method on collection path)
+    const listPath = this.findListEndpoint(paths);
+    if (!listPath) {
+      console.warn(`No RESTful list endpoint found for resource: ${name}`);
+      return null;
+    }
+
+    // Extract schema from GET operation response
+    const getOperation = listPath.operations['get'];
+    if (!getOperation || !getOperation.responses) {
+      console.warn(`No GET operation or responses found for list endpoint: ${listPath.path}`);
+      return null;
+    }
+
+    // Extract schema from 200 response
+    const successResponse = getOperation.responses['200'] || getOperation.responses['default'];
+    if (!successResponse) {
+      console.warn(`No success response found for list endpoint: ${listPath.path}`);
+      return null;
+    }
+
+    // Get response schema and extract resource fields
+    const resourceSchema = this.extractResourceSchemaFromResponse(successResponse, name, spec);
     
-    // Merge operations from all paths
+    // Collect all operations from paths
     const operations: Record<string, OperationInfo> = {};
     const methods: string[] = [];
-    const allSchemas: FieldDefinition[] = [];
     const tags = new Set<string>();
     
     paths.forEach(parsedPath => {
@@ -224,17 +250,16 @@ export class OpenAPIParser {
           operation.tags.forEach((tag: string) => tags.add(tag));
         }
       });
-      
-      // Merge schemas (deduplicate by name)
-      parsedPath.schemas.forEach(schema => {
-        if (!allSchemas.find(s => s.name === schema.name)) {
-          allSchemas.push(schema);
-        }
-      });
     });
-    
+
+    // Only include RESTful resources
+    if (!this.isRESTfulResource(methods)) {
+      console.warn(`Resource ${name} is not RESTful, skipping`);
+      return null;
+    }
+
+    const mainPath = this.selectMainPath(paths.map(p => p.path));
     const resourceType = this.determineResourceType(methods);
-    const isRestful = this.isRESTfulResource(methods);
     
     return {
       id,
@@ -242,14 +267,114 @@ export class OpenAPIParser {
       path: mainPath,
       basePath: '', // Will be set with base_url later
       methods,
-      schema: allSchemas,
+      schema: resourceSchema,
       operations,
       sub_resources: [],
-      is_restful: isRestful,
+      is_restful: true, // We only process RESTful resources
       parent_resource: parentId,
       resource_type: resourceType,
       tags: Array.from(tags),
     };
+  }
+
+  /**
+   * Find the list endpoint (GET /resources) from paths
+   */
+  private static findListEndpoint(paths: ParsedPath[]): ParsedPath | null {
+    // Look for GET operation on collection path (path without ID parameter at the end)
+    return paths.find(path => {
+      // Check if this path has GET operation
+      if (!path.operations['get']) return false;
+      
+      // Collection path should not end with ID parameter
+      // e.g., /users is collection, /users/{id} is item
+      const segments = path.path.split('/').filter(Boolean);
+      const lastSegment = segments[segments.length - 1];
+      
+      // If last segment is a parameter, this is likely an item endpoint
+      if (lastSegment && /^[{:]/.test(lastSegment)) {
+        return false;
+      }
+      
+      return true;
+    }) || null;
+  }
+
+  /**
+   * Extract resource schema from list endpoint response
+   * Handle common response formats: array, {data: array}, {list: array}, {items: array}
+   */
+  private static extractResourceSchemaFromResponse(response: any, resourceName: string, spec?: OpenAPISpec): FieldDefinition[] {
+    // Get response content schema
+    let responseSchema = null;
+    
+    // OpenAPI 3.x format
+    if (response.content) {
+      const jsonContent = response.content['application/json'];
+      if (jsonContent?.schema) {
+        responseSchema = jsonContent.schema;
+      }
+    }
+    // Swagger 2.0 format
+    else if (response.schema) {
+      responseSchema = response.schema;
+    }
+    
+    if (!responseSchema) {
+      console.warn(`No response schema found for resource: ${resourceName}`);
+      return [];
+    }
+
+    return this.extractResourceFieldsFromResponseSchema(responseSchema, resourceName, spec);
+  }
+
+  /**
+   * Extract resource fields from response schema
+   * Handle different response formats
+   */
+  private static extractResourceFieldsFromResponseSchema(
+    responseSchema: any, 
+    resourceName: string,
+    spec?: OpenAPISpec
+  ): FieldDefinition[] {
+    // Case 1: Response is directly an array
+    if (responseSchema.type === 'array' && responseSchema.items) {
+      return this.extractFieldsFromSchema(responseSchema.items, spec || {} as OpenAPISpec);
+    }
+    
+    // Case 2: Response is an object containing an array
+    if (responseSchema.type === 'object' && responseSchema.properties) {
+      const properties = responseSchema.properties;
+      
+      // Try common array property names
+      const arrayPropertyNames = ['data', 'list', 'items', resourceName];
+      
+      for (const propName of arrayPropertyNames) {
+        const property = properties[propName];
+        if (property && property.type === 'array' && property.items) {
+          return this.extractFieldsFromSchema(property.items, spec || {} as OpenAPISpec);
+        }
+      }
+      
+      // If no array property found, try to find the first array property
+      for (const [propName, property] of Object.entries(properties)) {
+        if ((property as any).type === 'array' && (property as any).items) {
+          console.log(`Using array property '${propName}' for resource schema extraction`);
+          return this.extractFieldsFromSchema((property as any).items, spec || {} as OpenAPISpec);
+        }
+      }
+    }
+    
+    // Case 3: Handle $ref in response schema
+    if (responseSchema.$ref && spec) {
+      const resolvedSchema = this.resolveReference(responseSchema.$ref, spec);
+      if (resolvedSchema) {
+        return this.extractResourceFieldsFromResponseSchema(resolvedSchema, resourceName, spec);
+      }
+    }
+    
+    console.warn(`Unable to extract resource schema from response format for: ${resourceName}`);
+    return [];
   }
 
   /**
@@ -969,7 +1094,8 @@ export class OpenAPIParserService {
       this.cache.set(apiId, analysis);
       
       console.log(`Parsing completed: ${analysis.title}, found ${analysis.resources.length} resources`);
-      
+      console.log(999, analysis);
+            
       return analysis;
     } catch (error) {
       console.error('Failed to parse OpenAPI document:', error);

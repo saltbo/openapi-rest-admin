@@ -93,7 +93,30 @@ const sampleOpenAPISpec: OpenAPISpec = {
       get: {
         summary: 'List user posts',
         responses: {
-          '200': { description: 'Success' }
+          '200': {
+            description: 'Success',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    data: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer' },
+                          title: { type: 'string' },
+                          content: { type: 'string' },
+                          user_id: { type: 'integer' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       },
       post: {
@@ -107,7 +130,25 @@ const sampleOpenAPISpec: OpenAPISpec = {
       get: {
         summary: 'List post comments',
         responses: {
-          '200': { description: 'Success' }
+          '200': {
+            description: 'Success',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'integer' },
+                      content: { type: 'string' },
+                      author: { type: 'string' },
+                      post_id: { type: 'integer' }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -162,25 +203,26 @@ describe('Core Services Integration', () => {
       expect(usersResource?.schema).toBeDefined();
       expect(usersResource?.schema.length).toBeGreaterThan(0);
       
-      // Should have fields from both response and request schemas
+      // Should have fields from the resource object (extracted from array items)
       const fields = usersResource?.schema || [];
       const fieldNames = fields.map(f => f.name);
       
-      // Should have name and email from request body schema
+      // Should have resource fields extracted from GET /users response array items
+      expect(fieldNames).toContain('id');
       expect(fieldNames).toContain('name');
       expect(fieldNames).toContain('email');
       
-      // Should have data field from response schema (paginated response)
-      expect(fieldNames).toContain('data');
+      // Should NOT have wrapper fields like 'data' since we extract from array items
+      expect(fieldNames).not.toContain('data');
       
       // Verify field types
+      const idField = fields.find(f => f.name === 'id');
       const nameField = fields.find(f => f.name === 'name');
       const emailField = fields.find(f => f.name === 'email');
-      const dataField = fields.find(f => f.name === 'data');
       
+      expect(idField?.type).toBe('integer');
       expect(nameField?.type).toBe('string');
       expect(emailField?.type).toBe('email');
-      expect(dataField?.type).toBe('array');
     });
 
     test('should filter out non-resource paths', () => {
