@@ -6,5 +6,5 @@
 // 数据库连接
 export { prisma, disconnectDatabase } from './connection';
 
-// API 配置服务
-export { APIConfigService, apiConfigService } from './api-config';
+// OpenAPI 文档服务
+export { OpenAPIDocumentService, openAPIDocumentService } from './openapi-document';

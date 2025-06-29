@@ -1,5 +1,5 @@
 import type { Route } from "./+types/apis";
-import APIConfigList from "~/pages/admin/components/APIConfigList";
+import OpenAPIDocumentList from "~/pages/admin/components/OpenAPIDocumentList";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -8,6 +8,6 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export default function APIConfigListRoute() {
-  return <APIConfigList />;
+export default function OpenAPIDocumentListRoute() {
+  return <OpenAPIDocumentList />;
 }

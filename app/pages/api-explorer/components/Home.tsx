@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Avatar, Button, Typography, Spin } from 'antd';
 import { ApiOutlined, EyeOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
-import { apiConfigClient } from '~/lib/client';
-import type { APIConfig } from '~/types/api';
+import { openAPIDocumentClient } from '~/lib/client';
+import type { OpenAPIDocument } from '~/types/api';
 
 const { Title, Text } = Typography;
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
-  const [apiConfigs, setApiConfigs] = useState<APIConfig[]>([]);
+  const [apiConfigs, setApiConfigs] = useState<OpenAPIDocument[]>([]);
 
   useEffect(() => {
     loadAPIConfigs();
@@ -18,7 +18,7 @@ export default function Home() {
   const loadAPIConfigs = async () => {
     try {
       setLoading(true);
-      const configs = await apiConfigClient.getConfigs({ enabled: true });
+      const configs = await openAPIDocumentClient.getConfigs({ enabled: true });
       setApiConfigs(configs);
     } catch (error) {
       console.error('Failed to load API configs:', error);

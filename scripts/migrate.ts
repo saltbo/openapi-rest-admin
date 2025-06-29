@@ -5,17 +5,17 @@ import { API_CONFIGS } from '../config/apis';
  * 数据迁移脚本
  * 将现有的配置文件数据迁移到数据库中
  */
-async function migrateAPIConfigs() {
-  console.log('开始迁移 API 配置数据...');
+async function migrateOpenAPIDocuments() {
+  console.log('开始迁移 OpenAPI 文档配置数据...');
 
   try {
     // 清空现有数据（可选）
-    await prisma.aPIConfig.deleteMany();
+    await prisma.openAPIDocument.deleteMany();
     console.log('已清空现有数据');
 
     // 迁移配置数据
     for (const config of API_CONFIGS) {
-      await prisma.aPIConfig.create({
+      await prisma.openAPIDocument.create({
         data: {
           id: config.id,
           name: config.name,
@@ -44,8 +44,8 @@ async function checkDatabase() {
     await prisma.$connect();
     console.log('数据库连接成功');
 
-    const count = await prisma.aPIConfig.count();
-    console.log(`当前数据库中有 ${count} 个 API 配置`);
+    const count = await prisma.openAPIDocument.count();
+    console.log(`当前数据库中有 ${count} 个 OpenAPI 文档配置`);
   } catch (error) {
     console.error('数据库检查失败:', error);
     throw error;
@@ -55,9 +55,9 @@ async function checkDatabase() {
 // 如果直接运行此脚本
 if (import.meta.url === `file://${process.argv[1]}`) {
   checkDatabase()
-    .then(() => migrateAPIConfigs())
+    .then(() => migrateOpenAPIDocuments())
     .catch(console.error)
     .finally(() => prisma.$disconnect());
 }
 
-export { migrateAPIConfigs, checkDatabase };
+export { migrateOpenAPIDocuments, checkDatabase };

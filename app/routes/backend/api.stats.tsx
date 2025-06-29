@@ -1,10 +1,10 @@
 import type { LoaderFunctionArgs } from "react-router";
-import { apiConfigService } from "~/lib/db/api-config";
+import { openAPIDocumentService } from "~/lib/db/openapi-document";
 
 // GET /api/stats
 export async function loader({ request }: LoaderFunctionArgs) {
   try {
-    const stats = await apiConfigService.getConfigStats();
+    const stats = await openAPIDocumentService.getConfigStats();
     return Response.json(stats);
   } catch (error) {
     console.error('Stats API Error:', error);

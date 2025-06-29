@@ -21,7 +21,6 @@ export default [
   
   // 后台管理
   route("admin", "routes/admin/dashboard.tsx"),
-  route("admin/apis", "routes/admin/apis.tsx"),
-  route("admin/apis/:id", "routes/admin/api-detail.tsx"),
+  route("admin/configs", "routes/admin/configs.tsx"),
   route("admin/settings", "routes/admin/settings.tsx"),
 ] satisfies RouteConfig;

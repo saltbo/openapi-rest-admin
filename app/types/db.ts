@@ -1,5 +1,5 @@
 // 数据库模型类型 - 对应 Prisma schema
-export interface APIConfigModel {
+export interface OpenAPIDocumentModel {
   id: string;
   name: string;
   description: string;
@@ -12,7 +12,7 @@ export interface APIConfigModel {
 }
 
 // 创建 API 配置的输入类型
-export interface CreateAPIConfigInput {
+export interface CreateOpenAPIDocumentInput {
   id: string;
   name: string;
   description: string;
@@ -23,7 +23,7 @@ export interface CreateAPIConfigInput {
 }
 
 // 更新 API 配置的输入类型
-export interface UpdateAPIConfigInput {
+export interface UpdateOpenAPIDocumentInput {
   name?: string;
   description?: string;
   openapiUrl?: string;

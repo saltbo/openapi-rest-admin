@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { parseResourcePath } from '~/utils/resourceRouting';
 import { findResourceInAll } from '~/utils/resourceUtils';
 import { frontendAPIService } from '~/pages/api-explorer/services';
-import { apiConfigClient } from '~/lib/client';
+import { openAPIDocumentClient } from '~/lib/client';
 import type { OpenAPIAnalysis, ParsedResource } from '~/types/api';
 
 interface ResourceItem {
@@ -46,7 +46,7 @@ export const useResourceDetail = ({ sName, rName, splat }: UseResourceDetailProp
       }
       
       // 获取API配置
-      const apiConfigs = await apiConfigClient.getConfigs({ enabled: true });
+      const apiConfigs = await openAPIDocumentClient.getConfigs({ enabled: true });
       const apiConfig = apiConfigs.find((api: any) => 
         api.name === sName || 
         api.id === sName ||

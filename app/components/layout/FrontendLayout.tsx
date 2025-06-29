@@ -8,7 +8,7 @@ import {
   ApiOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { apiConfigClient } from '~/lib/client';
+import { openAPIDocumentClient } from '~/lib/client';
 import { frontendAPIService } from '~/pages/api-explorer/services';
 
 const { Header, Sider, Content } = Layout;
@@ -32,7 +32,7 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
   // 获取所有 API 配置
   const { data: apiConfigs = [] } = useQuery({
     queryKey: ['apiConfigs'],
-    queryFn: () => apiConfigClient.getConfigs({ enabled: true }),
+    queryFn: () => openAPIDocumentClient.getConfigs({ enabled: true }),
   });
 
   // 获取当前选中 API 的分析数据

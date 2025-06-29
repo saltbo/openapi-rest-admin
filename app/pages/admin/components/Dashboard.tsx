@@ -9,7 +9,7 @@ import {
   RightOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { apiConfigClient } from '~/lib/client';
+import { openAPIDocumentClient } from '~/lib/client';
 import { frontendAPIService } from '~/pages/api-explorer/services';
 
 const { Title, Paragraph } = Typography;
@@ -17,7 +17,7 @@ const { Title, Paragraph } = Typography;
 export const AdminDashboard: React.FC = () => {
   const { data: apiConfigs = [] } = useQuery({
     queryKey: ['apiConfigs'],
-    queryFn: () => apiConfigClient.getConfigs({ enabled: true }),
+    queryFn: () => openAPIDocumentClient.getConfigs({ enabled: true }),
   });
 
   // 获取所有 API 的分析数据

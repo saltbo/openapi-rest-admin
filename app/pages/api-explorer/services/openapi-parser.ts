@@ -1,16 +1,16 @@
-import type { 
-  OpenAPISpec, 
-  OpenAPIAnalysis, 
-  ParsedResource, 
-  FieldDefinition, 
+import type {
+  OpenAPISpec,
+  OpenAPIAnalysis,
+  ParsedResource,
+  FieldDefinition,
   OperationInfo,
-  FieldType 
-} from '../../types/api';
+  FieldType,
+} from "~/types/openapi";
 
 /**
  * OpenAPI 文档解析服务
  * 负责解析 OpenAPI/Swagger 文档并提取资源信息
- * 
+ *
  * 注意：由于 swagger-parser 在浏览器环境中的兼容性问题，
  * 这里先实现一个简化版本的解析器，专注于常见的 OpenAPI 结构
  */
@@ -28,22 +28,24 @@ export class OpenAPIParserService {
       }
 
       console.log(`开始解析 OpenAPI 文档: ${url}`);
-      
+
       // 直接获取 JSON 文档
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Failed to fetch OpenAPI document: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch OpenAPI document: ${response.statusText}`
+        );
       }
-      
-      const api = await response.json() as OpenAPISpec;
-      
+
+      const api = (await response.json()) as OpenAPISpec;
+
       // 提取基本信息
       const baseUrl = this.extractBaseUrl(api);
       const servers = this.extractServers(api);
-      
+
       // 解析资源
       const resources = this.parseResources(api, baseUrl);
-      
+
       // 统计信息
       const totalPaths = Object.keys(api.paths).length;
       const totalOperations = this.countOperations(api.paths);
@@ -62,19 +64,32 @@ export class OpenAPIParserService {
         total_operations: totalOperations,
         restful_apis: restfulApis,
         tags,
-        last_parsed: new Date().toISOString()
+        last_parsed: new Date().toISOString(),
       };
 
       // 缓存结果
       this.cache.set(apiId, analysis);
-      
-      console.log(`解析完成: ${analysis.title}, 共发现 ${resources.length} 个资源`);
-      console.log('资源列表:', resources.map(r => ({ id: r.id, name: r.name, displayName: r.displayName, path: r.path })));
+
+      console.log(
+        `解析完成: ${analysis.title}, 共发现 ${resources.length} 个资源`
+      );
+      console.log(
+        "资源列表:",
+        resources.map((r) => ({
+          id: r.id,
+          name: r.name,
+          displayName: r.displayName,
+          path: r.path,
+        }))
+      );
       return analysis;
-      
     } catch (error) {
-      console.error('解析 OpenAPI 文档失败:', error);
-      throw new Error(`Failed to parse OpenAPI document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("解析 OpenAPI 文档失败:", error);
+      throw new Error(
+        `Failed to parse OpenAPI document: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 
@@ -86,16 +101,16 @@ export class OpenAPIParserService {
     if (api.servers && api.servers.length > 0) {
       return api.servers[0].url;
     }
-    
+
     // Swagger 2.0
     if (api.swagger) {
-      const host = (api as any).host || 'localhost';
-      const basePath = (api as any).basePath || '';
-      const schemes = (api as any).schemes || ['http'];
+      const host = (api as any).host || "localhost";
+      const basePath = (api as any).basePath || "";
+      const schemes = (api as any).schemes || ["http"];
       return `${schemes[0]}://${host}${basePath}`;
     }
-    
-    return '';
+
+    return "";
   }
 
   /**
@@ -103,16 +118,16 @@ export class OpenAPIParserService {
    */
   private extractServers(api: OpenAPISpec): string[] {
     if (api.servers) {
-      return api.servers.map(server => server.url);
+      return api.servers.map((server) => server.url);
     }
-    
+
     if (api.swagger) {
-      const host = (api as any).host || 'localhost';
-      const basePath = (api as any).basePath || '';
-      const schemes = (api as any).schemes || ['http'];
+      const host = (api as any).host || "localhost";
+      const basePath = (api as any).basePath || "";
+      const schemes = (api as any).schemes || ["http"];
       return schemes.map((scheme: string) => `${scheme}://${host}${basePath}`);
     }
-    
+
     return [];
   }
 
@@ -122,28 +137,31 @@ export class OpenAPIParserService {
   private parseResources(api: OpenAPISpec, baseUrl: string): ParsedResource[] {
     const resources = new Map<string, ParsedResource>();
     const pathsByResource = new Map<string, string[]>();
-    
+
     // 首先收集所有路径并按完整资源链分组
-    Object.keys(api.paths).forEach(path => {
+    Object.keys(api.paths).forEach((path) => {
       const resourceInfo = this.extractResourceInfo(path);
-      
+
       if (resourceInfo.resourceChain && resourceInfo.resourceChain.length > 0) {
         // 使用完整的资源链作为键
-        const resourceKey = resourceInfo.resourceChain.join('.');
-        
+        const resourceKey = resourceInfo.resourceChain.join(".");
+
         if (!pathsByResource.has(resourceKey)) {
           pathsByResource.set(resourceKey, []);
         }
         pathsByResource.get(resourceKey)!.push(path);
       }
     });
-    
+
     // 创建所有资源
     pathsByResource.forEach((paths, resourceKey) => {
-      const resourceChain = resourceKey.split('.');
+      const resourceChain = resourceKey.split(".");
       const resourceName = resourceChain[resourceChain.length - 1];
-      const parentResourceName = resourceChain.length > 1 ? resourceChain[resourceChain.length - 2] : null;
-      
+      const parentResourceName =
+        resourceChain.length > 1
+          ? resourceChain[resourceChain.length - 2]
+          : null;
+
       const resource: ParsedResource = {
         id: resourceKey,
         name: resourceName,
@@ -154,71 +172,83 @@ export class OpenAPIParserService {
         schema: [],
         operations: {},
         is_restful: false,
-        resource_type: 'custom',
+        resource_type: "custom",
         tags: [],
         sub_resources: [],
-        parent_resource: parentResourceName || undefined
+        parent_resource: parentResourceName || undefined,
       };
-      
+
       resources.set(resourceKey, resource);
     });
-    
+
     // 解析每个资源的操作
     Object.entries(api.paths).forEach(([path, pathItem]) => {
-      if (!pathItem || typeof pathItem !== 'object') return;
-      
+      if (!pathItem || typeof pathItem !== "object") return;
+
       const resourceInfo = this.extractResourceInfo(path);
-      const resourceKey = resourceInfo.resourceChain ? resourceInfo.resourceChain.join('.') : resourceInfo.resourceName;
-      
+      const resourceKey = resourceInfo.resourceChain
+        ? resourceInfo.resourceChain.join(".")
+        : resourceInfo.resourceName;
+
       const resource = resources.get(resourceKey);
       if (!resource) return;
-      
+
       // 解析操作
-      const methods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
-      methods.forEach(method => {
+      const methods = [
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "options",
+        "head",
+      ];
+      methods.forEach((method) => {
         const operation = pathItem[method];
         if (operation) {
           resource.methods.push(method.toUpperCase());
           resource.operations[method] = this.parseOperation(operation);
-          
+
           // 提取标签
           if (operation.tags) {
-            resource.tags = [...new Set([...resource.tags!, ...operation.tags])];
+            resource.tags = [
+              ...new Set([...resource.tags!, ...operation.tags]),
+            ];
           }
         }
       });
-      
+
       // 判断资源类型
       resource.resource_type = this.determineResourceType(resource.methods);
       resource.is_restful = this.isRESTfulResource(resource.methods);
-      
+
       // 解析 schema
       resource.schema = this.extractSchema(api, pathItem, resource.operations);
     });
-    
+
     // 构建嵌套关系（支持任意深度）
     const rootResources: ParsedResource[] = [];
     const allResources = Array.from(resources.values());
-    
+
     // 先按层级深度排序，确保父资源在子资源之前处理
     allResources.sort((a, b) => {
-      const aDepth = a.id.split('.').length;
-      const bDepth = b.id.split('.').length;
+      const aDepth = a.id.split(".").length;
+      const bDepth = b.id.split(".").length;
       return aDepth - bDepth;
     });
-    
-    allResources.forEach(resource => {
-      const resourceChain = resource.id.split('.');
-      
+
+    allResources.forEach((resource) => {
+      const resourceChain = resource.id.split(".");
+
       if (resourceChain.length === 1) {
         // 顶级资源
         rootResources.push(resource);
       } else {
         // 嵌套资源：寻找直接父资源
         const parentChain = resourceChain.slice(0, -1);
-        const parentKey = parentChain.join('.');
+        const parentKey = parentChain.join(".");
         const parentResource = resources.get(parentKey);
-        
+
         if (parentResource) {
           if (!parentResource.sub_resources) {
             parentResource.sub_resources = [];
@@ -228,7 +258,7 @@ export class OpenAPIParserService {
           // 如果找不到直接父资源，尝试寻找最近的祖先资源
           let ancestorFound = false;
           for (let i = parentChain.length - 1; i >= 0; i--) {
-            const ancestorKey = parentChain.slice(0, i + 1).join('.');
+            const ancestorKey = parentChain.slice(0, i + 1).join(".");
             const ancestorResource = resources.get(ancestorKey);
             if (ancestorResource) {
               if (!ancestorResource.sub_resources) {
@@ -239,7 +269,7 @@ export class OpenAPIParserService {
               break;
             }
           }
-          
+
           // 如果找不到任何祖先资源，当作顶级资源处理
           if (!ancestorFound) {
             rootResources.push(resource);
@@ -247,33 +277,40 @@ export class OpenAPIParserService {
         }
       }
     });
-    
+
     return rootResources;
   }
 
   /**
    * 提取资源信息，支持无限级嵌套
    */
-  private extractResourceInfo(path: string): { 
-    resourceName: string; 
+  private extractResourceInfo(path: string): {
+    resourceName: string;
     parentResource?: string;
     resourceChain?: string[]; // 完整的资源链
   } {
     // 移除参数部分 {id}, :id 等
-    const cleanPath = path.replace(/[{:][^}/:]+[}]?/g, '');
-    
+    const cleanPath = path.replace(/[{:][^}/:]+[}]?/g, "");
+
     // 分割路径并过滤空段
-    const segments = cleanPath.split('/').filter(Boolean);
-    
-    if (segments.length === 0) return { resourceName: 'root', resourceChain: ['root'] };
-    
+    const segments = cleanPath.split("/").filter(Boolean);
+
+    if (segments.length === 0)
+      return { resourceName: "root", resourceChain: ["root"] };
+
     // 特殊处理：某些端点虽然看起来像操作，但实际上是资源
-    const operationSegments = ['actions', 'status', 'health', 'metrics', 'search'];
-    
+    const operationSegments = [
+      "actions",
+      "status",
+      "health",
+      "metrics",
+      "search",
+    ];
+
     let resourceName = segments[segments.length - 1];
     let resourceChain: string[] = [];
     let parentResource: string | undefined;
-    
+
     // 检查最后一段是否为操作端点
     if (operationSegments.includes(resourceName.toLowerCase())) {
       if (segments.length >= 2) {
@@ -286,16 +323,16 @@ export class OpenAPIParserService {
       // 正常情况：所有段都是资源名
       resourceChain = segments;
     }
-    
+
     // 确定父资源
     if (resourceChain.length > 1) {
       parentResource = resourceChain[resourceChain.length - 2];
     }
-    
-    return { 
-      resourceName, 
-      parentResource, 
-      resourceChain 
+
+    return {
+      resourceName,
+      parentResource,
+      resourceChain,
     };
   }
 
@@ -332,54 +369,67 @@ export class OpenAPIParserService {
       parameters: operation.parameters || [],
       requestBody: operation.requestBody,
       responses: operation.responses || {},
-      tags: operation.tags || []
+      tags: operation.tags || [],
     };
   }
 
   /**
    * 确定资源类型
    */
-  private determineResourceType(methods: string[]): 'full_crud' | 'read_only' | 'custom' {
-    const methodSet = new Set(methods.map(m => m.toLowerCase()));
-    
-    if (methodSet.has('get') && methodSet.has('post') && 
-        methodSet.has('put') && methodSet.has('delete')) {
-      return 'full_crud';
+  private determineResourceType(
+    methods: string[]
+  ): "full_crud" | "read_only" | "custom" {
+    const methodSet = new Set(methods.map((m) => m.toLowerCase()));
+
+    if (
+      methodSet.has("get") &&
+      methodSet.has("post") &&
+      methodSet.has("put") &&
+      methodSet.has("delete")
+    ) {
+      return "full_crud";
     }
-    
-    if (methodSet.has('get') && methodSet.size === 1) {
-      return 'read_only';
+
+    if (methodSet.has("get") && methodSet.size === 1) {
+      return "read_only";
     }
-    
-    return 'custom';
+
+    return "custom";
   }
 
   /**
    * 判断是否为RESTful资源
    */
   private isRESTfulResource(methods: string[]): boolean {
-    const methodSet = new Set(methods.map(m => m.toLowerCase()));
-    const restfulMethods = ['get', 'post', 'put', 'delete'];
-    
-    return restfulMethods.some(method => methodSet.has(method));
+    const methodSet = new Set(methods.map((m) => m.toLowerCase()));
+    const restfulMethods = ["get", "post", "put", "delete"];
+
+    return restfulMethods.some((method) => methodSet.has(method));
   }
 
   /**
    * 提取字段定义
    */
-  private extractSchema(api: OpenAPISpec, pathItem: any, operations: Record<string, OperationInfo>): FieldDefinition[] {
+  private extractSchema(
+    api: OpenAPISpec,
+    pathItem: any,
+    operations: Record<string, OperationInfo>
+  ): FieldDefinition[] {
     const fields: FieldDefinition[] = [];
     const processedSchemas = new Set<string>();
 
     // 从各种操作中提取 schema
-    Object.values(operations).forEach(operation => {
+    Object.values(operations).forEach((operation) => {
       // 从响应中提取
       Object.values(operation.responses || {}).forEach((response: any) => {
         if (response.content) {
           Object.values(response.content).forEach((content: any) => {
             if (content.schema) {
-              const extracted = this.extractFieldsFromSchema(content.schema, api);
-              extracted.forEach(field => {
+              const extracted = this.extractFieldsFromSchema(
+                content.schema,
+                api
+              );
+              extracted.forEach((field) => {
                 if (!processedSchemas.has(field.name)) {
                   fields.push(field);
                   processedSchemas.add(field.name);
@@ -395,7 +445,7 @@ export class OpenAPIParserService {
         Object.values(operation.requestBody.content).forEach((content: any) => {
           if (content.schema) {
             const extracted = this.extractFieldsFromSchema(content.schema, api);
-            extracted.forEach(field => {
+            extracted.forEach((field) => {
               if (!processedSchemas.has(field.name)) {
                 fields.push(field);
                 processedSchemas.add(field.name);
@@ -412,7 +462,11 @@ export class OpenAPIParserService {
   /**
    * 从 schema 对象中提取字段
    */
-  private extractFieldsFromSchema(schema: any, api: OpenAPISpec, required: string[] = []): FieldDefinition[] {
+  private extractFieldsFromSchema(
+    schema: any,
+    api: OpenAPISpec,
+    required: string[] = []
+  ): FieldDefinition[] {
     const fields: FieldDefinition[] = [];
 
     if (!schema) return fields;
@@ -426,44 +480,46 @@ export class OpenAPIParserService {
     }
 
     // 处理对象类型
-    if (schema.type === 'object' && schema.properties) {
+    if (schema.type === "object" && schema.properties) {
       const requiredFields = schema.required || required;
-      
-      Object.entries(schema.properties).forEach(([fieldName, fieldSchema]: [string, any]) => {
-        const field: FieldDefinition = {
-          name: fieldName,
-          type: this.mapSchemaTypeToFieldType(fieldSchema),
-          format: fieldSchema.format,
-          description: fieldSchema.description,
-          required: requiredFields.includes(fieldName),
-          example: fieldSchema.example
-        };
 
-        // 处理枚举
-        if (fieldSchema.enum) {
-          field.enum = fieldSchema.enum;
-        }
-
-        // 处理数组类型
-        if (fieldSchema.type === 'array' && fieldSchema.items) {
-          field.items = {
-            name: 'item',
-            type: this.mapSchemaTypeToFieldType(fieldSchema.items),
-            required: false
+      Object.entries(schema.properties).forEach(
+        ([fieldName, fieldSchema]: [string, any]) => {
+          const field: FieldDefinition = {
+            name: fieldName,
+            type: this.mapSchemaTypeToFieldType(fieldSchema),
+            format: fieldSchema.format,
+            description: fieldSchema.description,
+            required: requiredFields.includes(fieldName),
+            example: fieldSchema.example,
           };
-        }
 
-        // 处理嵌套对象
-        if (fieldSchema.type === 'object' && fieldSchema.properties) {
-          field.properties = {};
-          const nestedFields = this.extractFieldsFromSchema(fieldSchema, api);
-          nestedFields.forEach(nestedField => {
-            field.properties![nestedField.name] = nestedField;
-          });
-        }
+          // 处理枚举
+          if (fieldSchema.enum) {
+            field.enum = fieldSchema.enum;
+          }
 
-        fields.push(field);
-      });
+          // 处理数组类型
+          if (fieldSchema.type === "array" && fieldSchema.items) {
+            field.items = {
+              name: "item",
+              type: this.mapSchemaTypeToFieldType(fieldSchema.items),
+              required: false,
+            };
+          }
+
+          // 处理嵌套对象
+          if (fieldSchema.type === "object" && fieldSchema.properties) {
+            field.properties = {};
+            const nestedFields = this.extractFieldsFromSchema(fieldSchema, api);
+            nestedFields.forEach((nestedField) => {
+              field.properties![nestedField.name] = nestedField;
+            });
+          }
+
+          fields.push(field);
+        }
+      );
     }
 
     return fields;
@@ -473,17 +529,17 @@ export class OpenAPIParserService {
    * 解析引用
    */
   private resolveReference(ref: string, api: OpenAPISpec): any {
-    const path = ref.replace('#/', '').split('/');
+    const path = ref.replace("#/", "").split("/");
     let current: any = api;
-    
+
     for (const segment of path) {
-      if (current && typeof current === 'object' && segment in current) {
+      if (current && typeof current === "object" && segment in current) {
         current = current[segment];
       } else {
         return null;
       }
     }
-    
+
     return current;
   }
 
@@ -491,30 +547,30 @@ export class OpenAPIParserService {
    * 映射 schema 类型到字段类型
    */
   private mapSchemaTypeToFieldType(schema: any): FieldType {
-    if (!schema) return 'string';
-    
+    if (!schema) return "string";
+
     const type = schema.type;
     const format = schema.format;
-    
+
     switch (type) {
-      case 'integer':
-        return 'integer';
-      case 'number':
-        return 'number';
-      case 'boolean':
-        return 'boolean';
-      case 'array':
-        return 'array';
-      case 'object':
-        return 'object';
-      case 'string':
-        if (format === 'date') return 'date';
-        if (format === 'date-time') return 'datetime';
-        if (format === 'email') return 'email';
-        if (format === 'uri' || format === 'url') return 'url';
-        return 'string';
+      case "integer":
+        return "integer";
+      case "number":
+        return "number";
+      case "boolean":
+        return "boolean";
+      case "array":
+        return "array";
+      case "object":
+        return "object";
+      case "string":
+        if (format === "date") return "date";
+        if (format === "date-time") return "datetime";
+        if (format === "email") return "email";
+        if (format === "uri" || format === "url") return "url";
+        return "string";
       default:
-        return 'string';
+        return "string";
     }
   }
 
@@ -523,10 +579,18 @@ export class OpenAPIParserService {
    */
   private countOperations(paths: Record<string, any>): number {
     let count = 0;
-    Object.values(paths).forEach(pathItem => {
-      if (pathItem && typeof pathItem === 'object') {
-        const methods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
-        methods.forEach(method => {
+    Object.values(paths).forEach((pathItem) => {
+      if (pathItem && typeof pathItem === "object") {
+        const methods = [
+          "get",
+          "post",
+          "put",
+          "patch",
+          "delete",
+          "options",
+          "head",
+        ];
+        methods.forEach((method) => {
           if (pathItem[method]) count++;
         });
       }
@@ -538,7 +602,7 @@ export class OpenAPIParserService {
    * 统计RESTful API数量
    */
   private countRESTfulAPIs(resources: ParsedResource[]): number {
-    return resources.filter(r => r.is_restful).length;
+    return resources.filter((r) => r.is_restful).length;
   }
 
   /**
@@ -546,19 +610,27 @@ export class OpenAPIParserService {
    */
   private extractTags(api: OpenAPISpec): string[] {
     const tags = new Set<string>();
-    
+
     // 从全局标签定义中提取
     if ((api as any).tags) {
       (api as any).tags.forEach((tag: any) => {
         if (tag.name) tags.add(tag.name);
       });
     }
-    
+
     // 从路径操作中提取
-    Object.values(api.paths).forEach(pathItem => {
-      if (pathItem && typeof pathItem === 'object') {
-        const methods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
-        methods.forEach(method => {
+    Object.values(api.paths).forEach((pathItem) => {
+      if (pathItem && typeof pathItem === "object") {
+        const methods = [
+          "get",
+          "post",
+          "put",
+          "patch",
+          "delete",
+          "options",
+          "head",
+        ];
+        methods.forEach((method) => {
           const operation = pathItem[method];
           if (operation?.tags) {
             operation.tags.forEach((tag: string) => tags.add(tag));
@@ -566,7 +638,7 @@ export class OpenAPIParserService {
         });
       }
     });
-    
+
     return Array.from(tags);
   }
 

@@ -1,5 +1,5 @@
 // 前端配置接口 - 对应配置文件中的定义
-export interface APIConfig {
+export interface OpenAPIDocument {
   id: string;
   name: string;
   description: string;
@@ -41,7 +41,7 @@ export type {
 } from "./openapi";
 
 export type {
-  APIConfigModel,
-  CreateAPIConfigInput,
-  UpdateAPIConfigInput,
+  OpenAPIDocumentModel,
+  CreateOpenAPIDocumentInput,
+  UpdateOpenAPIDocumentInput,
 } from "./db";

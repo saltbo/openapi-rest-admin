@@ -1,46 +1,46 @@
 import { prisma } from './connection';
 import type { 
-  APIConfig, 
-  APIConfigModel, 
-  CreateAPIConfigInput, 
-  UpdateAPIConfigInput,
+  OpenAPIDocument, 
+  OpenAPIDocumentModel, 
+  CreateOpenAPIDocumentInput, 
+  UpdateOpenAPIDocumentInput,
   APIResponse 
 } from '../../types/api';
 
 /**
- * API 配置数据库服务
- * 处理所有与 API 配置相关的数据库操作
+ * OpenAPI 文档数据库服务
+ * 处理所有与 OpenAPI 文档相关的数据库操作
  */
-export class APIConfigService {
+export class OpenAPIDocumentService {
   
   /**
-   * 获取所有 API 配置
+   * 获取所有 OpenAPI 文档配置
    */
-  async getAllConfigs(): Promise<APIConfig[]> {
-    const configs = await prisma.aPIConfig.findMany({
+  async getAllConfigs(): Promise<OpenAPIDocument[]> {
+    const configs = await prisma.openAPIDocument.findMany({
       orderBy: { createdAt: 'desc' }
     });
     
-    return configs.map(this.mapToAPIConfig);
+    return configs.map(this.mapToOpenAPIDocument);
   }
 
   /**
-   * 获取启用的 API 配置
+   * 获取启用的 OpenAPI 文档配置
    */
-  async getEnabledConfigs(): Promise<APIConfig[]> {
-    const configs = await prisma.aPIConfig.findMany({
+  async getEnabledConfigs(): Promise<OpenAPIDocument[]> {
+    const configs = await prisma.openAPIDocument.findMany({
       where: { enabled: true },
       orderBy: { createdAt: 'desc' }
     });
     
-    return configs.map(this.mapToAPIConfig);
+    return configs.map(this.mapToOpenAPIDocument);
   }
 
   /**
-   * 根据 ID 获取单个 API 配置
+   * 根据 ID 获取单个 OpenAPI 文档配置
    */
-  async getConfigById(id: string): Promise<APIConfig | null> {
-    const config = await prisma.aPIConfig.findUnique({
+  async getConfigById(id: string): Promise<OpenAPIDocument | null> {
+    const config = await prisma.openAPIDocument.findUnique({
       where: { id }
     });
     
@@ -48,14 +48,14 @@ export class APIConfigService {
       return null;
     }
     
-    return this.mapToAPIConfig(config);
+    return this.mapToOpenAPIDocument(config);
   }
 
   /**
-   * 创建新的 API 配置
+   * 创建新的 OpenAPI 文档配置
    */
-  async createConfig(input: CreateAPIConfigInput): Promise<APIConfig> {
-    const config = await prisma.aPIConfig.create({
+  async createConfig(input: CreateOpenAPIDocumentInput): Promise<OpenAPIDocument> {
+    const config = await prisma.openAPIDocument.create({
       data: {
         id: input.id,
         name: input.name,
@@ -67,15 +67,15 @@ export class APIConfigService {
       }
     });
     
-    return this.mapToAPIConfig(config);
+    return this.mapToOpenAPIDocument(config);
   }
 
   /**
-   * 更新 API 配置
+   * 更新 OpenAPI 文档配置
    */
-  async updateConfig(id: string, input: UpdateAPIConfigInput): Promise<APIConfig | null> {
+  async updateConfig(id: string, input: UpdateOpenAPIDocumentInput): Promise<OpenAPIDocument | null> {
     try {
-      const config = await prisma.aPIConfig.update({
+      const config = await prisma.openAPIDocument.update({
         where: { id },
         data: {
           ...(input.name !== undefined && { name: input.name }),
@@ -87,7 +87,7 @@ export class APIConfigService {
         }
       });
       
-      return this.mapToAPIConfig(config);
+      return this.mapToOpenAPIDocument(config);
     } catch (error: any) {
       if (error?.code === 'P2025') {
         // 记录未找到
@@ -102,7 +102,7 @@ export class APIConfigService {
    */
   async deleteConfig(id: string): Promise<boolean> {
     try {
-      await prisma.aPIConfig.delete({
+      await prisma.openAPIDocument.delete({
         where: { id }
       });
       return true;
@@ -119,7 +119,7 @@ export class APIConfigService {
    * 检查 API 配置是否存在
    */
   async configExists(id: string): Promise<boolean> {
-    const count = await prisma.aPIConfig.count({
+    const count = await prisma.openAPIDocument.count({
       where: { id }
     });
     return count > 0;
@@ -129,7 +129,7 @@ export class APIConfigService {
    * 批量启用/禁用 API 配置
    */
   async updateMultipleConfigsStatus(ids: string[], enabled: boolean): Promise<number> {
-    const result = await prisma.aPIConfig.updateMany({
+    const result = await prisma.openAPIDocument.updateMany({
       where: { id: { in: ids } },
       data: { enabled }
     });
@@ -138,10 +138,10 @@ export class APIConfigService {
   }
 
   /**
-   * 根据标签搜索 API 配置
+   * 根据标签搜索 OpenAPI 文档配置
    */
-  async searchConfigsByTags(tags: string[]): Promise<APIConfig[]> {
-    const configs = await prisma.aPIConfig.findMany({
+  async searchConfigsByTags(tags: string[]): Promise<OpenAPIDocument[]> {
+    const configs = await prisma.openAPIDocument.findMany({
       where: {
         OR: tags.map(tag => ({
           tags: { contains: tag }
@@ -150,7 +150,7 @@ export class APIConfigService {
       orderBy: { createdAt: 'desc' }
     });
     
-    return configs.map(this.mapToAPIConfig);
+    return configs.map(this.mapToOpenAPIDocument);
   }
 
   /**
@@ -162,8 +162,8 @@ export class APIConfigService {
     disabled: number;
   }> {
     const [total, enabled] = await Promise.all([
-      prisma.aPIConfig.count(),
-      prisma.aPIConfig.count({ where: { enabled: true } })
+      prisma.openAPIDocument.count(),
+      prisma.openAPIDocument.count({ where: { enabled: true } })
     ]);
     
     return {
@@ -174,9 +174,9 @@ export class APIConfigService {
   }
 
   /**
-   * 将数据库模型映射为前端 API 配置
+   * 将数据库模型映射为前端 OpenAPI 文档配置
    */
-  private mapToAPIConfig(model: APIConfigModel): APIConfig {
+  private mapToOpenAPIDocument(model: OpenAPIDocumentModel): OpenAPIDocument {
     return {
       id: model.id,
       name: model.name,
@@ -192,4 +192,4 @@ export class APIConfigService {
 }
 
 // 导出单例实例
-export const apiConfigService = new APIConfigService();
+export const openAPIDocumentService = new OpenAPIDocumentService();

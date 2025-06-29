@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
-import { apiConfigService } from "~/lib/db/api-config";
-import type { UpdateAPIConfigInput } from "~/types/api";
+import { openAPIDocumentService } from "~/lib/db/openapi-document";
+import type { UpdateOpenAPIDocumentInput } from "~/types/api";
 
 // GET /api/configs/:id
 export async function loader({ params }: LoaderFunctionArgs) {
@@ -14,7 +14,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
   }
 
   try {
-    const config = await apiConfigService.getConfigById(apiId);
+    const config = await openAPIDocumentService.getConfigById(apiId);
     if (!config) {
       return Response.json(
         { error: "API configuration not found" },
@@ -45,8 +45,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     switch (method) {
       case "PUT": {
         // 更新 API 配置
-        const updateData: UpdateAPIConfigInput = await request.json();
-        const config = await apiConfigService.updateConfig(apiId, updateData);
+        const updateData: UpdateOpenAPIDocumentInput = await request.json();
+        const config = await openAPIDocumentService.updateConfig(apiId, updateData);
         
         if (!config) {
           return Response.json(
@@ -60,7 +60,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
       case "DELETE": {
         // 删除 API 配置
-        const deleted = await apiConfigService.deleteConfig(apiId);
+        const deleted = await openAPIDocumentService.deleteConfig(apiId);
         if (!deleted) {
           return Response.json(
             { error: "API configuration not found" },

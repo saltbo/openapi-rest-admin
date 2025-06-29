@@ -24,7 +24,7 @@ import {
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { frontendAPIService } from "../services";
-import { apiConfigClient } from '~/lib/client';
+import { openAPIDocumentClient } from '~/lib/client';
 import { 
   getResourceStats, 
   getTopLevelResources, 
@@ -56,7 +56,7 @@ export default function ServiceDetail() {
   // 获取所有 API 配置
   const { data: apiConfigs = [] } = useQuery({
     queryKey: ["apiConfigs"],
-    queryFn: () => apiConfigClient.getConfigs({ enabled: true }),
+    queryFn: () => openAPIDocumentClient.getConfigs({ enabled: true }),
   });
 
   // 获取当前服务的分析数据

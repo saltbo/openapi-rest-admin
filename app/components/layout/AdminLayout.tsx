@@ -30,9 +30,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: <Link to="/admin">仪表盘</Link>,
     },
     {
-      key: '/admin/apis',
+      key: '/admin/configs',
       icon: <ApiOutlined />,
-      label: <Link to="/admin/apis">API 配置</Link>,
+      label: <Link to="/admin/configs"> OpenAPI文档管理</Link>,
     },
     {
       key: '/admin/settings',
@@ -43,7 +43,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   
   // 确定当前选中的菜单项
   const getSelectedKey = () => {
-    if (location.pathname.startsWith('/admin/apis')) return '/admin/apis';
+    if (location.pathname.startsWith('/admin/configs')) return '/admin/configs';
     if (location.pathname.startsWith('/admin/settings')) return '/admin/settings';
     if (location.pathname.startsWith('/admin')) return '/admin';
     return location.pathname;

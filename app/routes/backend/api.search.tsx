@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
-import { apiConfigService } from "~/lib/db/api-config";
+import { openAPIDocumentService } from "~/lib/db/openapi-document";
 
 // GET /api/search?tags=tag1,tag2
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -15,7 +15,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   try {
     const tags = tagsParam.split(',').map(tag => tag.trim()).filter(Boolean);
-    const configs = await apiConfigService.searchConfigsByTags(tags);
+    const configs = await openAPIDocumentService.searchConfigsByTags(tags);
     return Response.json({ data: configs, success: true });
   } catch (error) {
     console.error('Search API Error:', error);

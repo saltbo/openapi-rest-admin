@@ -10,7 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model APIConfig {
+model OpenAPIDocument {
   id          String   @id
   name        String
   description String

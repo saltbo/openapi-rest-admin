@@ -13,14 +13,14 @@ async function resetDatabase() {
   
   try {
     // 删除所有现有数据
-    await prisma.aPIConfig.deleteMany();
+    await prisma.openAPIDocument.deleteMany();
     console.log('   ✅ 清理现有数据完成');
 
     // 重新导入默认配置
     console.log('📥 导入默认配置...');
     
     for (const config of API_CONFIGS) {
-      const created = await prisma.aPIConfig.create({
+      const created = await prisma.openAPIDocument.create({
         data: {
           id: config.id,
           name: config.name,

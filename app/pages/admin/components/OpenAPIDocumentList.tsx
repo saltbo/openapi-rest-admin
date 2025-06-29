@@ -31,32 +31,32 @@ import {
   DatabaseOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiConfigClient } from '~/lib/client';
-import type { APIConfig, CreateAPIConfigInput, UpdateAPIConfigInput } from '~/types/api';
+import { openAPIDocumentClient } from '~/lib/client';
+import type { OpenAPIDocument, CreateOpenAPIDocumentInput, UpdateOpenAPIDocumentInput } from '~/types/api';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-export default function APIConfigList() {
+export default function OpenAPIDocumentList() {
   const queryClient = useQueryClient();
   
   // 使用 React Query 获取数据
   const { data: configs = [], isLoading: configsLoading } = useQuery({
     queryKey: ['admin-configs'],
-    queryFn: () => apiConfigClient.getConfigs(),
+    queryFn: () => openAPIDocumentClient.getConfigs(),
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['admin-stats'],
-    queryFn: () => apiConfigClient.getStats(),
+    queryFn: () => openAPIDocumentClient.getStats(),
   });
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingConfig, setEditingConfig] = useState<APIConfig | null>(null);
+  const [editingConfig, setEditingConfig] = useState<OpenAPIDocument | null>(null);
   const [form] = Form.useForm();
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [detailConfig, setDetailConfig] = useState<APIConfig | null>(null);
+  const [detailConfig, setDetailConfig] = useState<OpenAPIDocument | null>(null);
 
   const isLoading = configsLoading || statsLoading;
 
@@ -69,9 +69,9 @@ export default function APIConfigList() {
 
   // 创建配置的 mutation
   const createMutation = useMutation({
-    mutationFn: (data: CreateAPIConfigInput) => apiConfigClient.createConfig(data),
+    mutationFn: (data: CreateOpenAPIDocumentInput) => openAPIDocumentClient.createConfig(data),
     onSuccess: () => {
-      message.success('API 配置创建成功');
+      message.success('OpenAPI 文档配置创建成功');
       queryClient.invalidateQueries({ queryKey: ['admin-configs', 'admin-stats'] });
       setModalVisible(false);
       setEditingConfig(null);
@@ -85,10 +85,10 @@ export default function APIConfigList() {
 
   // 更新配置的 mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateAPIConfigInput }) => 
-      apiConfigClient.updateConfig(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateOpenAPIDocumentInput }) => 
+      openAPIDocumentClient.updateConfig(id, data),
     onSuccess: () => {
-      message.success('API 配置更新成功');
+      message.success('OpenAPI 文档配置更新成功');
       queryClient.invalidateQueries({ queryKey: ['admin-configs', 'admin-stats'] });
       setModalVisible(false);
       setEditingConfig(null);
@@ -101,9 +101,9 @@ export default function APIConfigList() {
 
   // 删除配置的 mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiConfigClient.deleteConfig(id),
+    mutationFn: (id: string) => openAPIDocumentClient.deleteConfig(id),
     onSuccess: () => {
-      message.success('API 配置删除成功');
+      message.success('OpenAPI 文档配置删除成功');
       queryClient.invalidateQueries({ queryKey: ['admin-configs', 'admin-stats'] });
     },
     onError: (error: Error) => {
@@ -118,7 +118,7 @@ export default function APIConfigList() {
     { ids: string[]; enabled: boolean }
   >({
     mutationFn: ({ ids, enabled }) => 
-      apiConfigClient.batchUpdateStatus(ids, enabled),
+      openAPIDocumentClient.batchUpdateStatus(ids, enabled),
     onSuccess: (result, { enabled }) => {
       message.success(`成功${enabled ? '启用' : '禁用'} ${result.updatedCount} 个配置`);
       queryClient.invalidateQueries({ queryKey: ['admin-configs', 'admin-stats'] });
@@ -137,9 +137,9 @@ export default function APIConfigList() {
   };
 
   // 处理编辑配置
-  const handleEdit = (config: APIConfig) => {
+  const handleEdit = (config: OpenAPIDocument) => {
     setEditingConfig(config);
-    // 处理 tags 字段 - 在 APIConfig 中是字符串数组
+    // 处理 tags 字段 - 在 OpenAPIDocument 中是字符串数组
     const tagsString = config.tags ? config.tags.join(', ') : '';
     
     form.setFieldsValue({
@@ -196,7 +196,7 @@ export default function APIConfigList() {
   };
 
   // 查看配置详情
-  const handleViewDetail = (config: APIConfig) => {
+  const handleViewDetail = (config: OpenAPIDocument) => {
     setDetailConfig(config);
     setDetailModalVisible(true);
   };
@@ -242,7 +242,7 @@ export default function APIConfigList() {
       dataIndex: 'enabled',
       key: 'enabled',
       width: 100,
-      render: (enabled: boolean, record: APIConfig) => (
+      render: (enabled: boolean, record: OpenAPIDocument) => (
         <Switch
           checked={enabled}
           onChange={(checked) => handleToggleStatus(record.id, checked)}
@@ -284,7 +284,7 @@ export default function APIConfigList() {
       key: 'actions',
       width: 200,
       fixed: 'right' as const,
-      render: (_: any, record: APIConfig) => (
+      render: (_: any, record: OpenAPIDocument) => (
         <Space size="small">
           <Tooltip title="查看详情">
             <Button
@@ -383,7 +383,7 @@ export default function APIConfigList() {
                 onClick={handleAdd}
                 loading={isLoading}
               >
-                新增配置
+                新增文档
               </Button>
               <Button
                 onClick={() => handleBatchToggle(true)}

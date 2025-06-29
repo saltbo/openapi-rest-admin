@@ -1,10 +1,10 @@
-import type { APIConfig, OpenAPIAnalysis, ResourceDataItem, APIResponse, ParsedResource } from '~/types/api';
-import { apiConfigClient } from '~/lib/client';
+import type { OpenAPIDocument, OpenAPIAnalysis, ResourceDataItem, APIResponse, ParsedResource } from '~/types/api';
+import { openAPIDocumentClient } from '~/lib/client';
 import { openAPIParser, mockDataService } from './';
 
 /**
  * 前端 API 客户端
- * 专注于业务逻辑处理，通过 apiConfigClient 与后端通信
+ * 专注于业务逻辑处理，通过 openAPIDocumentClient 与后端通信
  */
 class FrontendAPIService {
   private analysisCache = new Map<string, OpenAPIAnalysis>();
@@ -44,7 +44,7 @@ class FrontendAPIService {
     try {
       // 获取 API 配置
       console.log(`[analyzeOpenAPI] 获取 API 配置: ${apiId}`);
-      const config = await apiConfigClient.getConfig(apiId);
+      const config = await openAPIDocumentClient.getConfig(apiId);
       console.log(`[analyzeOpenAPI] API 配置:`, config);
 
       // 解析 OpenAPI 文档
