@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { parseResourcePath } from '~/utils/resourceRouting';
-import { resourceManager } from '~/services/ResourceManager';
+import { resourceManager } from '~/services';
 import { frontendAPIService } from '~/pages/api-explorer/services';
 import { openAPIDocumentClient } from '~/lib/client';
 import type { OpenAPIAnalysis, ParsedResource } from '~/types/api';

@@ -27,7 +27,7 @@ import { frontendAPIService } from '../services';
 import { JsonViewer } from '~/components/shared/JsonViewer';
 import { ResourceBreadcrumb } from '~/components/shared/ResourceBreadcrumb';
 import { parseResourcePath, buildDetailLink } from '~/utils/resourceRouting';
-import { resourceManager } from '~/services/ResourceManager';
+import { resourceManager } from '~/services';
 import { generateTableColumnsFromFields } from '~/utils/tableUtils';
 import { useServiceData, useResourceData } from '~/hooks/useAPIData';
 import type { ResourceDataItem, FieldDefinition } from '~/types/api';

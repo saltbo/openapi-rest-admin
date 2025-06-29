@@ -1,13 +1,15 @@
 /**
- * 前端服务导出
- * 统一导出所有前端相关的服务
+ * API Explorer Services
+ * 
+ * These services are specific to the API Explorer functionality.
+ * Core services like OpenAPI parsing and resource management are now in ~/services
  */
 
-// OpenAPI 解析服务
-export { openAPIParser } from './openapi-parser';
+// Legacy exports for backward compatibility
+export { openAPIParser } from '~/services';
 
-// 模拟数据服务
+// Mock data service
 export { mockDataService } from './mock-data';
 
-// 前端 API 客户端
+// Frontend API client
 export { frontendAPIService } from './api-client';

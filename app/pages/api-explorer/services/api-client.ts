@@ -1,8 +1,8 @@
 import type { OpenAPIAnalysis, ResourceDataItem, APIResponse } from '~/types/api';
 import { openAPIDocumentClient } from '~/lib/client';
 import { BaseHTTPClient } from '~/lib/client/base-client';
-import { openAPIParser } from './';
-import { resourceManager } from '~/services/ResourceManager';
+import { openAPIParser } from '~/services';
+import { resourceManager } from '~/services';
 
 /**
  * 前端 API 客户端

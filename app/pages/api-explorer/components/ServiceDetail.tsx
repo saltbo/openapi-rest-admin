@@ -28,7 +28,7 @@ import { openAPIDocumentClient } from '~/lib/client';
 import { 
   getResourceDisplayName 
 } from "~/utils/resourceUtils";
-import { resourceManager } from '~/services/ResourceManager';
+import { resourceManager } from '~/services';
 
 const { Title, Text, Paragraph } = Typography;
 
