@@ -77,7 +77,6 @@ export interface OperationInfo {
 export interface ParsedResource {
   id: string; // 资源唯一标识
   name: string; // 资源名称
-  displayName: string; // 显示名称
   path: string; // API 路径
   basePath: string; // 基础路径，用于实际API调用
   methods: string[]; // 支持的HTTP方法

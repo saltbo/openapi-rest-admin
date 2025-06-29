@@ -31,6 +31,7 @@ import { resourceManager } from '~/services';
 import { generateTableColumnsFromFields } from '~/utils/tableUtils';
 import { useServiceData, useResourceData } from '~/hooks/useAPIData';
 import type { ResourceDataItem, FieldDefinition } from '~/types/api';
+import { capitalizeFirst } from '~/components';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -99,7 +100,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId, n
   const handleDelete = (item: ResourceDataItem) => {
     Modal.confirm({
       title: '确认删除',
-      content: `确定要删除这个 ${resource?.displayName} 吗？`,
+      content: `确定要删除这个 ${resource?.name} 吗？`,
       onOk: () => deleteMutation.mutate(item.id),
     });
   };
@@ -196,7 +197,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId, n
           <DatabaseOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
           <div>
             <Title level={2} style={{ margin: 0 }}>
-              {resource.displayName}
+              {capitalizeFirst(resource.name)}
               {parentContext && (
                 <Tag color="blue" style={{ marginLeft: '8px' }}>
                   子资源

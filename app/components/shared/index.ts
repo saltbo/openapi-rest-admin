@@ -1,5 +1,10 @@
-export { JsonViewer } from './JsonViewer';
-export { ResourceBreadcrumb } from './ResourceBreadcrumb';
-export { ResourceHeader } from './ResourceHeader';
-export { ResourceInfoCard } from './ResourceInfoCard';
-export { SubResourcesList } from './SubResourcesList';
+export { JsonViewer } from "./JsonViewer";
+export { ResourceBreadcrumb } from "./ResourceBreadcrumb";
+export { ResourceHeader } from "./ResourceHeader";
+export { ResourceInfoCard } from "./ResourceInfoCard";
+export { SubResourcesList } from "./SubResourcesList";
+
+// 工具函数：首字母大写
+export const capitalizeFirst = (str: string) => {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};

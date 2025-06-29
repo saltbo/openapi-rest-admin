@@ -8,6 +8,7 @@ import { ResourceInfoCard } from '~/components/shared/ResourceInfoCard';
 import { SubResourcesList } from '~/components/shared/SubResourcesList';
 import { buildSubResourceDetailLink, buildNewResourceLink } from '~/utils/resourceRouting';
 import { useResourceDetail } from '~/hooks/useResourceDetail';
+import { capitalizeFirst } from '~/components';
 
 interface ResourceItem {
   id: string | number;
@@ -99,7 +100,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
       <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
         {/* 页面头部 */}
         <ResourceHeader
-          resourceName={currentResource.name}
+          resourceName={capitalizeFirst(currentResource.name)}
           itemId={currentItemId}
           isSubResourceDetail={isSubResourceDetail}
           resourceHierarchy={resourceHierarchy}

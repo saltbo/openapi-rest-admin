@@ -10,6 +10,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { openAPIDocumentClient } from '~/lib/client';
 import { frontendAPIService } from '~/pages/api-explorer/services';
+import { capitalizeFirst } from '../shared';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -24,6 +25,8 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [selectedApiId, setSelectedApiId] = useState<string>(''); // 初始为空，等待 API 配置加载后设置
   const [shouldAutoNavigate, setShouldAutoNavigate] = useState<boolean>(true); // 控制是否应该自动导航
+  
+
   
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -53,17 +56,41 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
   // 当切换 API 且需要自动导航时，自动导航到服务详情页
   useEffect(() => {
     if (currentAnalysis && shouldAutoNavigate) {
-      navigate(`/services/${selectedApiId}`);
+      // 检查当前路径，如果用户已经在服务相关页面，不要自动跳转
+      const currentPath = location.pathname;
+      const isOnServicePage = currentPath.startsWith(`/services/${selectedApiId}`);
+      
+      if (!isOnServicePage) {
+        navigate(`/services/${selectedApiId}`);
+      }
       setShouldAutoNavigate(false); // 导航后禁用自动导航
     }
-  }, [currentAnalysis, selectedApiId, navigate, shouldAutoNavigate]);
+  }, [currentAnalysis, selectedApiId, navigate, shouldAutoNavigate, location.pathname]);
 
   // 监听路径变化，当用户主动导航到首页时，禁用自动导航
+  // 当用户直接访问服务页面时，从 URL 中提取 API ID 并设置
   useEffect(() => {
     if (location.pathname === '/') {
       setShouldAutoNavigate(false);
+    } else if (location.pathname.startsWith('/services/')) {
+      // 从 URL 中提取 API ID
+      const pathParts = location.pathname.split('/');
+      if (pathParts.length >= 3) {
+        const apiIdFromUrl = decodeURIComponent(pathParts[2]);
+        // 如果 URL 中的 API ID 与当前选中的不同，更新选中的 API ID
+        if (apiIdFromUrl !== selectedApiId && apiConfigs.length > 0) {
+          // 验证这个 API ID 是否存在于配置中
+          const validApi = apiConfigs.find((api: any) => api.id === apiIdFromUrl);
+          if (validApi) {
+            setSelectedApiId(apiIdFromUrl);
+            setShouldAutoNavigate(false); // 用户直接访问时不要自动跳转
+          }
+        } else {
+          setShouldAutoNavigate(false); // 用户已经在正确的服务页面
+        }
+      }
     }
-  }, [location.pathname]);
+  }, [location.pathname, selectedApiId, apiConfigs]);
 
   const handleApiChange = (apiId: string) => {
     setSelectedApiId(apiId);
@@ -141,7 +168,7 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
                     icon: <DatabaseOutlined />,
                     label: (
                       <Link to={`/services/${selectedApiId}/resources/${resource.name}`}>
-                        {resource.displayName || resource.name}
+                        {capitalizeFirst(resource.name)}
                       </Link>
                     ),
                   })) || []}
@@ -163,7 +190,10 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
             {location.pathname === '/'
               ? 'OpenAPI Admin - 资源中心'
               : currentAnalysis 
-                ? `${currentAnalysis.apiName} - ${currentAnalysis.resources?.find((r: any) => location.pathname.includes(r.name))?.name || '资源管理'}`
+                ? `${currentAnalysis.apiName} - ${(() => {
+                    const resource = currentAnalysis.resources?.find((r: any) => location.pathname.includes(r.name));
+                    return resource ? capitalizeFirst(resource.name) : '资源管理';
+                  })()}`
                 : 'OpenAPI Admin - 资源中心'
             }
           </Title>

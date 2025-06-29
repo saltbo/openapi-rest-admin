@@ -25,9 +25,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { frontendAPIService } from "../services";
 import { openAPIDocumentClient } from '~/lib/client';
-import { 
-  getResourceDisplayName 
-} from "~/utils/resourceUtils";
 import { resourceManager } from '~/services';
 
 const { Title, Text, Paragraph } = Typography;
@@ -96,29 +93,34 @@ export default function ServiceDetail() {
   
   const topLevelResources = serviceAnalysis.resources ? resourceManager.getTopLevelResources(serviceAnalysis.resources) : [];
   
-  // HTTP 方法统计
+  // HTTP 方法统计 - 使用 methods 属性而不是 endpoints
   const httpMethodStats = serviceAnalysis.resources?.reduce(
     (acc: any, resource: any) => {
-      resource.endpoints?.forEach((endpoint: any) => {
-        const method = endpoint.method?.toUpperCase();
-        if (method) {
-          acc[method] = (acc[method] || 0) + 1;
-        }
+      resource.methods?.forEach((method: string) => {
+        const upperMethod = method.toUpperCase();
+        acc[upperMethod] = (acc[upperMethod] || 0) + 1;
       });
       return acc;
     },
     {} as Record<string, number>
   ) || {};
 
+  // 计算总接口数 - 基于 operations 对象
+  const totalEndpoints = serviceAnalysis.resources?.reduce(
+    (sum: number, resource: any) => {
+      // 统计每个资源的操作数量
+      const operationCount = resource.operations ? Object.keys(resource.operations).length : 0;
+      return sum + operationCount;
+    },
+    0
+  ) || 0;
+
   const stats = {
     totalResources: resourceStats.total,
     topLevelResources: resourceStats.topLevel,
     nestedResources: resourceStats.withSubResources,
     restfulResources: resourceStats.restful,
-    totalEndpoints: serviceAnalysis.resources?.reduce(
-      (sum: number, r: any) => sum + (r.endpoints?.length || 0),
-      0
-    ) || 0,
+    totalEndpoints: totalEndpoints,
     getEndpoints: httpMethodStats.GET || 0,
     postEndpoints: httpMethodStats.POST || 0,
     putEndpoints: httpMethodStats.PUT || 0,
@@ -365,7 +367,7 @@ export default function ServiceDetail() {
                     </Button>
                   </Link>,
                   <Text key="endpoints" type="secondary">
-                    {resource.endpoints?.length || 0} 个接口
+                    {resource.operations ? Object.keys(resource.operations).length : 0} 个接口
                   </Text>,
                   resource.is_restful && (
                     <Tag key="restful" color="green">RESTful</Tag>
@@ -376,7 +378,7 @@ export default function ServiceDetail() {
                   avatar={<DatabaseOutlined style={{ color: "#1890ff" }} />}
                   title={
                     <Space>
-                      <Text strong>{getResourceDisplayName(resource)}</Text>
+                      <Text strong>{resource.name}</Text>
                       {resource.description && (
                         <Text type="secondary">- {resource.description}</Text>
                       )}

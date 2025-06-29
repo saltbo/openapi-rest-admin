@@ -213,7 +213,6 @@ export class OpenAPIParser {
     return {
       id,
       name,
-      displayName: this.generateDisplayName(name),
       path: mainPath,
       basePath: '', // Will be set with base_url later
       methods,
@@ -528,13 +527,6 @@ export class OpenAPIParser {
     const restfulMethods = ['get', 'post', 'put', 'delete'];
     
     return restfulMethods.some(method => methodSet.has(method));
-  }
-
-  /**
-   * Generate display name from resource name
-   */
-  private static generateDisplayName(resourceName: string): string {
-    return resourceName.charAt(0).toUpperCase() + resourceName.slice(1);
   }
 
   /**

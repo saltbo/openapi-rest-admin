@@ -8,8 +8,5 @@
 // Legacy exports for backward compatibility
 export { openAPIParser } from '~/services';
 
-// Mock data service
-export { mockDataService } from './mock-data';
-
 // Frontend API client
 export { frontendAPIService } from './api-client';
