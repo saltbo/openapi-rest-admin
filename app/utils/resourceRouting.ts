@@ -71,18 +71,6 @@ export function parseResourcePath(
 }
 
 /**
- * 判断URL路径是详情页还是列表页
- * @param splat URL的splat参数
- * @returns true表示详情页，false表示列表页
- */
-export function isDetailPage(splat: string | undefined): boolean {
-  if (!splat) return false;
-  const pathSegments = splat.split('/').filter(Boolean);
-  // 如果路径段数为奇数，说明最后一段是具体的资源ID，显示详情页
-  return pathSegments.length % 2 === 1;
-}
-
-/**
  * 构建资源详情页面的链接
  * @param serviceName 服务名称
  * @param topLevelResource 顶级资源名称
@@ -102,27 +90,6 @@ export function buildDetailLink(
   } else {
     // 顶级资源：简单链接
     return `/services/${encodeURIComponent(serviceName)}/resources/${topLevelResource}/${itemId}`;
-  }
-}
-
-/**
- * 构建资源列表页面的链接
- * @param serviceName 服务名称
- * @param topLevelResource 顶级资源名称
- * @param nestedPath 嵌套路径（不包含最后的资源名）
- * @param resourceName 要显示的资源名称
- * @returns 完整的链接路径
- */
-export function buildListLink(
-  serviceName: string,
-  topLevelResource: string,
-  nestedPath: string | undefined,
-  resourceName: string
-): string {
-  if (nestedPath) {
-    return `/services/${encodeURIComponent(serviceName)}/resources/${topLevelResource}/${nestedPath}/${resourceName}`;
-  } else {
-    return `/services/${encodeURIComponent(serviceName)}/resources/${resourceName}`;
   }
 }
 
@@ -162,31 +129,6 @@ export function buildPathToLevel(
   }
   
   return path;
-}
-
-/**
- * 生成资源的完整父级上下文路径
- * @param resourceHierarchy 资源层次结构
- * @returns 父级上下文字符串
- */
-export function buildParentContextPath(resourceHierarchy: ResourceHierarchy[]): string {
-  if (resourceHierarchy.length <= 1) return '';
-  
-  const parentLevels = resourceHierarchy.slice(0, -1);
-  const pathSegments: string[] = [];
-  
-  parentLevels.forEach((level, index) => {
-    if (index === 0 && level.itemId) {
-      pathSegments.push(level.itemId);
-    } else if (index > 0) {
-      pathSegments.push(level.resourceName);
-      if (level.itemId) {
-        pathSegments.push(level.itemId);
-      }
-    }
-  });
-  
-  return pathSegments.join('/');
 }
 
 /**

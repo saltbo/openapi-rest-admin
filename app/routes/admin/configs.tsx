@@ -1,4 +1,4 @@
-import type { Route } from "./+types/apis";
+import type { Route } from "./+types/configs";
 import OpenAPIDocumentList from "~/pages/admin/components/OpenAPIDocumentList";
 
 export function meta({}: Route.MetaArgs) {

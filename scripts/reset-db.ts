@@ -6,7 +6,7 @@
  */
 
 import { prisma } from '../app/lib/db/connection';
-import { API_CONFIGS } from '../config/apis.js';
+import { API_CONFIGS } from '../config/apis';
 
 async function resetDatabase() {
   console.log('🗑️  重置数据库...');
