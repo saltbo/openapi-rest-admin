@@ -8,7 +8,7 @@ import {
   ApiOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { apiService } from '../services/api';
+import { frontendAPIService } from '../../pages/api-explorer/services';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -31,14 +31,14 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
   // 获取所有 API 配置
   const { data: apiConfigs = [] } = useQuery({
     queryKey: ['apiConfigs'],
-    queryFn: () => apiService.getAPIConfigs().then(res => res.data),
+    queryFn: () => frontendAPIService.getAPIConfigs().then((res: any) => res.data),
   });
 
   // 获取当前选中 API 的分析数据
   const { data: currentAnalysis, isLoading } = useQuery({
     queryKey: ['currentAnalysis', selectedApiId],
-    queryFn: () => apiService.getOpenAPIAnalysis(selectedApiId.toString())
-      .then(res => ({ apiId: selectedApiId, apiName: apiConfigs.find(c => c.id === selectedApiId)?.name || '', ...res.data })),
+    queryFn: () => frontendAPIService.getOpenAPIAnalysis(selectedApiId.toString())
+      .then((res: any) => ({ apiId: selectedApiId, apiName: apiConfigs.find((c: any) => c.id === selectedApiId)?.name || '', ...res.data })),
     enabled: !!selectedApiId, // 只要有选中的 API ID 就启用查询
   });
 
@@ -109,7 +109,7 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
               loading={!apiConfigs.length}
               size="small"
             >
-              {apiConfigs.map(config => (
+              {apiConfigs.map((config: any) => (
                 <Option key={config.id} value={config.id}>
                   {config.name}
                 </Option>

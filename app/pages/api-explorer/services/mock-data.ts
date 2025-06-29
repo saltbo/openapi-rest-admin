@@ -4,7 +4,7 @@ import type {
   ResourceDataItem, 
   APIResponse,
   FieldType 
-} from '../types/api';
+} from '../../types/api';
 
 /**
  * Mock 数据生成服务

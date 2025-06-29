@@ -156,8 +156,6 @@ cp prisma/dev.db prisma/backup.db
 ```
 app/
 ├── components/          # Reusable UI components
-├── lib/                # Backend libraries and utilities
-│   └── db/             # Database services and connections
 ├── pages/              # Page components
 │   ├── admin/          # Admin panel pages
 │   └── frontend/       # Public pages
@@ -165,8 +163,7 @@ app/
 │   ├── admin/          # Admin routes
 │   ├── api/            # API endpoints
 │   └── frontend/       # Public routes
-├── services/           # Frontend business logic services
-│   └── frontend/       # Frontend-specific services
+├── services/           # Business logic services
 ├── types/              # TypeScript type definitions
 └── utils/              # Utility functions
 

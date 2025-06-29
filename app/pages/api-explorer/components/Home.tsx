@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Avatar, Button, Typography, Spin } from 'antd';
 import { ApiOutlined, EyeOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
-import { apiService } from '../../services/api';
-import type { APIConfig } from '../../types/api';
+import { frontendAPIService } from '../services';
+import type { APIConfig } from '../../../types/api';
 
 const { Title, Text } = Typography;
 
@@ -18,7 +18,7 @@ export default function Home() {
   const loadAPIConfigs = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getAPIConfigs();
+      const response = await frontendAPIService.getAPIConfigs();
       setApiConfigs(response.data);
     } catch (error) {
       console.error('Failed to load API configs:', error);

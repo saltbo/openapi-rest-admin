@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiService } from '../services/api';
+import { frontendAPIService } from '../pages/api-explorer/services';
 import type { OpenAPIAnalysis } from '../types/api';
 
 /**
@@ -9,7 +9,7 @@ import type { OpenAPIAnalysis } from '../types/api';
 export function useAPIConfig(serviceName: string | undefined) {
   return useQuery({
     queryKey: ['apiConfig', serviceName],
-    queryFn: () => apiService.getAPIConfig(serviceName!).then(res => res.data),
+    queryFn: () => frontendAPIService.getAPIConfig(serviceName!).then(res => res.data),
     enabled: !!serviceName,
   });
 }
@@ -20,7 +20,7 @@ export function useAPIConfig(serviceName: string | undefined) {
 export function useAPIAnalysis(serviceName: string | undefined) {
   return useQuery({
     queryKey: ['openApiAnalysis', serviceName],
-    queryFn: () => apiService.getOpenAPIAnalysis(serviceName!).then(res => res.data),
+    queryFn: () => frontendAPIService.getOpenAPIAnalysis(serviceName!).then(res => res.data),
     enabled: !!serviceName,
   });
 }
@@ -40,9 +40,9 @@ export function useResourceData(
     queryKey: ['resourceData', serviceName, resourceName, currentPage, pageSize, searchQuery, nestedPath],
     queryFn: () => {
       if (searchQuery) {
-        return apiService.searchResources(serviceName!, resourceName!, searchQuery, currentPage, pageSize);
+        return frontendAPIService.searchResources(serviceName!, resourceName!, searchQuery, currentPage, pageSize);
       }
-      return apiService.listResources(serviceName!, resourceName!, currentPage, pageSize);
+      return frontendAPIService.listResources(serviceName!, resourceName!, currentPage, pageSize);
     },
     enabled: !!serviceName && !!resourceName,
   });
@@ -58,7 +58,7 @@ export function useResourceDetail(
 ) {
   return useQuery({
     queryKey: ['resourceDetail', serviceName, resourceName, itemId],
-    queryFn: () => apiService.getResource(serviceName!, resourceName!, itemId!),
+    queryFn: () => frontendAPIService.getResource(serviceName!, resourceName!, itemId!),
     enabled: !!serviceName && !!resourceName && !!itemId,
   });
 }
@@ -109,9 +109,9 @@ export function useResourceDetailData(
       }
       
       // 获取API配置
-      const apiConfigsResponse = await apiService.getAPIConfigs();
+      const apiConfigsResponse = await frontendAPIService.getAPIConfigs();
       
-      const apiConfig = apiConfigsResponse.data.find(api => 
+      const apiConfig = apiConfigsResponse.data.find((api: any) => 
         api.name === serviceName || 
         api.id === serviceName ||
         api.name.toLowerCase().replace(/\s+/g, '-') === serviceName.toLowerCase() ||
@@ -123,7 +123,7 @@ export function useResourceDetailData(
       }
       
       // 获取分析数据
-      const analysisResponse = await apiService.getOpenAPIAnalysis(apiConfig.id);
+      const analysisResponse = await frontendAPIService.getOpenAPIAnalysis(apiConfig.id);
       setAnalysis(analysisResponse.data);
       
       // 使用工具函数查找当前资源
@@ -135,7 +135,7 @@ export function useResourceDetailData(
       setCurrentResource(resource);
       
       // 加载当前资源项的详情
-      const itemResponse = await apiService.getResource(apiConfig.id, resourceName, itemId);
+      const itemResponse = await frontendAPIService.getResource(apiConfig.id, resourceName, itemId);
       setCurrentItem(itemResponse.data);
       
       // 处理子资源数据
@@ -146,7 +146,7 @@ export function useResourceDetailData(
         const subResourceDataMap: { [key: string]: any[] } = {};
         const subResourcePromises = resource.sub_resources.map(async (subResource: any) => {
           try {
-            const subDataResponse = await apiService.listResources(apiConfig.id, subResource.name, 1, 10);
+            const subDataResponse = await frontendAPIService.listResources(apiConfig.id, subResource.name, 1, 10);
             subResourceDataMap[subResource.name] = subDataResponse.data || [];
           } catch (error) {
             console.warn(`Failed to load sub-resource ${subResource.name}:`, error);

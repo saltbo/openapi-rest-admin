@@ -13,6 +13,12 @@ export default [
   // 嵌套子资源列表页面 - 显示带有父资源上下文的子资源列表
   route("services/:sName/resources/:rName/*", "routes/frontend/nested-resource-list.tsx"),
   
+  // API 路由
+  route("api/configs", "routes/api.configs.tsx"),
+  route("api/configs/:id", "routes/api.configs.$id.tsx"),
+  route("api/stats", "routes/api.stats.tsx"),
+  route("api/search", "routes/api.search.tsx"),
+  
   // 后台管理
   route("admin", "routes/admin/dashboard.tsx"),
   route("admin/apis", "routes/admin/apis.tsx"),

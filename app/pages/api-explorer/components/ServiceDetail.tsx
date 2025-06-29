@@ -23,12 +23,12 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { apiService } from "../../services/api";
+import { frontendAPIService } from "../services";
 import { 
   getResourceStats, 
   getTopLevelResources, 
   getResourceDisplayName 
-} from "../../utils/resourceUtils";
+} from "../../../utils/resourceUtils";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -55,16 +55,16 @@ export default function ServiceDetail() {
   // 获取所有 API 配置
   const { data: apiConfigs = [] } = useQuery({
     queryKey: ["apiConfigs"],
-    queryFn: () => apiService.getAPIConfigs().then((res) => res.data),
+    queryFn: () => frontendAPIService.getAPIConfigs().then((res: any) => res.data),
   });
 
   // 获取当前服务的分析数据
   const { data: serviceAnalysis, isLoading } = useQuery({
     queryKey: ["serviceAnalysis", sName],
     queryFn: () =>
-      apiService.getOpenAPIAnalysis(sName!).then((res) => ({
+      frontendAPIService.getOpenAPIAnalysis(sName!).then((res: any) => ({
         apiId: sName,
-        apiName: apiConfigs.find((c) => c.id === sName)?.name || sName,
+        apiName: apiConfigs.find((c: any) => c.id === sName)?.name || sName,
         ...res.data,
       })),
     enabled: !!sName && apiConfigs.length > 0,
@@ -98,7 +98,7 @@ export default function ServiceDetail() {
   
   // HTTP 方法统计
   const httpMethodStats = serviceAnalysis.resources?.reduce(
-    (acc, resource: any) => {
+    (acc: any, resource: any) => {
       resource.endpoints?.forEach((endpoint: any) => {
         const method = endpoint.method?.toUpperCase();
         if (method) {

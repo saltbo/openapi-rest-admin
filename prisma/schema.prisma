@@ -1,0 +1,25 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model APIConfig {
+  id          String   @id
+  name        String
+  description String
+  openapiUrl  String   @map("openapi_url")
+  enabled     Boolean  @default(true)
+  tags        String?  // 存储为 JSON 字符串
+  version     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("api_configs")
+}

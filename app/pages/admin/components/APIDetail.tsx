@@ -23,9 +23,9 @@ import {
   EyeOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiService } from '../../services/api';
-import { JsonViewer } from '../../components/JsonViewer';
-import type { ParsedResource, FieldDefinition } from '../../types/api';
+import { frontendAPIService } from '../../api-explorer/services';
+import { JsonViewer } from '../../../components/shared/JsonViewer';
+import type { ParsedResource, FieldDefinition } from '../../../types/api';
 
 const { Title, Paragraph } = Typography;
 const { Panel } = Collapse;
@@ -37,7 +37,7 @@ export const APIDetail: React.FC = () => {
 
   const { data: apiConfig, isLoading: configLoading } = useQuery({
     queryKey: ['apiConfig', id],
-    queryFn: () => apiService.getAPIConfig(id!).then(res => res.data),
+    queryFn: () => frontendAPIService.getAPIConfig(id!).then((res: any) => res.data),
     enabled: !!id,
   });
 
@@ -48,7 +48,7 @@ export const APIDetail: React.FC = () => {
     refetch: refetchAnalysis 
   } = useQuery({
     queryKey: ['openApiAnalysis', id],
-    queryFn: () => apiService.getOpenAPIAnalysis(id!).then(res => res.data),
+    queryFn: () => frontendAPIService.getOpenAPIAnalysis(id!).then((res: any) => res.data),
     enabled: !!id,
     retry: 2,
   });
@@ -56,7 +56,7 @@ export const APIDetail: React.FC = () => {
   const refreshMutation = useMutation({
     mutationFn: async () => {
       // 清除缓存并重新解析
-      apiService.clearCache();
+      frontendAPIService.clearCache(id!);
       await refetchAnalysis();
     },
     onSuccess: () => {
@@ -224,7 +224,7 @@ export const APIDetail: React.FC = () => {
                 </Descriptions.Item>
                 <Descriptions.Item label="标签" span={2}>
                   <Space wrap>
-                    {apiConfig.tags?.map(tag => (
+                    {apiConfig.tags?.map((tag: any) => (
                       <Tag key={tag} color="blue">{tag}</Tag>
                     ))}
                   </Space>
@@ -322,7 +322,7 @@ export const APIDetail: React.FC = () => {
           {analysis ? (
             <div>
               <Collapse>
-                {analysis.resources.map(resource => (
+                {analysis.resources.map((resource: any) => (
                   <Panel 
                     header={
                       <Space>

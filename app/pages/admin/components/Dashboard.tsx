@@ -9,14 +9,14 @@ import {
   RightOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { apiService } from '../../services/api';
+import { frontendAPIService } from '../../api-explorer/services';
 
 const { Title, Paragraph } = Typography;
 
 export const AdminDashboard: React.FC = () => {
   const { data: apiConfigs = [] } = useQuery({
     queryKey: ['apiConfigs'],
-    queryFn: () => apiService.getAPIConfigs().then(res => res.data),
+    queryFn: () => frontendAPIService.getAPIConfigs().then((res: any) => res.data),
   });
 
   // 获取所有 API 的分析数据
@@ -24,9 +24,9 @@ export const AdminDashboard: React.FC = () => {
     queryKey: ['allAnalyses', apiConfigs.length],
     queryFn: async () => {
       const analyses = await Promise.all(
-        apiConfigs.map(config => 
-          apiService.getOpenAPIAnalysis(config.id.toString())
-            .then(res => ({ apiId: config.id, apiName: config.name, ...res.data }))
+        apiConfigs.map((config: any) => 
+          frontendAPIService.getOpenAPIAnalysis(config.id.toString())
+            .then((res: any) => ({ apiId: config.id, apiName: config.name, ...res.data }))
             .catch(() => null)
         )
       );
@@ -36,15 +36,15 @@ export const AdminDashboard: React.FC = () => {
   });
 
   const totalAPIs = apiConfigs.length;
-  const totalResources = allAnalyses.reduce((acc, analysis) => 
-    acc + (analysis?.resources?.filter(r => r.is_restful)?.length || 0), 0
+  const totalResources = allAnalyses.reduce((acc: number, analysis: any) => 
+    acc + (analysis?.resources?.filter((r: any) => r.is_restful)?.length || 0), 0
   );
 
   // 获取所有资源的列表
-  const allResources = allAnalyses.flatMap(analysis => 
+  const allResources = allAnalyses.flatMap((analysis: any) => 
     analysis?.resources
-      ?.filter(r => r.is_restful)
-      ?.map(resource => ({
+      ?.filter((r: any) => r.is_restful)
+      ?.map((resource: any) => ({
         ...resource,
         apiId: analysis.apiId,
         apiName: analysis.apiName,

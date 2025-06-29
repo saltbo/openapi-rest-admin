@@ -1,9 +1,59 @@
-.DS_Store
-/node_modules/
+# Dependencies
+node_modules/
+.yarn/
+.pnp.js
 
-# React Router
-/.react-router/
+# Build outputs
 /build/
-.yarn
+/.react-router/
+/dist/
 
-backend
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database
+/prisma/dev.db
+/prisma/dev.db-journal
+/prisma/test.db
+/prisma/backup.db
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Temporary folders
+tmp/
+temp/
+
+# Legacy backend build
+backend/
+/generated/prisma

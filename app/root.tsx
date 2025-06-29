@@ -9,7 +9,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import type { Route } from "./+types/root";
-import { AppLayout } from './components/AppLayout';
+import { AppLayout } from './components/layout/AppLayout';
 import "./app.css";
 
 // Create a client

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { parseResourcePath } from '../utils/resourceRouting';
 import { findResourceInAll } from '../utils/resourceUtils';
-import { apiService } from '../services/api';
+import { frontendAPIService } from '../pages/api-explorer/services';
 import type { OpenAPIAnalysis, ParsedResource } from '../types/api';
 
 interface ResourceItem {
@@ -45,8 +45,8 @@ export const useResourceDetail = ({ sName, rName, splat }: UseResourceDetailProp
       }
       
       // 获取API配置
-      const apiConfigsResponse = await apiService.getAPIConfigs();
-      const apiConfig = apiConfigsResponse.data.find(api => 
+      const apiConfigsResponse = await frontendAPIService.getAPIConfigs();
+      const apiConfig = apiConfigsResponse.data.find((api: any) => 
         api.name === sName || 
         api.id === sName ||
         api.name.toLowerCase().replace(/\s+/g, '-') === sName.toLowerCase() ||
@@ -58,7 +58,7 @@ export const useResourceDetail = ({ sName, rName, splat }: UseResourceDetailProp
       }
       
       // 获取分析数据
-      const analysisResponse = await apiService.getOpenAPIAnalysis(apiConfig.id);
+      const analysisResponse = await frontendAPIService.getOpenAPIAnalysis(apiConfig.id);
       setAnalysis(analysisResponse.data);
       
       // 查找当前资源
@@ -69,7 +69,7 @@ export const useResourceDetail = ({ sName, rName, splat }: UseResourceDetailProp
       setCurrentResource(resource);
       
       // 加载当前资源项的详情
-      const itemResponse = await apiService.getResource(apiConfig.id, currentResourceName, currentItemId);
+      const itemResponse = await frontendAPIService.getResource(apiConfig.id, currentResourceName, currentItemId);
       setCurrentItem(itemResponse.data);
       
       // 加载子资源数据
@@ -78,7 +78,7 @@ export const useResourceDetail = ({ sName, rName, splat }: UseResourceDetailProp
         
         const subResourceDataMap: { [key: string]: ResourceItem[] } = {};
         for (const subResource of resource.sub_resources) {
-          const subResourceResponse = await apiService.listResources(
+          const subResourceResponse = await frontendAPIService.listResources(
             apiConfig.id, 
             subResource.name, 
             1, 

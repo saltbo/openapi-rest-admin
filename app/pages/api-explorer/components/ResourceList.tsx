@@ -23,14 +23,14 @@ import {
   ReloadOutlined
 } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiService } from '../../services/api';
-import { JsonViewer } from '../../components/JsonViewer';
-import { ResourceBreadcrumb } from '../../components/ResourceBreadcrumb';
-import { parseResourcePath, buildDetailLink } from '../../utils/resourceRouting';
-import { findResourceInAll } from '../../utils/resourceUtils';
-import { generateTableColumnsFromFields } from '../../utils/tableUtils';
-import { useServiceData, useResourceData } from '../../hooks/useAPIData';
-import type { ResourceDataItem, FieldDefinition } from '../../types/api';
+import { frontendAPIService } from '../services';
+import { JsonViewer } from '../../../components/shared/JsonViewer';
+import { ResourceBreadcrumb } from '../../../components/shared/ResourceBreadcrumb';
+import { parseResourcePath, buildDetailLink } from '../../../utils/resourceRouting';
+import { findResourceInAll } from '../../../utils/resourceUtils';
+import { generateTableColumnsFromFields } from '../../../utils/tableUtils';
+import { useServiceData, useResourceData } from '../../../hooks/useAPIData';
+import type { ResourceDataItem, FieldDefinition } from '../../../types/api';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -74,10 +74,12 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId, n
     refetch 
   } = useResourceData(sName, currentResourceName, currentPage, pageSize, searchQuery, nestedPath);
 
-  // 删除资源项
+  // 删除资源项 - 暂时禁用，应通过后端API实现
   const deleteMutation = useMutation({
-    mutationFn: (itemId: string | number) => 
-      apiService.deleteResource(sName!, currentResourceName, itemId),
+    mutationFn: (itemId: string | number) => {
+      // TODO: 实现通过后端API删除资源
+      return Promise.reject(new Error('Delete operation not implemented for frontend'));
+    },
     onSuccess: () => {
       message.success('删除成功');
       queryClient.invalidateQueries({ queryKey: ['resourceData', sName, currentResourceName] });

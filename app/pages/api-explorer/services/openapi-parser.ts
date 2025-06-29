@@ -5,7 +5,7 @@ import type {
   FieldDefinition, 
   OperationInfo,
   FieldType 
-} from '../types/api';
+} from '../../types/api';
 
 /**
  * OpenAPI 文档解析服务
