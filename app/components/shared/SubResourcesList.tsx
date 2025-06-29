@@ -1,7 +1,11 @@
 import React from 'react';
-import { Card, Typography, Button, Space, Tag, Table } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Card, Typography, Button, Space, Tag, Table, Drawer } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { generateTableColumnsFromData } from '~/utils/tableUtils';
+import { useResourceDialogs } from '~/pages/api-explorer/hooks/useResourceDialogs';
+import { ResourceActionForm } from '~/pages/api-explorer/components/ResourceActionForm';
+import { ResourceDeleteConfirm } from '~/pages/api-explorer/components/ResourceDeleteConfirm';
+import { capitalizeFirst } from '~/components';
 import type { ParsedResource } from '~/types/api';
 import type { ResourceHierarchy } from '~/utils/resourceRouting';
 
@@ -19,6 +23,7 @@ interface SubResourcesListProps {
   resourceHierarchy: ResourceHierarchy[];
   onItemClick: (subResourceName: string, record: ResourceItem) => void;
   onCreateNew: (subResourceName: string) => void;
+  apiId?: string;
 }
 
 export const SubResourcesList: React.FC<SubResourcesListProps> = ({
@@ -27,17 +32,52 @@ export const SubResourcesList: React.FC<SubResourcesListProps> = ({
   serviceName,
   resourceHierarchy,
   onItemClick,
-  onCreateNew
+  onCreateNew,
+  apiId
 }) => {
-  const generateSubResourceColumns = (subResourceName: string, data: ResourceItem[]) => {
+  // 使用 useResourceDialogs hook 管理对话框状态
+  const {
+    showActionForm,
+    currentAction,
+    selectedItem,
+    showDeleteConfirm,
+    itemToDelete,
+    handleAdd,
+    handleEdit,
+    handleDelete,
+    handleFormSuccess,
+    handleDeleteSuccess,
+    closeActionForm,
+    closeDeleteConfirm,
+  } = useResourceDialogs();
+
+  // 当前操作的子资源
+  const [currentSubResource, setCurrentSubResource] = React.useState<ParsedResource | null>(null);
+
+  // 处理新增按钮点击
+  const handleAddClick = (subResource: ParsedResource) => {
+    console.log(`SubResourcesList - Adding ${subResource.name}: schema length = ${subResource.schema?.length || 0}`);
+    setCurrentSubResource(subResource);
+    handleAdd();
+  };
+
+  const generateSubResourceColumns = (subResource: ParsedResource, data: ResourceItem[]) => {
     return generateTableColumnsFromData({
       data,
       maxColumns: 4,
       showActions: true,
       actionHandlers: {
         onDetail: (record: ResourceItem) => {
-          onItemClick(subResourceName, record);
+          onItemClick(subResource.name, record);
           return '';
+        },
+        onEdit: (record: ResourceItem) => {
+          setCurrentSubResource(subResource);
+          handleEdit(record);
+        },
+        onDelete: (record: ResourceItem) => {
+          setCurrentSubResource(subResource);
+          handleDelete(record);
         }
       }
     });
@@ -82,28 +122,16 @@ export const SubResourcesList: React.FC<SubResourcesListProps> = ({
                   display: 'flex', 
                   justifyContent: 'space-between', 
                   alignItems: 'center',
-                  padding: '4px 0'
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: '#262626'
                 }}>
-                  <Space align="center">
-                    <Text style={{ fontSize: '16px', fontWeight: '600', color: '#262626' }}>
-                      {subResource.name}
-                    </Text>
-                    <Tag 
-                      color="processing" 
-                      style={{ 
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: '500'
-                      }}
-                    >
-                      {data.length} 项
-                    </Tag>
-                  </Space>
+                  <span>{capitalizeFirst(subResource.name)}</span>
                   <Button 
                     type="primary" 
                     size="middle" 
                     icon={<PlusOutlined />}
-                    onClick={() => onCreateNew(subResource.name)}
+                    onClick={() => handleAddClick(subResource)}
                     style={{
                       borderRadius: '8px',
                       fontWeight: '500',
@@ -133,7 +161,7 @@ export const SubResourcesList: React.FC<SubResourcesListProps> = ({
             >
               <div style={{ padding: '0 24px 24px 24px' }}>
                 <Table
-                  columns={generateSubResourceColumns(subResource.name, data)}
+                  columns={generateSubResourceColumns(subResource, data)}
                   dataSource={data}
                   rowKey="id"
                   size="middle"
@@ -141,20 +169,23 @@ export const SubResourcesList: React.FC<SubResourcesListProps> = ({
                   pagination={{ 
                     pageSize: 5, 
                     showSizeChanger: false,
-                    showTotal: (total, range) => 
-                      `显示 ${range[0]}-${range[1]} 条，共 ${total} 条`,
-                    style: { 
-                      marginTop: '16px',
-                      paddingTop: '16px',
-                      borderTop: '1px solid #f0f0f0'
-                    }
+                    showQuickJumper: false,
+                    size: 'small'
                   }}
-                  onRow={(record) => ({
-                    style: { cursor: 'pointer' },
-                    onClick: () => onItemClick(subResource.name, record),
-                  })}
+                  locale={{
+                    emptyText: (
+                      <div style={{ 
+                        padding: '40px 0',
+                        color: '#999',
+                        fontSize: '14px'
+                      }}>
+                        暂无数据
+                      </div>
+                    )
+                  }}
                   style={{
-                    background: '#fff'
+                    borderRadius: '8px',
+                    overflow: 'hidden'
                   }}
                 />
               </div>
@@ -162,6 +193,41 @@ export const SubResourcesList: React.FC<SubResourcesListProps> = ({
           );
         })}
       </div>
+
+      {/* 编辑表单抽屉 */}
+      <Drawer
+        title={`${currentAction === 'create' ? '添加' : '编辑'}${currentSubResource?.name || '资源'}`}
+        placement="right"
+        open={showActionForm}
+        onClose={closeActionForm}
+        width={600}
+        destroyOnClose
+      >
+        {apiId && currentSubResource && (currentAction === 'create' || selectedItem) && (
+          <ResourceActionForm
+            apiId={apiId}
+            resource={currentSubResource}
+            action={currentAction}
+            initialData={currentAction === 'edit' ? selectedItem : undefined}
+            onSuccess={handleFormSuccess}
+            onCancel={closeActionForm}
+          />
+        )}
+      </Drawer>
+
+      {/* 删除确认对话框 */}
+      {apiId && currentSubResource && itemToDelete && (
+        <ResourceDeleteConfirm
+          apiId={apiId}
+          resource={currentSubResource}
+          item={itemToDelete}
+          open={showDeleteConfirm}
+          onSuccess={handleDeleteSuccess}
+          onCancel={closeDeleteConfirm}
+        />
+      )}
     </div>
   );
 };
+
+export default SubResourcesList;

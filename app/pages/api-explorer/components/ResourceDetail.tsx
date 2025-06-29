@@ -6,7 +6,7 @@ import { ResourceBreadcrumb } from '~/components/shared/ResourceBreadcrumb';
 import { ResourceHeader } from '~/components/shared/ResourceHeader';
 import { ResourceInfoCard } from '~/components/shared/ResourceInfoCard';
 import { SubResourcesList } from '~/components/shared/SubResourcesList';
-import { buildSubResourceDetailLink, buildNewResourceLink } from '~/utils/resourceRouting';
+import { buildSubResourceDetailLink, buildNewResourceLink, buildPathToLevel } from '~/utils/resourceRouting';
 import { useResourceDetail } from '~/hooks/useResourceDetail';
 import { capitalizeFirst } from '~/components';
 
@@ -41,7 +41,9 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
     resourceHierarchy,
     currentResourceName,
     currentItemId,
-    isSubResourceDetail
+    isSubResourceDetail,
+    apiConfig,
+    refetch
   } = useResourceDetail({ sName, rName, splat });
 
   // 事件处理函数
@@ -53,6 +55,26 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
   const handleCreateNew = (subResourceName: string) => {
     const newResourceUrl = buildNewResourceLink(sName!, subResourceName, resourceHierarchy);
     navigate(newResourceUrl);
+  };
+
+  // 删除成功后的处理
+  const handleDeleteSuccess = () => {
+    // 根据当前资源层次结构，跳转到上级列表页面
+    if (resourceHierarchy.length <= 1) {
+      // 如果是顶级资源，跳转到顶级资源列表
+      const listUrl = `/services/${encodeURIComponent(sName!)}/resources/${rName}`;
+      navigate(listUrl);
+    } else {
+      // 如果是子资源，跳转到上一级的列表页面
+      // 构建到上一级（不包含当前级别的itemId）的路径
+      const parentListUrl = buildPathToLevel(
+        sName!, 
+        resourceHierarchy.slice(0, -1), // 移除最后一级（当前级别）
+        resourceHierarchy.length - 2,   // 目标是倒数第二级
+        true  // 包含itemId，因为我们要显示该级别下的子资源列表
+      );
+      navigate(parentListUrl);
+    }
   };
 
   // 加载状态
@@ -108,7 +130,12 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
         />
 
         {/* 资源详情信息 */}
-        <ResourceInfoCard data={currentItem} />
+        <ResourceInfoCard 
+          data={currentItem} 
+          apiId={apiConfig?.id}
+          resource={currentResource}
+          onDeleteSuccess={handleDeleteSuccess}
+        />
 
         {/* 子资源列表 */}
         <SubResourcesList
@@ -118,6 +145,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
           resourceHierarchy={resourceHierarchy}
           onItemClick={handleSubResourceItemClick}
           onCreateNew={handleCreateNew}
+          apiId={apiConfig?.id}
         />
 
         {/* JSON数据模态框 */}

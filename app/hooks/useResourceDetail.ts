@@ -24,6 +24,7 @@ export const useResourceDetail = ({ sName, rName, splat }: UseResourceDetailProp
   const [subResources, setSubResources] = useState<ParsedResource[]>([]);
   const [subResourceData, setSubResourceData] = useState<{ [key: string]: ResourceItem[] }>({});
   const [error, setError] = useState<string | null>(null);
+  const [apiConfig, setApiConfig] = useState<any>(null);
 
   // 解析资源路径
   const { 
@@ -57,6 +58,8 @@ export const useResourceDetail = ({ sName, rName, splat }: UseResourceDetailProp
       if (!apiConfig) {
         throw new Error(`Service ${sName} not found`);
       }
+      
+      setApiConfig(apiConfig);
       
       // 获取分析数据
       const analysisResponse = await frontendAPIService.getOpenAPIAnalysis(apiConfig.id);
@@ -135,6 +138,7 @@ export const useResourceDetail = ({ sName, rName, splat }: UseResourceDetailProp
     currentResourceName,
     currentItemId,
     isSubResourceDetail,
+    apiConfig,
     refetch: loadData
   };
 };

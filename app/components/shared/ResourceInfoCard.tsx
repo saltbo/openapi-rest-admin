@@ -1,5 +1,10 @@
 import React from 'react';
-import { Card, Typography, Descriptions, Tooltip, Tag } from 'antd';
+import { Card, Typography, Descriptions, Tooltip, Tag, Button, Space, Drawer } from 'antd';
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useResourceDialogs } from '~/pages/api-explorer/hooks/useResourceDialogs';
+import { ResourceActionForm } from '~/pages/api-explorer/components/ResourceActionForm';
+import { ResourceDeleteConfirm } from '~/pages/api-explorer/components/ResourceDeleteConfirm';
+import type { ParsedResource } from '~/types/openapi';
 
 const { Text } = Typography;
 
@@ -10,9 +15,36 @@ interface ResourceItem {
 
 interface ResourceInfoCardProps {
   data: ResourceItem;
+  apiId?: string;
+  resource?: ParsedResource;
+  onDeleteSuccess?: () => void;
 }
 
-export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({ data }) => {
+export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({ data, apiId, resource, onDeleteSuccess }) => {
+  // 使用 useResourceDialogs hook 管理对话框状态 
+  const {
+    showActionForm,
+    currentAction,
+    selectedItem,
+    showDeleteConfirm,
+    itemToDelete,
+    handleEdit,
+    handleDelete,
+    handleFormSuccess,
+    handleDeleteSuccess,
+    closeActionForm,
+    closeDeleteConfirm,
+  } = useResourceDialogs(onDeleteSuccess);
+
+  // 编辑按钮点击处理
+  const handleEditClick = () => {
+    handleEdit(data);
+  };
+
+  // 删除按钮点击处理
+  const handleDeleteClick = () => {
+    handleDelete(data);
+  };
   const formatValue = (key: string, value: any) => {
     if (value === null || value === undefined) {
       return <Text type="secondary">-</Text>;
@@ -107,39 +139,70 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({ data }) => {
   };
 
   return (
-    <Card 
-      title={
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '12px',
-          padding: '8px 0'
-        }}>
-          <div style={{
-            width: '4px',
-            height: '24px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            borderRadius: '2px'
-          }} />
-          <Text style={{ fontSize: '18px', fontWeight: '600', color: '#262626' }}>
-            基本信息
-          </Text>
-        </div>
-      }
-      bordered={false}
-      style={{
-        marginBottom: '24px',
-        borderRadius: '12px',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.08)',
-        background: '#fff'
-      }}
-      headStyle={{
-        borderBottom: '1px solid #f0f0f0',
-        padding: '16px 24px'
-      }}
-      bodyStyle={{
-        padding: '24px'
-      }}
+    <>
+      <Card 
+        title={
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            alignItems: 'center', 
+            padding: '8px 0'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px'
+            }}>
+              <div style={{
+                width: '4px',
+                height: '24px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '2px'
+              }} />
+              <Text style={{ fontSize: '18px', fontWeight: '600', color: '#262626' }}>
+                基本信息
+              </Text>
+            </div>
+            <Space>
+              <Button 
+                type="text" 
+                icon={<EditOutlined />} 
+                onClick={handleEditClick}
+                style={{ 
+                  color: '#1890ff',
+                  border: 'none'
+                }}
+              >
+                编辑
+              </Button>
+              <Button 
+                type="text" 
+                danger 
+                icon={<DeleteOutlined />} 
+                onClick={handleDeleteClick}
+                style={{ 
+                  border: 'none'
+                }}
+              >
+                删除
+              </Button>
+            </Space>
+          </div>
+        }
+        bordered={false}
+        style={{
+          marginBottom: '24px',
+          borderRadius: '12px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.08)',
+          background: '#fff'
+        }}
+        headStyle={{
+          borderBottom: '1px solid #f0f0f0',
+          padding: '16px 24px'
+        }}
+        bodyStyle={{
+          padding: '24px'
+        }}
     >
       <Descriptions 
         bordered 
@@ -163,5 +226,42 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({ data }) => {
         {generateDescriptions()}
       </Descriptions>
     </Card>
+
+    {/* 编辑表单抽屉 */}
+    <Drawer
+      title={`编辑资源`}
+      placement="right"
+      open={showActionForm}
+      onClose={closeActionForm}
+      width={600}
+      destroyOnClose
+    >
+      {selectedItem && apiId && resource && (
+        <ResourceActionForm
+          apiId={apiId}
+          resource={resource}
+          action={currentAction}
+          initialData={selectedItem}
+          onSuccess={handleFormSuccess}
+          onCancel={closeActionForm}
+        />
+      )}
+    </Drawer>
+
+    {/* 删除确认对话框 */}
+    {apiId && resource && itemToDelete && (
+      <ResourceDeleteConfirm
+        apiId={apiId}
+        resource={resource}
+        item={itemToDelete}
+        open={showDeleteConfirm}
+        onSuccess={() => {
+          handleDeleteSuccess();
+          onDeleteSuccess?.();
+        }}
+        onCancel={closeDeleteConfirm}
+      />
+    )}
+  </>
   );
 };

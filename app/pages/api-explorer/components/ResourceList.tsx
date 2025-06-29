@@ -6,10 +6,9 @@ import {
   Space, 
   Button, 
   Input, 
-  message,
   Tag,
-  Modal,
-  Alert
+  Alert,
+  Drawer
 } from 'antd';
 import { useParams, Link } from 'react-router';
 import { 
@@ -22,16 +21,17 @@ import {
   FilterOutlined,
   ReloadOutlined
 } from '@ant-design/icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { frontendAPIService } from '../services';
 import { JsonViewer } from '~/components/shared/JsonViewer';
 import { ResourceBreadcrumb } from '~/components/shared/ResourceBreadcrumb';
 import { parseResourcePath, buildDetailLink } from '~/utils/resourceRouting';
 import { resourceManager } from '~/services';
 import { generateTableColumnsFromFields } from '~/utils/tableUtils';
 import { useServiceData, useResourceData } from '~/hooks/useAPIData';
+import { useResourceDialogs } from '../hooks/useResourceDialogs';
 import type { ResourceDataItem, FieldDefinition } from '~/types/api';
 import { capitalizeFirst } from '~/components';
+import ResourceActionForm, { type ActionType } from './ResourceActionForm';
+import ResourceDeleteConfirm from './ResourceDeleteConfirm';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -44,7 +44,6 @@ interface ResourceListProps {
 
 export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId, nestedPath }) => {
   const params = useParams<{ sName: string; rName: string }>();
-  const queryClient = useQueryClient();
   
   // 优先使用 props，如果没有则使用路由参数
   const sName = apiId || params.sName;
@@ -75,34 +74,26 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId, n
     refetch 
   } = useResourceData(sName, currentResourceName, currentPage, pageSize, searchQuery, nestedPath);
 
-  // 删除资源项 - 暂时禁用，应通过后端API实现
-  const deleteMutation = useMutation({
-    mutationFn: (itemId: string | number) => {
-      // TODO: 实现通过后端API删除资源
-      return Promise.reject(new Error('Delete operation not implemented for frontend'));
-    },
-    onSuccess: () => {
-      message.success('删除成功');
-      queryClient.invalidateQueries({ queryKey: ['resourceData', sName, currentResourceName] });
-    },
-    onError: () => {
-      message.error('删除失败');
-    },
-  });
+  // 使用自定义 Hook 管理对话框状态
+  const {
+    showActionForm,
+    currentAction,
+    selectedItem,
+    showDeleteConfirm,
+    itemToDelete,
+    handleAdd,
+    handleEdit,
+    handleDelete,
+    handleFormSuccess,
+    handleDeleteSuccess,
+    closeActionForm,
+    closeDeleteConfirm,
+  } = useResourceDialogs(refetch);
 
-  // 处理搜索
+  // 搜索处理
   const handleSearch = (value: string) => {
     setSearchQuery(value);
     setCurrentPage(1);
-  };
-
-  // 处理删除
-  const handleDelete = (item: ResourceDataItem) => {
-    Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除这个 ${resource?.name} 吗？`,
-      onOk: () => deleteMutation.mutate(item.id),
-    });
   };
 
   // 使用工具函数生成详情页面链接
@@ -118,7 +109,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId, n
       showActions: true,
       actionHandlers: {
         onDetail: (record: ResourceDataItem) => generateDetailLink(record.id),
-        onEdit: (record: ResourceDataItem) => generateDetailLink(record.id),
+        onEdit: (record: ResourceDataItem) => handleEdit(record),
         onDelete: handleDelete,
       }
     });
@@ -238,7 +229,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId, n
             </Button>
           </Space>
           <Space>
-            <Button type="primary" icon={<PlusOutlined />}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
               添加新项
             </Button>
           </Space>
@@ -264,6 +255,42 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId, n
           scroll={{ x: true }}
         />
       </Card>
+
+      {/* 资源操作表单 */}
+      <Drawer
+        title={`${currentAction === 'create' ? '添加' : '编辑'}资源`}
+        placement="right"
+        size="large"
+        open={showActionForm}
+        onClose={closeActionForm}
+        destroyOnClose
+        styles={{
+          body: { padding: 0 }
+        }}
+      >
+        {resource && sName && (
+          <ResourceActionForm
+            apiId={sName}
+            resource={resource}
+            action={currentAction}
+            initialData={selectedItem}
+            onSuccess={handleFormSuccess}
+            onCancel={closeActionForm}
+          />
+        )}
+      </Drawer>
+
+      {/* 删除确认对话框 */}
+      {resource && itemToDelete && sName && (
+        <ResourceDeleteConfirm
+          apiId={sName}
+          resource={resource}
+          item={itemToDelete}
+          open={showDeleteConfirm}
+          onSuccess={handleDeleteSuccess}
+          onCancel={closeDeleteConfirm}
+        />
+      )}
     </div>
   );
 };

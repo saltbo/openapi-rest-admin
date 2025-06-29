@@ -13,7 +13,7 @@ export interface TableColumnConfig {
   showActions?: boolean;
   actionHandlers?: {
     onDetail?: (record: any) => string; // 返回详情页链接
-    onEdit?: (record: any) => string;   // 返回编辑页链接
+    onEdit?: (record: any) => string | void;   // 返回编辑页链接或执行编辑函数
     onDelete?: (record: any) => void;   // 删除处理函数
   };
   columnWidthCalculator?: (fieldName: string, data: any[]) => number;
@@ -118,11 +118,20 @@ export function generateTableColumnsFromFields(config: TableColumnConfig) {
             </Link>
           )}
           {actionHandlers.onEdit && (
-            <Link to={actionHandlers.onEdit(record)}>
-              <Button type="link" size="small" icon={<EditOutlined />}>
-                编辑
-              </Button>
-            </Link>
+            <Button 
+              type="link" 
+              size="small" 
+              icon={<EditOutlined />}
+              onClick={() => {
+                const editResult = actionHandlers.onEdit!(record);
+                if (typeof editResult === 'string') {
+                  // 如果返回字符串，应该是链接，这里可以用编程方式导航
+                  window.location.href = editResult;
+                }
+              }}
+            >
+              编辑
+            </Button>
           )}
           {actionHandlers.onDelete && (
             <Button 
@@ -173,33 +182,91 @@ export function generateTableColumnsFromData(config: TableColumnConfig) {
   }));
 
   // 添加操作列
-  if (showActions && actionHandlers.onDetail) {
-    columns.push({
-      title: '操作',
-      key: 'action',
-      width: 100,
-      render: (_: any, record: any) => (
-        <Space size="small">
-          <Button 
-            type="primary" 
-            size="small" 
-            icon={<EyeOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (actionHandlers.onDetail) {
-                actionHandlers.onDetail(record);
-              }
-            }}
-            style={{
-              borderRadius: '6px',
-              fontWeight: '500'
-            }}
-          >
-            查看
-          </Button>
-        </Space>
-      ),
-    } as any);
+  if (showActions) {
+    const hasAnyAction = actionHandlers.onDetail || actionHandlers.onEdit || actionHandlers.onDelete;
+    
+    if (hasAnyAction) {
+      columns.push({
+        title: '操作',
+        key: 'action',
+        width: 180, // 固定宽度，足够容纳三个按钮
+        render: (_: any, record: any) => {
+          const actions: React.ReactNode[] = [];
+          
+          // 查看详情按钮
+          if (actionHandlers.onDetail) {
+            actions.push(
+              <Button 
+                key="detail"
+                type="primary" 
+                size="small" 
+                icon={<EyeOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  actionHandlers.onDetail!(record);
+                }}
+                style={{
+                  borderRadius: '6px',
+                  fontWeight: '500'
+                }}
+              >
+                查看
+              </Button>
+            );
+          }
+          
+          // 编辑按钮
+          if (actionHandlers.onEdit) {
+            actions.push(
+              <Button 
+                key="edit"
+                type="default" 
+                size="small" 
+                icon={<EditOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  actionHandlers.onEdit!(record);
+                }}
+                style={{
+                  borderRadius: '6px',
+                  fontWeight: '500'
+                }}
+              >
+                编辑
+              </Button>
+            );
+          }
+          
+          // 删除按钮
+          if (actionHandlers.onDelete) {
+            actions.push(
+              <Button 
+                key="delete"
+                danger 
+                size="small" 
+                icon={<DeleteOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  actionHandlers.onDelete!(record);
+                }}
+                style={{
+                  borderRadius: '6px',
+                  fontWeight: '500'
+                }}
+              >
+                删除
+              </Button>
+            );
+          }
+
+          return (
+            <Space size="small">
+              {actions}
+            </Space>
+          );
+        },
+      } as any);
+    }
   }
 
   return columns;
