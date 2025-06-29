@@ -34,6 +34,16 @@ export interface FieldDefinition {
   items?: FieldDefinition; // for array type
   properties?: Record<string, FieldDefinition>; // for object type
   example?: any;
+  // OpenAPI validation constraints
+  minimum?: number;
+  maximum?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+  multipleOf?: number;
 }
 
 // 参数定义

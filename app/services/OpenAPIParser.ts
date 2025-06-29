@@ -17,6 +17,7 @@ import type {
   FieldDefinition,
   OperationInfo,
   FieldType,
+  Parameter,
 } from "~/types/openapi";
 
 export interface ParsedPath {
@@ -47,6 +48,26 @@ export class OpenAPIParser {
   };
 
   /**
+   * Extract resource chain from path
+   * e.g., "/users/{id}/posts/{postId}/comments" -> ["users", "posts", "comments"]
+   */
+  private static extractResourceChain(path: string): string[] {
+    // Remove parameters and split into segments
+    const cleanPath = path.replace(/[{:][^}/:]+[}]?/g, '');
+    const segments = cleanPath.split('/').filter(Boolean);
+    
+    if (segments.length === 0) return [];
+    
+    // Filter out common action segments that aren't resources
+    const actionSegments = new Set([
+      'actions', 'action', 'status', 'health', 'metrics', 'search',
+      'login', 'logout', 'refresh', 'validate', 'verify'
+    ]);
+    
+    return segments.filter(segment => !actionSegments.has(segment.toLowerCase()));
+  }
+
+  /**
    * Parse an OpenAPI document from URL or object
    */
   static async parseDocument(
@@ -71,6 +92,11 @@ export class OpenAPIParser {
    */
   static parseSpec(spec: OpenAPISpec, options: ParseOptions = {}): OpenAPIAnalysis {
     const opts = { ...this.DEFAULT_OPTIONS, ...options };
+    
+    // Validate specification structure
+    if (!this.validateOpenAPISpec(spec)) {
+      throw new Error('Invalid OpenAPI specification structure');
+    }
     
     const baseInfo = this.extractBaseInfo(spec);
     const parsedPaths = this.parsePaths(spec, opts);
@@ -263,23 +289,30 @@ export class OpenAPIParser {
   }
 
   /**
-   * Extract resource chain from path
-   * e.g., "/users/{id}/posts/{postId}/comments" -> ["users", "posts", "comments"]
+   * Detect OpenAPI version from spec
    */
-  private static extractResourceChain(path: string): string[] {
-    // Remove parameters and split into segments
-    const cleanPath = path.replace(/[{:][^}/:]+[}]?/g, '');
-    const segments = cleanPath.split('/').filter(Boolean);
+  private static getOpenAPIVersion(spec: OpenAPISpec): 'v2' | 'v3' {
+    if (spec.openapi) {
+      return 'v3'; // OpenAPI 3.x
+    } else if (spec.swagger) {
+      return 'v2'; // Swagger 2.0
+    }
     
-    if (segments.length === 0) return [];
+    // Default to v3 if unclear
+    return 'v3';
+  }
+
+  /**
+   * Get schemas location based on OpenAPI version
+   */
+  private static getSchemasFromSpec(spec: OpenAPISpec): Record<string, any> {
+    const version = this.getOpenAPIVersion(spec);
     
-    // Filter out common action segments that aren't resources
-    const actionSegments = new Set([
-      'actions', 'action', 'status', 'health', 'metrics', 'search',
-      'login', 'logout', 'refresh', 'validate', 'verify'
-    ]);
-    
-    return segments.filter(segment => !actionSegments.has(segment.toLowerCase()));
+    if (version === 'v3') {
+      return spec.components?.schemas || {};
+    } else {
+      return spec.definitions || {};
+    }
   }
 
   /**
@@ -296,11 +329,27 @@ export class OpenAPIParser {
           operationId: operation.operationId,
           summary: operation.summary,
           description: operation.description,
-          parameters: operation.parameters || [],
-          requestBody: operation.requestBody,
+          parameters: this.normalizeParameters(operation.parameters || []),
+          requestBody: operation.requestBody, // OpenAPI 3.x style
           responses: operation.responses || {},
           tags: operation.tags || [],
         };
+        
+        // Handle Swagger 2.0 body parameters
+        if (operation.parameters) {
+          const bodyParam = operation.parameters.find((param: any) => param.in === 'body');
+          if (bodyParam && !operations[method].requestBody) {
+            operations[method].requestBody = {
+              description: bodyParam.description,
+              required: bodyParam.required,
+              content: {
+                'application/json': {
+                  schema: bodyParam.schema
+                }
+              }
+            };
+          }
+        }
       }
     });
     
@@ -308,46 +357,118 @@ export class OpenAPIParser {
   }
 
   /**
-   * Extract schemas from path operations
+   * Normalize parameters to consistent format
+   */
+  private static normalizeParameters(parameters: any[]): Parameter[] {
+    return parameters
+      .filter(param => param.in !== 'body') // Body params handled separately
+      .map(param => ({
+        name: param.name,
+        in: param.in,
+        description: param.description,
+        required: param.required || false,
+        schema: param.schema || {
+          type: param.type,
+          format: param.format,
+          enum: param.enum,
+          items: param.items,
+        }
+      }));
+  }
+
+  /**
+   * Extract schemas from path operations according to OpenAPI specification
    */
   private static extractSchemasFromPath(pathItem: any, spec: OpenAPISpec): FieldDefinition[] {
     const schemas: FieldDefinition[] = [];
     const processedSchemas = new Set<string>();
     
-    const httpMethods = ['get', 'post', 'put', 'patch', 'delete'];
+    const httpMethods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
     
     httpMethods.forEach(method => {
       const operation = pathItem[method];
       if (!operation) return;
       
-      // Extract from responses
+      // Extract from responses according to OpenAPI spec
       Object.values(operation.responses || {}).forEach((response: any) => {
-        if (response.content) {
-          Object.values(response.content).forEach((content: any) => {
-            if (content.schema) {
-              const extracted = this.extractFieldsFromSchema(content.schema, spec);
-              extracted.forEach(field => {
-                if (!processedSchemas.has(field.name)) {
-                  schemas.push(field);
-                  processedSchemas.add(field.name);
-                }
-              });
-            }
-          });
-        }
-      });
-      
-      // Extract from request body
-      if (operation.requestBody?.content) {
-        Object.values(operation.requestBody.content).forEach((content: any) => {
-          if (content.schema) {
-            const extracted = this.extractFieldsFromSchema(content.schema, spec);
+        const version = this.getOpenAPIVersion(spec);
+        const content = this.normalizeResponseContent(response, version);
+        
+        if (content) {
+          const mediaSchemas = this.extractMediaTypeSchemas(content);
+          mediaSchemas.forEach(responseSchema => {
+            const extracted = this.extractFieldsFromSchema(responseSchema, spec);
             extracted.forEach(field => {
               if (!processedSchemas.has(field.name)) {
                 schemas.push(field);
                 processedSchemas.add(field.name);
               }
             });
+          });
+        }
+      });
+      
+      // Extract from request body according to OpenAPI spec
+      let requestBodySchema = null;
+      
+      // OpenAPI 3.x format
+      if (operation.requestBody?.content) {
+        Object.values(operation.requestBody.content).forEach((content: any) => {
+          if (content.schema) {
+            requestBodySchema = content.schema;
+          }
+        });
+      }
+      // Swagger 2.0 format - parameters with 'in: body'
+      else if (operation.parameters) {
+        const bodyParam = operation.parameters.find((param: any) => param.in === 'body');
+        if (bodyParam?.schema) {
+          requestBodySchema = bodyParam.schema;
+        }
+      }
+      
+      if (requestBodySchema) {
+        const extracted = this.extractFieldsFromSchema(requestBodySchema, spec);
+        extracted.forEach(field => {
+          if (!processedSchemas.has(field.name)) {
+            schemas.push(field);
+            processedSchemas.add(field.name);
+          }
+        });
+      }
+      
+      // Extract from parameters according to OpenAPI spec
+      if (operation.parameters) {
+        operation.parameters.forEach((param: any) => {
+          if (param.in !== 'body') { // Skip body parameters (handled above)
+            let paramSchema = null;
+            
+            // OpenAPI 3.x format
+            if (param.schema) {
+              paramSchema = param.schema;
+            }
+            // Swagger 2.0 format
+            else {
+              paramSchema = {
+                type: param.type,
+                format: param.format,
+                enum: param.enum,
+                items: param.items
+              };
+            }
+            
+            if (paramSchema && param.name) {
+              const field = this.createFieldDefinition(
+                param.name,
+                paramSchema,
+                param.required ? [param.name] : [],
+                spec
+              );
+              if (!processedSchemas.has(field.name)) {
+                schemas.push(field);
+                processedSchemas.add(field.name);
+              }
+            }
           }
         });
       }
@@ -357,7 +478,7 @@ export class OpenAPIParser {
   }
 
   /**
-   * Extract fields from schema object
+   * Extract fields from schema object according to OpenAPI specification
    */
   private static extractFieldsFromSchema(
     schema: any,
@@ -368,7 +489,7 @@ export class OpenAPIParser {
     
     if (!schema) return fields;
     
-    // Handle references
+    // Handle references according to OpenAPI spec
     if (schema.$ref) {
       const resolvedSchema = this.resolveReference(schema.$ref, spec);
       if (resolvedSchema) {
@@ -376,17 +497,31 @@ export class OpenAPIParser {
       }
     }
     
-    // Handle object type
+    // Handle allOf, oneOf, anyOf according to OpenAPI spec
+    if (schema.allOf) {
+      schema.allOf.forEach((subSchema: any) => {
+        const subFields = this.extractFieldsFromSchema(subSchema, spec, required);
+        subFields.forEach(field => {
+          if (!fields.find(f => f.name === field.name)) {
+            fields.push(field);
+          }
+        });
+      });
+      return fields;
+    }
+    
+    if (schema.oneOf || schema.anyOf) {
+      const schemas = schema.oneOf || schema.anyOf;
+      // For oneOf/anyOf, we'll extract fields from the first schema
+      // In a real implementation, you might want to handle this differently
+      if (schemas.length > 0) {
+        return this.extractFieldsFromSchema(schemas[0], spec, required);
+      }
+    }
+    
+    // Handle object type according to OpenAPI spec
     if (schema.type === 'object' && schema.properties) {
       const requiredFields = schema.required || required;
-      
-      // Special handling for paginated responses
-      if (this.isPaginatedResponse(schema)) {
-        const dataSchema = schema.properties.data;
-        if (dataSchema?.items) {
-          return this.extractFieldsFromSchema(dataSchema.items, spec, required);
-        }
-      }
       
       Object.entries(schema.properties).forEach(([fieldName, fieldSchema]: [string, any]) => {
         const field = this.createFieldDefinition(fieldName, fieldSchema, requiredFields, spec);
@@ -394,11 +529,16 @@ export class OpenAPIParser {
       });
     }
     
+    // Handle array type
+    if (schema.type === 'array' && schema.items) {
+      return this.extractFieldsFromSchema(schema.items, spec, required);
+    }
+    
     return fields;
   }
 
   /**
-   * Create field definition from schema
+   * Create field definition from schema according to OpenAPI specification
    */
   private static createFieldDefinition(
     name: string,
@@ -415,22 +555,33 @@ export class OpenAPIParser {
       example: schema.example,
     };
     
-    // Handle enum
+    // Handle enum according to OpenAPI spec
     if (schema.enum) {
       field.enum = schema.enum;
     }
     
-    // Handle array items
+    // Handle array items according to OpenAPI spec
     if (schema.type === 'array' && schema.items) {
       field.items = {
         name: 'item',
         type: this.mapSchemaTypeToFieldType(schema.items),
         required: false,
+        format: schema.items.format,
+        description: schema.items.description,
       };
+      
+      // Handle nested object in array items
+      if (schema.items.type === 'object' && schema.items.properties) {
+        field.items.properties = {};
+        const nestedFields = this.extractFieldsFromSchema(schema.items, spec);
+        nestedFields.forEach(nestedField => {
+          field.items!.properties![nestedField.name] = nestedField;
+        });
+      }
     }
     
-    // Handle nested objects
-    if (schema.type === 'object' && schema.properties) {
+    // Handle nested objects according to OpenAPI spec
+    if ((schema.type === 'object' || (!schema.type && schema.properties)) && schema.properties) {
       field.properties = {};
       const nestedFields = this.extractFieldsFromSchema(schema, spec);
       nestedFields.forEach(nestedField => {
@@ -438,24 +589,45 @@ export class OpenAPIParser {
       });
     }
     
+    // Handle $ref in field
+    if (schema.$ref) {
+      const resolvedSchema = this.resolveReference(schema.$ref, spec);
+      if (resolvedSchema) {
+        // Merge resolved schema properties
+        if (resolvedSchema.properties) {
+          field.properties = {};
+          const nestedFields = this.extractFieldsFromSchema(resolvedSchema, spec);
+          nestedFields.forEach(nestedField => {
+            field.properties![nestedField.name] = nestedField;
+          });
+        }
+      }
+    }
+    
+    // Handle constraints according to OpenAPI spec
+    if (schema.minimum !== undefined) field.minimum = schema.minimum;
+    if (schema.maximum !== undefined) field.maximum = schema.maximum;
+    if (schema.minLength !== undefined) field.minLength = schema.minLength;
+    if (schema.maxLength !== undefined) field.maxLength = schema.maxLength;
+    if (schema.pattern !== undefined) field.pattern = schema.pattern;
+    if (schema.minItems !== undefined) field.minItems = schema.minItems;
+    if (schema.maxItems !== undefined) field.maxItems = schema.maxItems;
+    if (schema.uniqueItems !== undefined) field.uniqueItems = schema.uniqueItems;
+    if (schema.multipleOf !== undefined) field.multipleOf = schema.multipleOf;
+    
     return field;
   }
 
   /**
-   * Check if schema represents a paginated response
-   */
-  private static isPaginatedResponse(schema: any): boolean {
-    return schema.properties?.data?.type === 'array' &&
-           (schema.properties?.total !== undefined ||
-            schema.properties?.page !== undefined ||
-            schema.properties?.pageSize !== undefined ||
-            schema.properties?.hasMore !== undefined);
-  }
-
-  /**
-   * Resolve schema reference
+   * Resolve schema reference according to OpenAPI specification
    */
   private static resolveReference(ref: string, spec: OpenAPISpec): any {
+    // Handle external references (not implemented in this basic version)
+    if (!ref.startsWith('#/')) {
+      console.warn(`External references not supported: ${ref}`);
+      return null;
+    }
+    
     const path = ref.replace('#/', '').split('/');
     let current: any = spec;
     
@@ -471,13 +643,23 @@ export class OpenAPIParser {
   }
 
   /**
-   * Map schema type to field type
+   * Map schema type to field type according to OpenAPI specification
    */
   private static mapSchemaTypeToFieldType(schema: any): FieldType {
     if (!schema) return 'string';
     
     const type = schema.type;
     const format = schema.format;
+    
+    // Handle schema without type but with properties (implicit object)
+    if (!type && schema.properties) {
+      return 'object';
+    }
+    
+    // Handle schema with $ref
+    if (schema.$ref) {
+      return 'object'; // Assume referenced schemas are objects
+    }
     
     switch (type) {
       case 'integer':
@@ -491,12 +673,30 @@ export class OpenAPIParser {
       case 'object':
         return 'object';
       case 'string':
-        if (format === 'date') return 'date';
-        if (format === 'date-time') return 'datetime';
-        if (format === 'email') return 'email';
-        if (format === 'uri' || format === 'url') return 'url';
-        return 'string';
+        // Handle string formats according to OpenAPI spec
+        switch (format) {
+          case 'date':
+            return 'date';
+          case 'date-time':
+            return 'datetime';
+          case 'email':
+            return 'email';
+          case 'uri':
+          case 'url':
+            return 'url';
+          case 'binary':
+          case 'byte':
+          case 'password':
+          default:
+            return 'string';
+        }
+      case 'null':
+        return 'string'; // Treat null as string for UI purposes
       default:
+        // Handle missing type - infer from other properties
+        if (schema.enum) return 'string';
+        if (schema.properties) return 'object';
+        if (schema.items) return 'array';
         return 'string';
     }
   }
@@ -558,16 +758,30 @@ export class OpenAPIParser {
   }
 
   /**
-   * Extract server URLs from OpenAPI spec
+   * Get parameter definition according to OpenAPI specification
    */
-  private static extractServers(spec: OpenAPISpec): string[] {
-    // OpenAPI 3.x
-    if (spec.servers?.length) {
-      return spec.servers.map(server => server.url);
+  private static getParameterDefinition(param: any, spec: OpenAPISpec): any {
+    // Handle parameter references
+    if (param.$ref) {
+      return this.resolveReference(param.$ref, spec);
     }
     
-    // Swagger 2.0
-    if (spec.swagger) {
+    return param;
+  }
+
+  /**
+   * Extract server URLs from OpenAPI spec according to specification
+   */
+  private static extractServers(spec: OpenAPISpec): string[] {
+    const version = this.getOpenAPIVersion(spec);
+    
+    if (version === 'v3') {
+      // OpenAPI 3.x
+      if (spec.servers?.length) {
+        return spec.servers.map(server => server.url);
+      }
+    } else {
+      // Swagger 2.0
       const swaggerSpec = spec as any;
       const host = swaggerSpec.host || 'localhost';
       const basePath = swaggerSpec.basePath || '';
@@ -647,6 +861,75 @@ export class OpenAPIParser {
       throw new Error(`Failed to fetch OpenAPI document: ${response.statusText}`);
     }
     return response.json();
+  }
+
+  /**
+   * Validate OpenAPI specification structure
+   */
+  private static validateOpenAPISpec(spec: OpenAPISpec): boolean {
+    // Basic structure validation
+    if (!spec.info || !spec.info.title || !spec.info.version) {
+      console.warn('Invalid OpenAPI spec: missing required info fields');
+      return false;
+    }
+    
+    if (!spec.paths || typeof spec.paths !== 'object') {
+      console.warn('Invalid OpenAPI spec: missing or invalid paths');
+      return false;
+    }
+    
+    // Version-specific validation
+    const version = this.getOpenAPIVersion(spec);
+    if (version === 'v3' && !spec.openapi) {
+      console.warn('Invalid OpenAPI 3.x spec: missing openapi field');
+      return false;
+    }
+    
+    if (version === 'v2' && !spec.swagger) {
+      console.warn('Invalid Swagger 2.0 spec: missing swagger field');
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Normalize response content according to OpenAPI specification
+   */
+  private static normalizeResponseContent(response: any, version: 'v2' | 'v3'): any {
+    if (version === 'v3') {
+      // OpenAPI 3.x format - response.content
+      return response.content;
+    } else {
+      // Swagger 2.0 format - response.schema
+      if (response.schema) {
+        return {
+          'application/json': {
+            schema: response.schema
+          }
+        };
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Extract media type schemas according to OpenAPI specification
+   */
+  private static extractMediaTypeSchemas(content: any): any[] {
+    if (!content || typeof content !== 'object') {
+      return [];
+    }
+    
+    const schemas: any[] = [];
+    Object.entries(content).forEach(([mediaType, mediaContent]: [string, any]) => {
+      if (mediaContent.schema) {
+        schemas.push(mediaContent.schema);
+      }
+    });
+    
+    return schemas;
   }
 }
 

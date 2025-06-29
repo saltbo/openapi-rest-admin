@@ -387,10 +387,7 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
   // 获取表单字段
   const getFormFields = () => {
     if (!resource.schema || resource.schema.length === 0) {
-      return [
-        { name: 'name', type: 'string' as const, required: true, description: '名称' },
-        { name: 'description', type: 'string' as const, required: false, description: '描述' }
-      ];
+      return null; // 没有schema就返回null
     }
     
     // 创建时过滤掉ID和时间戳字段
@@ -407,6 +404,50 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
   };
 
   const formFields = getFormFields();
+
+  // 如果没有schema，显示错误信息
+  if (!formFields) {
+    return (
+      <div style={{ 
+        padding: '24px', 
+        backgroundColor: '#fafafa',
+        minHeight: '100%'
+      }}>
+        <div style={{ 
+          backgroundColor: 'white', 
+          padding: '48px 24px', 
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          textAlign: 'center'
+        }}>
+          <div style={{ marginBottom: '24px' }}>
+            <QuestionCircleOutlined 
+              style={{ 
+                fontSize: '48px', 
+                color: '#faad14',
+                marginBottom: '16px'
+              }} 
+            />
+            <Title level={3} style={{ marginBottom: '8px', color: '#595959' }}>
+              缺少资源Schema
+            </Title>
+            <Text type="secondary" style={{ fontSize: '16px' }}>
+              当前资源 "{resource.name}" 没有定义Schema结构，无法生成表单
+            </Text>
+          </div>
+          <Space size="middle">
+            <Button 
+              size="large" 
+              onClick={onCancel}
+              style={{ minWidth: '120px' }}
+            >
+              返回列表
+            </Button>
+          </Space>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ 
@@ -429,13 +470,13 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
           marginBottom: '24px'
         }}>
           <Row gutter={[24, 16]}>
-            {formFields.map((field) => (
+            {formFields!.map((field) => (
               <Col 
                 key={field.name} 
                 xs={24} 
                 sm={24} 
-                md={formFields.length > 4 ? 12 : 24}
-                lg={formFields.length > 6 ? 8 : formFields.length > 2 ? 12 : 24}
+                md={formFields!.length > 4 ? 12 : 24}
+                lg={formFields!.length > 6 ? 8 : formFields!.length > 2 ? 12 : 24}
               >
                 {renderFormItem(field)}
               </Col>
