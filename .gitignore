@@ -54,6 +54,4 @@ coverage/
 tmp/
 temp/
 
-# Legacy backend build
-backend/
 /generated/prisma

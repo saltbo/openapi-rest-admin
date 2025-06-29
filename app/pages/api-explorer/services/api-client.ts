@@ -1,13 +1,13 @@
 import type { APIConfig, OpenAPIAnalysis, ResourceDataItem, APIResponse, ParsedResource } from '~/types/api';
+import { apiConfigClient } from '~/lib/client';
 import { openAPIParser, mockDataService } from './';
 
 /**
  * 前端 API 客户端
- * 通过 HTTP 请求与后端 API 通信，不直接访问数据库
+ * 专注于业务逻辑处理，通过 apiConfigClient 与后端通信
  */
 class FrontendAPIService {
   private analysisCache = new Map<string, OpenAPIAnalysis>();
-  private baseUrl = '';
 
   /**
    * 递归查找资源（包括嵌套资源）
@@ -29,46 +29,7 @@ class FrontendAPIService {
     return null;
   }
 
-  /**
-   * 获取所有启用的 API 配置
-   */
-  async getAPIConfigs(): Promise<APIResponse<APIConfig[]>> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/configs?enabled=true`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      const configs = await response.json();
-      return {
-        data: configs,
-        success: true
-      };
-    } catch (error) {
-      throw new Error(`Failed to fetch API configurations: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
 
-  /**
-   * 获取单个 API 配置
-   */
-  async getAPIConfig(id: string): Promise<APIResponse<APIConfig>> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/configs/${id}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error(`API configuration '${id}' not found`);
-        }
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      const config = await response.json();
-      return {
-        data: config,
-        success: true
-      };
-    } catch (error) {
-      throw new Error(`Failed to fetch API configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
 
   /**
    * 分析 OpenAPI 文档并缓存结果
@@ -82,10 +43,12 @@ class FrontendAPIService {
 
     try {
       // 获取 API 配置
-      const configResponse = await this.getAPIConfig(apiId);
-      const config = configResponse.data;
+      console.log(`[analyzeOpenAPI] 获取 API 配置: ${apiId}`);
+      const config = await apiConfigClient.getConfig(apiId);
+      console.log(`[analyzeOpenAPI] API 配置:`, config);
 
       // 解析 OpenAPI 文档
+      console.log(`[analyzeOpenAPI] 开始解析 OpenAPI 文档: ${config.openapi_url}`);
       const analysis = await openAPIParser.parseOpenAPI(apiId, config.openapi_url);
       
       // 缓存结果

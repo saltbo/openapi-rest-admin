@@ -30,39 +30,104 @@ import {
   StopOutlined,
   DatabaseOutlined
 } from '@ant-design/icons';
-import { useLoaderData, useActionData, useSubmit, useNavigation } from 'react-router';
-import type { APIConfigModel, CreateAPIConfigInput, UpdateAPIConfigInput } from '~/types/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiConfigClient } from '~/lib/client';
+import type { APIConfig, CreateAPIConfigInput, UpdateAPIConfigInput } from '~/types/api';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 export default function APIConfigList() {
-  const { configs, stats } = useLoaderData() as { configs: APIConfigModel[], stats: any };
-  const actionData = useActionData() as { success?: boolean, error?: string, message?: string } | undefined;
-  const submit = useSubmit();
-  const navigation = useNavigation();
+  const queryClient = useQueryClient();
+  
+  // 使用 React Query 获取数据
+  const { data: configs = [], isLoading: configsLoading } = useQuery({
+    queryKey: ['admin-configs'],
+    queryFn: () => apiConfigClient.getConfigs(),
+  });
+
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: () => apiConfigClient.getStats(),
+  });
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingConfig, setEditingConfig] = useState<APIConfigModel | null>(null);
+  const [editingConfig, setEditingConfig] = useState<APIConfig | null>(null);
   const [form] = Form.useForm();
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [detailConfig, setDetailConfig] = useState<APIConfigModel | null>(null);
+  const [detailConfig, setDetailConfig] = useState<APIConfig | null>(null);
 
-  const isLoading = navigation.state === 'submitting' || navigation.state === 'loading';
+  const isLoading = configsLoading || statsLoading;
 
-  // 显示操作结果消息
-  React.useEffect(() => {
-    if (actionData?.success) {
-      message.success(actionData.message);
+  // 为 stats 提供默认值
+  const safeStats = stats || {
+    total: 0,
+    enabled: 0,
+    disabled: 0
+  };
+
+  // 创建配置的 mutation
+  const createMutation = useMutation({
+    mutationFn: (data: CreateAPIConfigInput) => apiConfigClient.createConfig(data),
+    onSuccess: () => {
+      message.success('API 配置创建成功');
+      queryClient.invalidateQueries({ queryKey: ['admin-configs', 'admin-stats'] });
       setModalVisible(false);
       setEditingConfig(null);
       form.resetFields();
       setSelectedRowKeys([]);
-    } else if (actionData?.error) {
-      message.error(actionData.error);
-    }
-  }, [actionData]);
+    },
+    onError: (error: Error) => {
+      message.error(error.message || '创建失败');
+    },
+  });
+
+  // 更新配置的 mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateAPIConfigInput }) => 
+      apiConfigClient.updateConfig(id, data),
+    onSuccess: () => {
+      message.success('API 配置更新成功');
+      queryClient.invalidateQueries({ queryKey: ['admin-configs', 'admin-stats'] });
+      setModalVisible(false);
+      setEditingConfig(null);
+      form.resetFields();
+    },
+    onError: (error: Error) => {
+      message.error(error.message || '更新失败');
+    },
+  });
+
+  // 删除配置的 mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiConfigClient.deleteConfig(id),
+    onSuccess: () => {
+      message.success('API 配置删除成功');
+      queryClient.invalidateQueries({ queryKey: ['admin-configs', 'admin-stats'] });
+    },
+    onError: (error: Error) => {
+      message.error(error.message || '删除失败');
+    },
+  });
+
+  // 批量更新状态的 mutation
+  const batchUpdateMutation = useMutation<
+    { updatedCount: number }, 
+    Error, 
+    { ids: string[]; enabled: boolean }
+  >({
+    mutationFn: ({ ids, enabled }) => 
+      apiConfigClient.batchUpdateStatus(ids, enabled),
+    onSuccess: (result, { enabled }) => {
+      message.success(`成功${enabled ? '启用' : '禁用'} ${result.updatedCount} 个配置`);
+      queryClient.invalidateQueries({ queryKey: ['admin-configs', 'admin-stats'] });
+      setSelectedRowKeys([]);
+    },
+    onError: (error: Error) => {
+      message.error(error.message || '批量操作失败');
+    },
+  });
 
   // 处理新增配置
   const handleAdd = () => {
@@ -72,21 +137,14 @@ export default function APIConfigList() {
   };
 
   // 处理编辑配置
-  const handleEdit = (config: APIConfigModel) => {
+  const handleEdit = (config: APIConfig) => {
     setEditingConfig(config);
-    // 处理 tags 字段 - 在数据库中可能是 JSON 字符串或 null
-    let tagsString = '';
-    if (config.tags) {
-      try {
-        const tagsArray = JSON.parse(config.tags);
-        tagsString = Array.isArray(tagsArray) ? tagsArray.join(', ') : '';
-      } catch {
-        tagsString = '';
-      }
-    }
+    // 处理 tags 字段 - 在 APIConfig 中是字符串数组
+    const tagsString = config.tags ? config.tags.join(', ') : '';
     
     form.setFieldsValue({
       ...config,
+      openapiUrl: config.openapi_url, // 字段名转换
       tags: tagsString
     });
     setModalVisible(true);
@@ -94,19 +152,12 @@ export default function APIConfigList() {
 
   // 处理删除配置
   const handleDelete = (id: string) => {
-    const formData = new FormData();
-    formData.append('intent', 'delete');
-    formData.append('id', id);
-    submit(formData, { method: 'post' });
+    deleteMutation.mutate(id);
   };
 
   // 处理状态切换
   const handleToggleStatus = (id: string, enabled: boolean) => {
-    const formData = new FormData();
-    formData.append('intent', 'toggleStatus');
-    formData.append('id', id);
-    formData.append('enabled', enabled.toString());
-    submit(formData, { method: 'post' });
+    updateMutation.mutate({ id, data: { enabled } });
   };
 
   // 处理批量状态切换
@@ -116,36 +167,36 @@ export default function APIConfigList() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('intent', 'batchToggle');
-    formData.append('ids', selectedRowKeys.join(','));
-    formData.append('enabled', enabled.toString());
-    submit(formData, { method: 'post' });
+    batchUpdateMutation.mutate({ ids: selectedRowKeys, enabled });
   };
 
   // 处理表单提交
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      const formData = new FormData();
       
-      formData.append('intent', editingConfig ? 'update' : 'create');
-      formData.append('id', values.id);
-      formData.append('name', values.name);
-      formData.append('description', values.description || '');
-      formData.append('openapiUrl', values.openapiUrl);
-      formData.append('enabled', values.enabled?.toString() || 'true');
-      formData.append('tags', values.tags || '');
-      formData.append('version', values.version || '');
+      const data = {
+        id: values.id,
+        name: values.name,
+        description: values.description || '',
+        openapiUrl: values.openapiUrl,
+        enabled: values.enabled ?? true,
+        tags: values.tags ? values.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : undefined,
+        version: values.version || undefined
+      };
 
-      submit(formData, { method: 'post' });
+      if (editingConfig) {
+        updateMutation.mutate({ id: editingConfig.id, data });
+      } else {
+        createMutation.mutate(data);
+      }
     } catch (error) {
       console.error('表单验证失败:', error);
     }
   };
 
   // 查看配置详情
-  const handleViewDetail = (config: APIConfigModel) => {
+  const handleViewDetail = (config: APIConfig) => {
     setDetailConfig(config);
     setDetailModalVisible(true);
   };
@@ -174,8 +225,8 @@ export default function APIConfigList() {
     },
     {
       title: 'OpenAPI URL',
-      dataIndex: 'openapiUrl',
-      key: 'openapiUrl',
+      dataIndex: 'openapi_url',
+      key: 'openapi_url',
       width: 200,
       ellipsis: true,
       render: (url: string) => (
@@ -191,7 +242,7 @@ export default function APIConfigList() {
       dataIndex: 'enabled',
       key: 'enabled',
       width: 100,
-      render: (enabled: boolean, record: APIConfigModel) => (
+      render: (enabled: boolean, record: APIConfig) => (
         <Switch
           checked={enabled}
           onChange={(checked) => handleToggleStatus(record.id, checked)}
@@ -206,18 +257,13 @@ export default function APIConfigList() {
       dataIndex: 'tags',
       key: 'tags',
       width: 150,
-      render: (tags: string | null) => {
-        if (!tags) return null;
-        try {
-          const tagsArray = JSON.parse(tags);
-          return Array.isArray(tagsArray) ? tagsArray.map((tag: string) => (
-            <Tag key={tag} color="blue">
-              {tag}
-            </Tag>
-          )) : null;
-        } catch {
-          return null;
-        }
+      render: (tags: string[] | undefined) => {
+        if (!tags || !Array.isArray(tags) || tags.length === 0) return null;
+        return tags.map((tag: string) => (
+          <Tag key={tag} color="blue">
+            {tag}
+          </Tag>
+        ));
       },
     },
     {
@@ -228,8 +274,8 @@ export default function APIConfigList() {
     },
     {
       title: '创建时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
+      dataIndex: 'created_at',
+      key: 'created_at',
       width: 160,
       render: (date: string) => new Date(date).toLocaleString(),
     },
@@ -238,7 +284,7 @@ export default function APIConfigList() {
       key: 'actions',
       width: 200,
       fixed: 'right' as const,
-      render: (_: any, record: APIConfigModel) => (
+      render: (_: any, record: APIConfig) => (
         <Space size="small">
           <Tooltip title="查看详情">
             <Button
@@ -290,7 +336,7 @@ export default function APIConfigList() {
           <Card>
             <Statistic
               title="总配置数"
-              value={stats.total}
+              value={safeStats.total}
               prefix={<DatabaseOutlined />}
             />
           </Card>
@@ -299,7 +345,7 @@ export default function APIConfigList() {
           <Card>
             <Statistic
               title="已启用"
-              value={stats.enabled}
+              value={safeStats.enabled}
               prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#3f8600' }}
             />
@@ -309,7 +355,7 @@ export default function APIConfigList() {
           <Card>
             <Statistic
               title="已禁用"
-              value={stats.disabled}
+              value={safeStats.disabled}
               prefix={<StopOutlined />}
               valueStyle={{ color: '#cf1322' }}
             />
@@ -318,8 +364,8 @@ export default function APIConfigList() {
         <Col span={6}>
           <Card>
             <Statistic
-              title="总标签数"
-              value={stats.totalTags}
+              title="API 类型"
+              value="REST"
               prefix={<ApiOutlined />}
             />
           </Card>
@@ -393,7 +439,7 @@ export default function APIConfigList() {
           form.resetFields();
         }}
         onOk={handleSubmit}
-        confirmLoading={isLoading}
+        confirmLoading={createMutation.isPending || updateMutation.isPending}
         width={600}
       >
         <Form
@@ -510,8 +556,8 @@ export default function APIConfigList() {
 
               <Col span={8}><Text strong>OpenAPI URL:</Text></Col>
               <Col span={16}>
-                <a href={detailConfig.openapiUrl} target="_blank" rel="noopener noreferrer">
-                  {detailConfig.openapiUrl}
+                <a href={detailConfig.openapi_url} target="_blank" rel="noopener noreferrer">
+                  {detailConfig.openapi_url}
                 </a>
               </Col>
 
@@ -527,25 +573,18 @@ export default function APIConfigList() {
 
               <Col span={8}><Text strong>标签:</Text></Col>
               <Col span={16}>
-                {detailConfig.tags ? (() => {
-                  try {
-                    const tagsArray = JSON.parse(detailConfig.tags);
-                    return Array.isArray(tagsArray) && tagsArray.length > 0 ? (
-                      tagsArray.map((tag: string) => (
-                        <Tag key={tag} color="blue">{tag}</Tag>
-                      ))
-                    ) : '-';
-                  } catch {
-                    return '-';
-                  }
-                })() : '-'}
+                {detailConfig.tags && Array.isArray(detailConfig.tags) && detailConfig.tags.length > 0 ? (
+                  detailConfig.tags.map((tag: string) => (
+                    <Tag key={tag} color="blue">{tag}</Tag>
+                  ))
+                ) : '-'}
               </Col>
 
               <Col span={8}><Text strong>创建时间:</Text></Col>
-              <Col span={16}>{new Date(detailConfig.createdAt).toLocaleString()}</Col>
+              <Col span={16}>{new Date(detailConfig.created_at).toLocaleString()}</Col>
 
               <Col span={8}><Text strong>更新时间:</Text></Col>
-              <Col span={16}>{new Date(detailConfig.updatedAt).toLocaleString()}</Col>
+              <Col span={16}>{new Date(detailConfig.updated_at).toLocaleString()}</Col>
             </Row>
           </div>
         )}

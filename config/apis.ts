@@ -18,7 +18,7 @@ export const API_CONFIGS: APIConfigItem[] = [
     id: 'multi-resources',
     name: 'Multi Resources API',
     description: 'This is a sample server Petstore server. You can find out more about Swagger at [http://swagger.io](http://swagger.io) or on [irc.freenode.net, #swagger](http://swagger.io/irc/).',
-    openapi_url: 'http://localhost:5173/multi-resources-api.json',
+    openapi_url: '/multi-resources-api.json',
     enabled: true,
     tags: ['demo', 'pets'],
     version: '1.0.6'
@@ -26,7 +26,7 @@ export const API_CONFIGS: APIConfigItem[] = [
     id: 'single-resource',
     name: 'Single Resource API',
     description: 'This is a sample server Petstore server. You can find out more about Swagger at [http://swagger.io](http://swagger.io) or on [irc.freenode.net, #swagger](http://swagger.io/irc/).',
-    openapi_url: 'http://localhost:5173/single-resource-api.json',
+    openapi_url: '/single-resource-api.json',
     enabled: true,
     tags: ['demo', 'pets'],
     version: '1.0.6'

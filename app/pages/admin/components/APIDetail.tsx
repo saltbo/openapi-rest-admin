@@ -23,6 +23,7 @@ import {
   EyeOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiConfigClient } from '~/lib/client';
 import { frontendAPIService } from '~/pages/api-explorer/services';
 import { JsonViewer } from '~/components/shared/JsonViewer';
 import type { ParsedResource, FieldDefinition } from '~/types/api';
@@ -37,7 +38,7 @@ export const APIDetail: React.FC = () => {
 
   const { data: apiConfig, isLoading: configLoading } = useQuery({
     queryKey: ['apiConfig', id],
-    queryFn: () => frontendAPIService.getAPIConfig(id!).then((res: any) => res.data),
+    queryFn: () => apiConfigClient.getConfig(id!),
     enabled: !!id,
   });
 

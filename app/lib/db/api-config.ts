@@ -185,6 +185,8 @@ export class APIConfigService {
       enabled: model.enabled,
       tags: model.tags ? JSON.parse(model.tags) : undefined,
       version: model.version || undefined,
+      created_at: model.createdAt.toISOString(),
+      updated_at: model.updatedAt.toISOString(),
     };
   }
 }

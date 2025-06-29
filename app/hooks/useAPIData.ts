@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { frontendAPIService } from '~/pages/api-explorer/services';
+import { apiConfigClient } from '~/lib/client';
 import type { OpenAPIAnalysis } from '~/types/api';
 
 /**
@@ -9,7 +10,7 @@ import type { OpenAPIAnalysis } from '~/types/api';
 export function useAPIConfig(serviceName: string | undefined) {
   return useQuery({
     queryKey: ['apiConfig', serviceName],
-    queryFn: () => frontendAPIService.getAPIConfig(serviceName!).then(res => res.data),
+    queryFn: () => apiConfigClient.getConfig(serviceName!),
     enabled: !!serviceName,
   });
 }
@@ -109,9 +110,9 @@ export function useResourceDetailData(
       }
       
       // 获取API配置
-      const apiConfigsResponse = await frontendAPIService.getAPIConfigs();
+      const apiConfigs = await apiConfigClient.getConfigs({ enabled: true });
       
-      const apiConfig = apiConfigsResponse.data.find((api: any) => 
+      const apiConfig = apiConfigs.find((api: any) => 
         api.name === serviceName || 
         api.id === serviceName ||
         api.name.toLowerCase().replace(/\s+/g, '-') === serviceName.toLowerCase() ||
