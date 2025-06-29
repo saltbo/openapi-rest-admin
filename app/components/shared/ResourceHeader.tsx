@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, Typography, Button, Space, Tag } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { ResourceHierarchy } from '../../utils/resourceRouting';
+import type { ResourceHierarchy } from '~/utils/resourceRouting';
 
 const { Title, Text } = Typography;
 

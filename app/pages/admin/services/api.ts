@@ -1,5 +1,5 @@
-import type { APIConfig, CreateAPIConfigInput, UpdateAPIConfigInput, APIResponse } from '../../../types/api';
-import { apiConfigService } from '../../../lib/db';
+import type { APIConfig, CreateAPIConfigInput, UpdateAPIConfigInput, APIResponse } from '~/types/api';
+import { apiConfigService } from '~/lib/db';
 
 /**
  * 后端 API 服务

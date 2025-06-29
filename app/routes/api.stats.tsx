@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
-import { apiConfigService } from "../lib/db/api-config";
+import { apiConfigService } from "~/lib/db/api-config";
 
 // GET /api/stats
 export async function loader({ request }: LoaderFunctionArgs) {

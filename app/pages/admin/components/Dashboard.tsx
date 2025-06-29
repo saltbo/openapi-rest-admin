@@ -9,7 +9,7 @@ import {
   RightOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { frontendAPIService } from '../../api-explorer/services';
+import { frontendAPIService } from '~/pages/api-explorer/services';
 
 const { Title, Paragraph } = Typography;
 

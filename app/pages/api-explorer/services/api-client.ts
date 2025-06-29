@@ -1,4 +1,4 @@
-import type { APIConfig, OpenAPIAnalysis, ResourceDataItem, APIResponse, ParsedResource } from '../../../types/api';
+import type { APIConfig, OpenAPIAnalysis, ResourceDataItem, APIResponse, ParsedResource } from '~/types/api';
 import { openAPIParser, mockDataService } from './';
 
 /**

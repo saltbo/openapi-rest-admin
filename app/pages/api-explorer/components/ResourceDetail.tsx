@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Spin, Alert, Modal } from 'antd';
-import { JsonViewer } from '../../../components/shared/JsonViewer';
-import { ResourceBreadcrumb } from '../../../components/shared/ResourceBreadcrumb';
-import { ResourceHeader } from '../../../components/shared/ResourceHeader';
-import { ResourceInfoCard } from '../../../components/shared/ResourceInfoCard';
-import { SubResourcesList } from '../../../components/shared/SubResourcesList';
-import { buildSubResourceDetailLink, buildNewResourceLink } from '../../../utils/resourceRouting';
-import { useResourceDetail } from '../../../hooks/useResourceDetail';
+import { JsonViewer } from '~/components/shared/JsonViewer';
+import { ResourceBreadcrumb } from '~/components/shared/ResourceBreadcrumb';
+import { ResourceHeader } from '~/components/shared/ResourceHeader';
+import { ResourceInfoCard } from '~/components/shared/ResourceInfoCard';
+import { SubResourcesList } from '~/components/shared/SubResourcesList';
+import { buildSubResourceDetailLink, buildNewResourceLink } from '~/utils/resourceRouting';
+import { useResourceDetail } from '~/hooks/useResourceDetail';
 
 interface ResourceItem {
   id: string | number;

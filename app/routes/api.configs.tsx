@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
-import { apiConfigService } from "../lib/db/api-config";
-import type { CreateAPIConfigInput } from "../types/api";
+import { apiConfigService } from "~/lib/db/api-config";
+import type { CreateAPIConfigInput } from "~/types/api";
 
 // GET /api/configs
 export async function loader({ request }: LoaderFunctionArgs) {

@@ -23,9 +23,9 @@ import {
   EyeOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { frontendAPIService } from '../../api-explorer/services';
-import { JsonViewer } from '../../../components/shared/JsonViewer';
-import type { ParsedResource, FieldDefinition } from '../../../types/api';
+import { frontendAPIService } from '~/pages/api-explorer/services';
+import { JsonViewer } from '~/components/shared/JsonViewer';
+import type { ParsedResource, FieldDefinition } from '~/types/api';
 
 const { Title, Paragraph } = Typography;
 const { Panel } = Collapse;

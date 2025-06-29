@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Space, Tag, Tooltip, Typography } from 'antd';
 import { Link } from 'react-router';
 import { EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { FieldDefinition } from '../types/api';
+import type { FieldDefinition } from '~/types/api';
 
 const { Text } = Typography;
 

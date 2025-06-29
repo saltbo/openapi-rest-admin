@@ -3,7 +3,7 @@ import { Card, Row, Col, Avatar, Button, Typography, Spin } from 'antd';
 import { ApiOutlined, EyeOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { frontendAPIService } from '../services';
-import type { APIConfig } from '../../../types/api';
+import type { APIConfig } from '~/types/api';
 
 const { Title, Text } = Typography;
 

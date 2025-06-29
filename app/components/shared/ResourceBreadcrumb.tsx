@@ -1,8 +1,8 @@
 import React from 'react';
 import { Breadcrumb } from 'antd';
 import { Link, useParams } from 'react-router';
-import { parseResourcePath, buildPathToLevel } from '../../utils/resourceRouting';
-import type { ResourceHierarchy } from '../../utils/resourceRouting';
+import { parseResourcePath, buildPathToLevel } from '~/utils/resourceRouting';
+import type { ResourceHierarchy } from '~/utils/resourceRouting';
 
 interface ResourceBreadcrumbProps {
   /** 服务名称 */

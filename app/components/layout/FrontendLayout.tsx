@@ -8,7 +8,7 @@ import {
   ApiOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { frontendAPIService } from '../../pages/api-explorer/services';
+import { frontendAPIService } from '~/pages/api-explorer/services';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;

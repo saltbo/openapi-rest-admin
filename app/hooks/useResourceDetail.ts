@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { parseResourcePath } from '../utils/resourceRouting';
-import { findResourceInAll } from '../utils/resourceUtils';
-import { frontendAPIService } from '../pages/api-explorer/services';
-import type { OpenAPIAnalysis, ParsedResource } from '../types/api';
+import { parseResourcePath } from '~/utils/resourceRouting';
+import { findResourceInAll } from '~/utils/resourceUtils';
+import { frontendAPIService } from '~/pages/api-explorer/services';
+import type { OpenAPIAnalysis, ParsedResource } from '~/types/api';
 
 interface ResourceItem {
   id: string | number;

@@ -1,7 +1,7 @@
 import type { Route } from "./+types/api-detail";
 import { redirect } from "react-router";
-import { apiService } from "../../pages/admin/services/api";
-import APIDetail from "../../pages/admin/components/APIDetail";
+import { apiService } from "~/pages/admin/services/api";
+import APIDetail from "~/pages/admin/components/APIDetail";
 
 export function meta({}: Route.MetaArgs) {
   return [

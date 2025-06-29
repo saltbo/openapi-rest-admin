@@ -31,7 +31,7 @@ import {
   DatabaseOutlined
 } from '@ant-design/icons';
 import { useLoaderData, useActionData, useSubmit, useNavigation } from 'react-router';
-import type { APIConfigModel, CreateAPIConfigInput, UpdateAPIConfigInput } from '../../types/api';
+import type { APIConfigModel, CreateAPIConfigInput, UpdateAPIConfigInput } from '~/types/api';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;

@@ -28,7 +28,7 @@ import {
   getResourceStats, 
   getTopLevelResources, 
   getResourceDisplayName 
-} from "../../../utils/resourceUtils";
+} from "~/utils/resourceUtils";
 
 const { Title, Text, Paragraph } = Typography;
 

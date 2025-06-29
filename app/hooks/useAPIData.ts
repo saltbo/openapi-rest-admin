@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { frontendAPIService } from '../pages/api-explorer/services';
-import type { OpenAPIAnalysis } from '../types/api';
+import { frontendAPIService } from '~/pages/api-explorer/services';
+import type { OpenAPIAnalysis } from '~/types/api';
 
 /**
  * 获取 API 配置的自定义 hook
@@ -127,7 +127,7 @@ export function useResourceDetailData(
       setAnalysis(analysisResponse.data);
       
       // 使用工具函数查找当前资源
-      const { findResourceInAll } = await import('../utils/resourceUtils');
+      const { findResourceInAll } = await import('~/utils/resourceUtils');
       const resource = findResourceInAll(analysisResponse.data.resources, resourceName);
       if (!resource) {
         throw new Error(`Resource ${resourceName} not found`);

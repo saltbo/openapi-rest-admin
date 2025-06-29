@@ -2,7 +2,7 @@
  * 资源查找和操作相关的工具函数
  */
 
-import type { ParsedResource } from '../types/api';
+import type { ParsedResource } from '~/types/api';
 
 /**
  * 在资源树中递归查找指定名称的资源

@@ -24,13 +24,13 @@ import {
 } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { frontendAPIService } from '../services';
-import { JsonViewer } from '../../../components/shared/JsonViewer';
-import { ResourceBreadcrumb } from '../../../components/shared/ResourceBreadcrumb';
-import { parseResourcePath, buildDetailLink } from '../../../utils/resourceRouting';
-import { findResourceInAll } from '../../../utils/resourceUtils';
-import { generateTableColumnsFromFields } from '../../../utils/tableUtils';
-import { useServiceData, useResourceData } from '../../../hooks/useAPIData';
-import type { ResourceDataItem, FieldDefinition } from '../../../types/api';
+import { JsonViewer } from '~/components/shared/JsonViewer';
+import { ResourceBreadcrumb } from '~/components/shared/ResourceBreadcrumb';
+import { parseResourcePath, buildDetailLink } from '~/utils/resourceRouting';
+import { findResourceInAll } from '~/utils/resourceUtils';
+import { generateTableColumnsFromFields } from '~/utils/tableUtils';
+import { useServiceData, useResourceData } from '~/hooks/useAPIData';
+import type { ResourceDataItem, FieldDefinition } from '~/types/api';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;

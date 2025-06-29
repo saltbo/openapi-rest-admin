@@ -1,9 +1,9 @@
 import React from 'react';
 import { Card, Typography, Button, Space, Tag, Table } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { generateTableColumnsFromData } from '../../utils/tableUtils';
-import type { ParsedResource } from '../../types/api';
-import type { ResourceHierarchy } from '../../utils/resourceRouting';
+import { generateTableColumnsFromData } from '~/utils/tableUtils';
+import type { ParsedResource } from '~/types/api';
+import type { ResourceHierarchy } from '~/utils/resourceRouting';
 
 const { Title, Text } = Typography;
 

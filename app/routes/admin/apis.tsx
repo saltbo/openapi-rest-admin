@@ -1,7 +1,7 @@
 import type { Route } from "./+types/apis";
 import { redirect } from "react-router";
-import { apiConfigService } from "../../lib/db/api-config";
-import APIConfigList from "../../pages/admin/components/APIConfigList";
+import { apiConfigService } from "~/lib/db/api-config";
+import APIConfigList from "~/pages/admin/components/APIConfigList";
 
 export function meta({}: Route.MetaArgs) {
   return [
