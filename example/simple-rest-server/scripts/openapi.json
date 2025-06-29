@@ -1,0 +1,932 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Simple REST API",
+    "version": "1.0.0",
+    "description": "一个标准的RESTful演示服务，包含Authors、Books、Notes等资源",
+    "contact": {
+      "name": "API Support",
+      "email": "support@example.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Development server"
+    }
+  ],
+  "paths": {
+    "/authors": {
+      "get": {
+        "summary": "获取所有作者",
+        "tags": [
+          "Authors"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "schema": {
+              "type": "string"
+            },
+            "description": "按作者姓名过滤"
+          },
+          {
+            "in": "query",
+            "name": "email",
+            "schema": {
+              "type": "string"
+            },
+            "description": "按邮箱过滤"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "description": "返回结果数量限制"
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "分页偏移量"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回作者列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Author"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "总数量"
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "description": "限制数量"
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "description": "偏移量"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "创建新作者",
+        "tags": [
+          "Authors"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "作者姓名"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "作者邮箱"
+                  },
+                  "bio": {
+                    "type": "string",
+                    "description": "作者简介"
+                  },
+                  "birthDate": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "出生日期"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "成功创建作者",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Author"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/authors/{id}": {
+      "get": {
+        "summary": "根据ID获取作者详情",
+        "tags": [
+          "Authors"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "作者ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回作者详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Author"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "summary": "更新作者信息",
+        "tags": [
+          "Authors"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "作者ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "作者姓名"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "作者邮箱"
+                  },
+                  "bio": {
+                    "type": "string",
+                    "description": "作者简介"
+                  },
+                  "birthDate": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "出生日期"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功更新作者",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Author"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "删除作者",
+        "tags": [
+          "Authors"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "作者ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "成功删除作者"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/authors/{id}/books": {
+      "get": {
+        "summary": "获取作者的所有书籍",
+        "tags": [
+          "Authors"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "作者ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回作者的书籍列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Book"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/books": {
+      "get": {
+        "summary": "获取所有书籍",
+        "tags": [
+          "Books"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "按书籍标题过滤"
+          },
+          {
+            "in": "query",
+            "name": "authorId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "按作者ID过滤"
+          },
+          {
+            "in": "query",
+            "name": "genre",
+            "schema": {
+              "type": "string"
+            },
+            "description": "按类型过滤"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "description": "返回结果数量限制"
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "分页偏移量"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回书籍列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Book"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "总数量"
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "description": "限制数量"
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "description": "偏移量"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "创建新书籍",
+        "tags": [
+          "Books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "authorId"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "书籍标题"
+                  },
+                  "authorId": {
+                    "type": "string",
+                    "description": "作者ID"
+                  },
+                  "isbn": {
+                    "type": "string",
+                    "description": "ISBN号码"
+                  },
+                  "genre": {
+                    "type": "string",
+                    "description": "书籍类型"
+                  },
+                  "publishedDate": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "出版日期"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "书籍描述"
+                  },
+                  "price": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "价格"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "成功创建书籍",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/books/{id}": {
+      "get": {
+        "summary": "根据ID获取书籍详情",
+        "tags": [
+          "Books"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "书籍ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回书籍详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "summary": "更新书籍信息",
+        "tags": [
+          "Books"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "书籍ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "书籍标题"
+                  },
+                  "authorId": {
+                    "type": "string",
+                    "description": "作者ID"
+                  },
+                  "isbn": {
+                    "type": "string",
+                    "description": "ISBN号码"
+                  },
+                  "genre": {
+                    "type": "string",
+                    "description": "书籍类型"
+                  },
+                  "publishedDate": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "出版日期"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "书籍描述"
+                  },
+                  "price": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "价格"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功更新书籍",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "删除书籍",
+        "tags": [
+          "Books"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "书籍ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "成功删除书籍"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/books/{id}/notes": {
+      "get": {
+        "summary": "获取书籍的所有笔记",
+        "tags": [
+          "Books"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "书籍ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回书籍的笔记列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Note"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/notes": {
+      "get": {
+        "summary": "获取所有笔记",
+        "tags": [
+          "Notes"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "title",
+            "schema": {
+              "type": "string"
+            },
+            "description": "按笔记标题过滤"
+          },
+          {
+            "in": "query",
+            "name": "bookId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "按书籍ID过滤"
+          },
+          {
+            "in": "query",
+            "name": "authorId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "按作者ID过滤"
+          },
+          {
+            "in": "query",
+            "name": "tags",
+            "schema": {
+              "type": "string"
+            },
+            "description": "按标签过滤(逗号分隔)"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "description": "返回结果数量限制"
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "分页偏移量"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回笔记列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Note"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "总数量"
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "description": "限制数量"
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "description": "偏移量"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "创建新笔记",
+        "tags": [
+          "Notes"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "content"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "笔记标题"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "笔记内容"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "标签"
+                  },
+                  "bookId": {
+                    "type": "string",
+                    "description": "关联的书籍ID"
+                  },
+                  "authorId": {
+                    "type": "string",
+                    "description": "笔记作者ID"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "成功创建笔记",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/notes/{id}": {
+      "get": {
+        "summary": "根据ID获取笔记详情",
+        "tags": [
+          "Notes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "笔记ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回笔记详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "summary": "更新笔记信息",
+        "tags": [
+          "Notes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "笔记ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "笔记标题"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "笔记内容"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "标签"
+                  },
+                  "bookId": {
+                    "type": "string",
+                    "description": "关联的书籍ID"
+                  },
+                  "authorId": {
+                    "type": "string",
+                    "description": "笔记作者ID"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功更新笔记",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "删除笔记",
+        "tags": [
+          "Notes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "笔记ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "成功删除笔记"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {},
+  "tags": []
+}

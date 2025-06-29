@@ -27,7 +27,7 @@ import { frontendAPIService } from '../services';
 import { JsonViewer } from '~/components/shared/JsonViewer';
 import { ResourceBreadcrumb } from '~/components/shared/ResourceBreadcrumb';
 import { parseResourcePath, buildDetailLink } from '~/utils/resourceRouting';
-import { findResourceInAll } from '~/utils/resourceUtils';
+import { resourceManager } from '~/services/ResourceManager';
 import { generateTableColumnsFromFields } from '~/utils/tableUtils';
 import { useServiceData, useResourceData } from '~/hooks/useAPIData';
 import type { ResourceDataItem, FieldDefinition } from '~/types/api';
@@ -64,7 +64,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId, n
   const { apiConfig, analysis } = useServiceData(sName);
   
   // 获取资源定义（使用工具函数查找）
-  const resource = analysis?.resources ? findResourceInAll(analysis.resources, currentResourceName) : null;
+  const resource = analysis?.resources ? resourceManager.findByName(analysis.resources, currentResourceName) : null;
 
   // 获取资源数据（支持嵌套上下文）
   const { 
@@ -154,7 +154,33 @@ export const ResourceList: React.FC<ResourceListProps> = ({ apiId, resourceId, n
     );
   }
 
-  const columns = generateColumns(resource.schema);
+  // 生成表格列 - 优先使用 schema，如果没有则从数据生成
+  const generateColumnsFromSchemaOrData = () => {
+    if (resource?.schema && resource.schema.length > 0) {
+      return generateColumns(resource.schema);
+    }
+    
+    // 备用方案：从实际数据生成列
+    if (resourceData?.data && resourceData.data.length > 0) {
+      const sampleItem = resourceData.data[0];
+      const dynamicFields: FieldDefinition[] = Object.keys(sampleItem).map(key => ({
+        name: key,
+        type: typeof sampleItem[key] === 'number' ? 'number' : 
+              typeof sampleItem[key] === 'boolean' ? 'boolean' :
+              Array.isArray(sampleItem[key]) ? 'array' :
+              typeof sampleItem[key] === 'object' ? 'object' : 'string',
+        required: false,
+        description: `${key} 字段`
+      }));
+      
+      return generateColumns(dynamicFields);
+    }
+    
+    // 如果都没有，返回空数组
+    return [];
+  };
+
+  const columns = generateColumnsFromSchemaOrData();
 
   return (
     <div style={{ padding: '24px' }}>

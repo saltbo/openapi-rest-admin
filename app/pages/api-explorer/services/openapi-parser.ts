@@ -17,6 +17,11 @@ import type {
 export class OpenAPIParserService {
   private cache = new Map<string, OpenAPIAnalysis>();
 
+  constructor() {
+    // 强制清除缓存以确保使用最新的解析逻辑
+    this.cache.clear();
+  }
+
   /**
    * 解析 OpenAPI 文档
    */
@@ -162,12 +167,15 @@ export class OpenAPIParserService {
           ? resourceChain[resourceChain.length - 2]
           : null;
 
+      // 选择最简单的路径作为主路径（优先选择层级更少的路径）
+      const mainPath = this.selectMainPath(paths);
+
       const resource: ParsedResource = {
         id: resourceKey,
         name: resourceName,
         displayName: this.generateDisplayName(resourceName),
-        path: paths[0], // 使用第一个路径作为主路径
-        basePath: baseUrl + paths[0],
+        path: mainPath,
+        basePath: baseUrl + mainPath,
         methods: [],
         schema: [],
         operations: {},
@@ -483,6 +491,14 @@ export class OpenAPIParserService {
     if (schema.type === "object" && schema.properties) {
       const requiredFields = schema.required || required;
 
+      // 检查是否为分页响应结构 (包含 data 数组字段)
+      if (schema.properties.data && 
+          schema.properties.data.type === "array" && 
+          schema.properties.data.items) {
+        // 这是一个分页响应，提取数组项的字段而不是包装对象的字段
+        return this.extractFieldsFromSchema(schema.properties.data.items, api, required);
+      }
+
       Object.entries(schema.properties).forEach(
         ([fieldName, fieldSchema]: [string, any]) => {
           const field: FieldDefinition = {
@@ -651,6 +667,48 @@ export class OpenAPIParserService {
     } else {
       this.cache.clear();
     }
+  }
+
+  /**
+   * 清除缓存并重新解析
+   */
+  async reloadOpenAPI(apiId: string, url: string): Promise<OpenAPIAnalysis> {
+    this.clearCache(apiId);
+    return this.parseOpenAPI(apiId, url);
+  }
+
+  /**
+   * 选择最合适的主路径
+   * 优先选择层级更少、更简单的路径作为资源的主路径
+   */
+  private selectMainPath(paths: string[]): string {
+    if (paths.length === 1) {
+      return paths[0];
+    }
+
+    // 按路径复杂度排序：优先选择段数少的路径
+    const sortedPaths = paths.sort((a, b) => {
+      // 移除参数部分并计算段数
+      const aSegments = a.replace(/[{:][^}/:]+[}]?/g, "").split("/").filter(Boolean);
+      const bSegments = b.replace(/[{:][^}/:]+[}]?/g, "").split("/").filter(Boolean);
+      
+      // 段数少的优先
+      if (aSegments.length !== bSegments.length) {
+        return aSegments.length - bSegments.length;
+      }
+      
+      // 段数相同时，优先选择没有路径参数的
+      const aHasParams = /[{:]/.test(a);
+      const bHasParams = /[{:]/.test(b);
+      
+      if (aHasParams && !bHasParams) return 1;
+      if (!aHasParams && bHasParams) return -1;
+      
+      // 都一样的话，按字典序
+      return a.localeCompare(b);
+    });
+
+    return sortedPaths[0];
   }
 }
 

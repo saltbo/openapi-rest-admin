@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { parseResourcePath } from '~/utils/resourceRouting';
-import { findResourceInAll } from '~/utils/resourceUtils';
+import { resourceManager } from '~/services/ResourceManager';
 import { frontendAPIService } from '~/pages/api-explorer/services';
 import { openAPIDocumentClient } from '~/lib/client';
 import type { OpenAPIAnalysis, ParsedResource } from '~/types/api';
@@ -63,7 +63,11 @@ export const useResourceDetail = ({ sName, rName, splat }: UseResourceDetailProp
       setAnalysis(analysisResponse.data);
       
       // 查找当前资源
-      const resource = findResourceInAll(analysisResponse.data.resources, currentResourceName);
+      const resource = resourceManager.findByName(analysisResponse.data.resources, currentResourceName);
+      console.log('Found resource:', resource?.name, 'ID:', resource?.id, 'sub_resources count:', resource?.sub_resources?.length);
+      if (resource?.sub_resources) {
+        console.log('Sub-resources:', resource.sub_resources.map((sr: ParsedResource) => ({ name: sr.name, id: sr.id, path: sr.path })));
+      }
       if (!resource) {
         throw new Error(`Resource ${currentResourceName} not found`);
       }
@@ -75,20 +79,32 @@ export const useResourceDetail = ({ sName, rName, splat }: UseResourceDetailProp
       
       // 加载子资源数据
       if (resource.sub_resources && resource.sub_resources.length > 0) {
+        console.log('Loading sub-resources for:', resource.name, 'sub_resources:', resource.sub_resources.map((sr: ParsedResource) => sr.name));
         setSubResources(resource.sub_resources);
         
         const subResourceDataMap: { [key: string]: ResourceItem[] } = {};
         for (const subResource of resource.sub_resources) {
-          const subResourceResponse = await frontendAPIService.listResources(
-            apiConfig.id, 
-            subResource.name, 
-            1, 
-            10
-          );
-          subResourceDataMap[subResource.name] = subResourceResponse.data;
+          try {
+            console.log('Loading sub-resource:', subResource.name, 'path:', subResource.path, 'parentId:', currentItemId);
+            const subResourceResponse = await frontendAPIService.listResources(
+              apiConfig.id, 
+              subResource.name, 
+              1, 
+              10,
+              '', // searchQuery
+              currentItemId, // parentId for nested resources
+              subResource // pass the actual sub-resource object
+            );
+            console.log('Sub-resource response for', subResource.name, ':', subResourceResponse);
+            subResourceDataMap[subResource.name] = subResourceResponse.data;
+          } catch (error) {
+            console.warn(`Failed to load sub-resource ${subResource.name}:`, error);
+            subResourceDataMap[subResource.name] = [];
+          }
         }
         setSubResourceData(subResourceDataMap);
       } else {
+        console.log('No sub-resources found for:', resource.name);
         setSubResources([]);
         setSubResourceData({});
       }

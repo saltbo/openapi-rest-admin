@@ -40,7 +40,7 @@ export function useResourceData(
   return useQuery({
     queryKey: ['resourceData', serviceName, resourceName, currentPage, pageSize, searchQuery, nestedPath],
     queryFn: () => {
-      return frontendAPIService.listResources(serviceName!, resourceName!, currentPage, pageSize);
+      return frontendAPIService.listResources(serviceName!, resourceName!, currentPage, pageSize, searchQuery);
     },
     enabled: !!serviceName && !!resourceName,
   });
@@ -124,9 +124,9 @@ export function useResourceDetailData(
       const analysisResponse = await frontendAPIService.getOpenAPIAnalysis(apiConfig.id);
       setAnalysis(analysisResponse.data);
       
-      // 使用工具函数查找当前资源
-      const { findResourceInAll } = await import('~/utils/resourceUtils');
-      const resource = findResourceInAll(analysisResponse.data.resources, resourceName);
+      // 使用资源管理器查找当前资源
+      const { resourceManager } = await import('~/services/ResourceManager');
+      const resource = resourceManager.findByName(analysisResponse.data.resources, resourceName);
       if (!resource) {
         throw new Error(`Resource ${resourceName} not found`);
       }

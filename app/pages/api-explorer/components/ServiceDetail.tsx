@@ -26,10 +26,9 @@ import { useQuery } from "@tanstack/react-query";
 import { frontendAPIService } from "../services";
 import { openAPIDocumentClient } from '~/lib/client';
 import { 
-  getResourceStats, 
-  getTopLevelResources, 
   getResourceDisplayName 
 } from "~/utils/resourceUtils";
+import { resourceManager } from '~/services/ResourceManager';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -87,15 +86,15 @@ export default function ServiceDetail() {
     );
   }
 
-  // 使用工具函数计算统计数据
-  const resourceStats = serviceAnalysis.resources ? getResourceStats(serviceAnalysis.resources) : {
-    totalResources: 0,
-    restfulResources: 0,
-    totalSubResources: 0,
-    topLevelResources: 0
+  // 使用 ResourceManager 计算统计数据
+  const resourceStats = serviceAnalysis.resources ? resourceManager.getStats(serviceAnalysis.resources) : {
+    total: 0,
+    restful: 0,
+    withSubResources: 0,
+    topLevel: 0
   };
   
-  const topLevelResources = serviceAnalysis.resources ? getTopLevelResources(serviceAnalysis.resources) : [];
+  const topLevelResources = serviceAnalysis.resources ? resourceManager.getTopLevelResources(serviceAnalysis.resources) : [];
   
   // HTTP 方法统计
   const httpMethodStats = serviceAnalysis.resources?.reduce(
@@ -112,10 +111,10 @@ export default function ServiceDetail() {
   ) || {};
 
   const stats = {
-    totalResources: resourceStats.totalResources,
-    topLevelResources: resourceStats.topLevelResources,
-    nestedResources: resourceStats.totalSubResources,
-    restfulResources: resourceStats.restfulResources,
+    totalResources: resourceStats.total,
+    topLevelResources: resourceStats.topLevel,
+    nestedResources: resourceStats.withSubResources,
+    restfulResources: resourceStats.restful,
     totalEndpoints: serviceAnalysis.resources?.reduce(
       (sum: number, r: any) => sum + (r.endpoints?.length || 0),
       0

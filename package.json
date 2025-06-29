@@ -7,6 +7,9 @@
     "build:backend": "npm run build && mkdir -p backend/embedded && cp -r build/client/* backend/embedded/",
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
     "typecheck": "react-router typegen && tsc",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -37,10 +40,13 @@
     "@types/node": "^20",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "@vitest/ui": "^3.2.4",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4.1.4",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
     "vite": "^6.3.3",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4"
   }
 }
