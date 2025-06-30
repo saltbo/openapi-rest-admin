@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Modal, Typography, Space, Tag, Descriptions, message } from 'antd';
 import { ExclamationCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { frontendAPIService } from '../services';
+import { createOpenAPIService, type ResourceInfo } from '~/lib/api';
+import { openAPIDocumentClient } from '~/lib/client';
+import { openAPIParser } from '~/services';
 import type { ParsedResource, ResourceDataItem } from '~/types/api';
 
 const { Text, Paragraph } = Typography;
 
 interface ResourceDeleteConfirmProps {
   apiId: string;
-  resource: ParsedResource;
+  resource: ResourceInfo;
   item: ResourceDataItem;
   open: boolean;
   onSuccess?: () => void;
@@ -28,8 +30,34 @@ export const ResourceDeleteConfirm: React.FC<ResourceDeleteConfirmProps> = ({
 
   // 删除资源项
   const deleteMutation = useMutation({
-    mutationFn: () => {
-      return frontendAPIService.deleteResource(apiId, resource.name, String(item.id));
+    mutationFn: async () => {
+      // 获取API配置
+      const config = await openAPIDocumentClient.getConfig(apiId);
+      
+      // 创建OpenAPI服务实例
+      const apiService = createOpenAPIService(config.openapi_url);
+      
+      // 初始化服务（解析OpenAPI文档）
+      await apiService.initialize(config.openapi_url);
+      
+      // 获取资源的删除操作
+      const resources = apiService.getAllResources();
+      const resourceInfo = resources.find(r => r.name === resource.name);
+      
+      if (!resourceInfo) {
+        throw new Error(`资源 '${resource.name}' 未找到`);
+      }
+      
+      // 查找DELETE操作
+      const deleteOperation = resourceInfo.operations.find(op => op.method === 'DELETE');
+      
+      if (!deleteOperation) {
+        throw new Error(`资源 '${resource.name}' 不支持删除操作`);
+      }
+      
+      // 使用RESTful API客户端执行删除
+      const client = apiService.getClient();
+      return await client.delete(deleteOperation, String(item.id));
     },
     onSuccess: () => {
       message.success('删除成功');

@@ -273,7 +273,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({
       </Drawer>
 
       {/* 删除确认对话框 */}
-      {/* {resource && itemToDelete && sName && (
+      {resource && itemToDelete && sName && (
         <ResourceDeleteConfirm
           apiId={sName}
           resource={resource}
@@ -282,7 +282,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({
           onSuccess={handleDeleteSuccess}
           onCancel={closeDeleteConfirm}
         />
-      )} */}
+      )}
     </div>
   );
 };
