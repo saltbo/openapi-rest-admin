@@ -7,6 +7,7 @@
 
 import type { OpenAPIV3 } from 'openapi-types';
 import type { ResourceOperation } from './OpenAPIDocumentParser';
+import { DataExtractor } from './DataExtractor';
 
 /**
  * API 请求选项
@@ -43,20 +44,43 @@ export interface APIResponse<T = any> {
 }
 
 /**
+ * 分页信息
+ */
+export interface PaginationInfo {
+  /** 当前页码 */
+  page: number;
+  /** 每页大小 */
+  pageSize: number;
+  /** 总数量 */
+  total: number;
+  /** 总页数 */
+  totalPages: number;
+}
+
+/**
  * 分页响应结果
  */
 export interface PaginatedResponse<T = any> extends APIResponse<T[]> {
   /** 分页信息 */
-  pagination: {
-    /** 当前页码 */
-    page: number;
-    /** 每页大小 */
-    pageSize: number;
-    /** 总数量 */
-    total: number;
-    /** 总页数 */
-    totalPages: number;
-  };
+  pagination: PaginationInfo;
+}
+
+/**
+ * 响应转换器函数
+ */
+export type ResponseTransformer<T = any> = (responseData: any) => {
+  data: T;
+  pagination?: PaginationInfo;
+};
+
+/**
+ * 解析后的响应数据
+ */
+export interface ParsedResponseData<T = any> {
+  /** 实际数据 */
+  data: T;
+  /** 分页信息（如果有） */
+  pagination?: PaginationInfo;
 }
 
 /**
@@ -95,9 +119,11 @@ export class RESTfulAPIClient {
   private defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+  private responseTransformer?: ResponseTransformer;
 
-  constructor(baseURL: string) {
+  constructor(baseURL: string, responseTransformer?: ResponseTransformer) {
     this.baseURL = baseURL.replace(/\/$/, ''); // 移除末尾斜杠
+    this.responseTransformer = responseTransformer;
   }
 
   /**
@@ -119,6 +145,20 @@ export class RESTfulAPIClient {
    */
   removeAuthToken(): void {
     delete this.defaultHeaders['Authorization'];
+  }
+
+  /**
+   * 设置响应转换器
+   */
+  setResponseTransformer(transformer: ResponseTransformer): void {
+    this.responseTransformer = transformer;
+  }
+
+  /**
+   * 移除响应转换器
+   */
+  removeResponseTransformer(): void {
+    this.responseTransformer = undefined;
   }
 
   /**
@@ -196,12 +236,13 @@ export class RESTfulAPIClient {
       query
     });
 
-    // 解析分页信息
-    const pagination = this.parsePaginationFromResponse(response);
+    // 使用转换器解析响应数据
+    const transformedData = this.transformResponseData(response.data, true);
 
     return {
       ...response,
-      pagination
+      data: transformedData.data as T[],
+      pagination: transformedData.pagination!
     };
   }
 
@@ -470,10 +511,10 @@ export class RESTfulAPIClient {
     }
 
     // 根据操作定义验证响应格式
-    const validatedData = this.validateAndTransformResponse(data, operation);
+    const transformedData = this.transformResponseData(data, false);
 
     return {
-      data: validatedData as T,
+      data: transformedData.data as T,
       status: response.status,
       statusText: response.statusText,
       headers,
@@ -482,119 +523,133 @@ export class RESTfulAPIClient {
   }
 
   /**
-   * 私有方法：验证和转换响应
+   * 私有方法：转换响应数据
    */
-  private validateAndTransformResponse<T>(
-    data: any,
-    operation: ResourceOperation
-  ): T {
-    // 获取成功响应的 schema
-    const successResponse = operation.responses['200'] || 
-                           operation.responses['201'] || 
-                           operation.responses['default'];
-
-    if (!successResponse || typeof successResponse === 'string') {
-      return data;
+  private transformResponseData<T>(
+    responseData: any,
+    expectPagination: boolean = false
+  ): ParsedResponseData<T> {
+    // 如果有自定义转换器，使用自定义转换器
+    if (this.responseTransformer) {
+      return this.responseTransformer(responseData);
     }
 
-    const response = successResponse as OpenAPIV3.ResponseObject;
-    
-    // 如果没有内容定义，直接返回
-    if (!response.content) {
-      return data;
-    }
-
-    // 处理常见的响应包装格式
-    return this.extractDataFromResponse(data);
+    // 使用默认转换器
+    return this.defaultResponseTransformer(responseData, expectPagination);
   }
 
   /**
-   * 私有方法：从响应中提取数据
+   * 私有方法：默认响应转换器
    */
-  private extractDataFromResponse<T>(responseData: any): T {
-    // 如果数据已经是期望的格式，直接返回
-    if (!responseData || typeof responseData !== 'object') {
-      return responseData;
+  private defaultResponseTransformer<T>(
+    responseData: any,
+    expectPagination: boolean = false
+  ): ParsedResponseData<T> {
+    // 如果数据为空或null
+    if (responseData === null || responseData === undefined) {
+      if (expectPagination) {
+        throw new APIError('Expected paginated response but got null/undefined', 500, 'Parse Error');
+      }
+      return { data: responseData };
     }
 
-    // 处理常见的响应包装格式
-    if ('data' in responseData) {
-      return responseData.data;
+    
+    // 如果不是对象类型，直接返回
+    if (typeof responseData !== 'object' || Array.isArray(responseData)) {
+      if (expectPagination && !Array.isArray(responseData)) {
+        throw new APIError('Expected paginated response but got non-array data', 500, 'Parse Error');
+      }
+      return { 
+        data: responseData,
+        pagination: expectPagination ? this.extractPaginationFromArray(responseData) : undefined
+      };
     }
 
-    if ('result' in responseData) {
-      return responseData.result;
+    // 对象类型，尝试提取数据和分页信息
+    const result = this.extractDataAndPagination<T>(responseData, expectPagination);
+    
+    if (expectPagination && !result.pagination) {
+      throw new APIError('Expected pagination information but not found', 500, 'Parse Error');
     }
 
-    if ('items' in responseData) {
-      return responseData.items;
-    }
-
-    if ('list' in responseData) {
-      return responseData.list;
-    }
-
-    // 默认返回原始数据
-    return responseData;
+    return result;
   }
 
   /**
-   * 私有方法：从响应中解析分页信息
+   * 私有方法：从对象中提取数据和分页信息
    */
-  private parsePaginationFromResponse(response: APIResponse<any[]>): {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-  } {
-    const rawData = (response as any).raw;
-    
-    // 尝试从响应头中获取分页信息
-    const totalHeader = response.headers['x-total-count'] || 
-                       response.headers['total-count'] ||
-                       response.headers['x-total'];
-    
-    const pageHeader = response.headers['x-page'] || 
-                      response.headers['page'];
-    
-    const pageSizeHeader = response.headers['x-page-size'] || 
-                          response.headers['page-size'] ||
-                          response.headers['x-per-page'] ||
-                          response.headers['per-page'];
+  private extractDataAndPagination<T>(
+    obj: any,
+    expectPagination: boolean
+  ): ParsedResponseData<T> {
+    // 使用 DataExtractor 统一的数据提取逻辑
+    const extracted = DataExtractor.extractDataFromObject<T>(obj, {
+      expectPagination
+    });
 
-    let total = 0;
+    // 提取分页信息
+    let pagination: PaginationInfo | undefined;
+    
+    if (expectPagination) {
+      pagination = this.extractPaginationFromObject(obj, extracted.dataFieldName);
+    }
+
+    return { 
+      data: extracted.data, 
+      pagination 
+    };
+  }
+
+  /**
+   * 私有方法：从对象中提取分页信息
+   */
+  private extractPaginationFromObject(
+    obj: any,
+    dataFieldName?: string
+  ): PaginationInfo {
     let page = 1;
     let pageSize = 20;
+    let total = 0;
 
-    if (totalHeader) {
-      total = parseInt(totalHeader, 10);
+    // 1. 尝试从 pagination 字段提取
+    if ('pagination' in obj && typeof obj.pagination === 'object') {
+      const paginationObj = obj.pagination;
+      page = paginationObj.page || paginationObj.current || page;
+      pageSize = paginationObj.pageSize || paginationObj.size || paginationObj.limit || pageSize;
+      total = paginationObj.total || paginationObj.totalCount || total;
+    }
+    
+    // 2. 尝试从 page 字段提取
+    else if ('page' in obj && typeof obj.page === 'object') {
+      const pageObj = obj.page;
+      page = pageObj.current || pageObj.number || page;
+      pageSize = pageObj.size || pageObj.limit || pageSize;
+      total = pageObj.total || pageObj.totalElements || total;
+    }
+    
+    // 3. 尝试从根级别字段提取
+    else {
+      // 页码相关字段
+      if ('page' in obj && typeof obj.page === 'number') page = obj.page;
+      if ('current' in obj && typeof obj.current === 'number') page = obj.current;
+      if ('pageNum' in obj && typeof obj.pageNum === 'number') page = obj.pageNum;
+      
+      // 页大小相关字段
+      if ('pageSize' in obj && typeof obj.pageSize === 'number') pageSize = obj.pageSize;
+      if ('size' in obj && typeof obj.size === 'number') pageSize = obj.size;
+      if ('limit' in obj && typeof obj.limit === 'number') pageSize = obj.limit;
+      if ('perPage' in obj && typeof obj.perPage === 'number') pageSize = obj.perPage;
+      
+      // 总数相关字段
+      if ('total' in obj && typeof obj.total === 'number') total = obj.total;
+      if ('totalCount' in obj && typeof obj.totalCount === 'number') total = obj.totalCount;
+      if ('count' in obj && typeof obj.count === 'number') total = obj.count;
+      if ('totalElements' in obj && typeof obj.totalElements === 'number') total = obj.totalElements;
     }
 
-    if (pageHeader) {
-      page = parseInt(pageHeader, 10);
-    }
-
-    if (pageSizeHeader) {
-      pageSize = parseInt(pageSizeHeader, 10);
-    }
-
-    // 如果响应头中没有分页信息，尝试从响应数据中获取
-    if (total === 0 && rawData && typeof rawData === 'object') {
-      if ('total' in rawData) {
-        total = rawData.total;
-      } else if ('count' in rawData) {
-        total = rawData.count;
-      } else if (Array.isArray(response.data)) {
-        total = response.data.length;
-      }
-
-      if ('page' in rawData) {
-        page = rawData.page;
-      }
-
-      if ('pageSize' in rawData || 'page_size' in rawData) {
-        pageSize = rawData.pageSize || rawData.page_size;
-      }
+    // 如果没有找到任何分页信息，抛出错误
+    if (total === 0) {
+      throw new APIError('Could not find pagination information in response', 500, 'Parse Error');
     }
 
     const totalPages = Math.ceil(total / pageSize);
@@ -604,6 +659,19 @@ export class RESTfulAPIClient {
       pageSize,
       total,
       totalPages
+    };
+  }
+
+  /**
+   * 私有方法：从数组创建默认分页信息
+   */
+  private extractPaginationFromArray(data: any[]): PaginationInfo {
+    const total = data.length;
+    return {
+      page: 1,
+      pageSize: total,
+      total,
+      totalPages: 1
     };
   }
 

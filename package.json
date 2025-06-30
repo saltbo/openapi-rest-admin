@@ -31,6 +31,7 @@
     "@types/swagger-parser": "^4.0.3",
     "@uiw/react-json-view": "^2.0.0-alpha.32",
     "antd": "^5.26.2",
+    "buffer": "^6.0.3",
     "dayjs": "^1.11.13",
     "isbot": "^5.1.27",
     "lucide-react": "^0.525.0",
@@ -39,7 +40,9 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router": "^7.5.3",
-    "swagger-parser": "^10.0.3"
+    "swagger-parser": "^10.0.3",
+    "url": "^0.11.4",
+    "util": "^0.12.5"
   },
   "devDependencies": {
     "@react-router/dev": "^7.5.3",

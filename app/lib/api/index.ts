@@ -7,6 +7,7 @@
 import { OpenAPIDocumentParser } from './OpenAPIDocumentParser';
 import { SchemaRenderer } from './SchemaRenderer';
 import { RESTfulAPIClient } from './RESTfulAPIClient';
+import { DataExtractor } from './DataExtractor';
 
 export { OpenAPIDocumentParser } from './OpenAPIDocumentParser';
 export type { 
@@ -31,6 +32,12 @@ export type {
   PaginatedResponse, 
   ValidationError 
 } from './RESTfulAPIClient';
+
+export { DataExtractor } from './DataExtractor';
+export type {
+  DataExtractionOptions,
+  ExtractedData
+} from './DataExtractor';
 
 /**
  * 完整的 OpenAPI 服务包装器
@@ -104,6 +111,20 @@ export class OpenAPIService {
   }
 
   /**
+   * 获取所有资源信息
+   */
+  getAllResources() {
+    return this.parser.getAllResources();
+  }
+
+  /**
+   * 获取顶级资源
+   */
+  getTopLevelResources() {
+    return this.parser.getTopLevelResources();
+  }
+
+  /**
    * 为特定资源生成表单 schema
    */
   getResourceFormSchema(resourceName: string, options?: any) {
@@ -111,7 +132,10 @@ export class OpenAPIService {
     if (!schema) {
       throw new Error(`Resource '${resourceName}' not found`);
     }
-    return this.renderer.getFormSchema(schema, options);
+    
+    // 使用 transformer 逻辑提取实际的资源 schema
+    const transformedSchema = this.extractActualResourceSchema(schema);
+    return this.renderer.getFormSchema(transformedSchema, options);
   }
 
   /**
@@ -122,7 +146,50 @@ export class OpenAPIService {
     if (!schema) {
       throw new Error(`Resource '${resourceName}' not found`);
     }
-    return this.renderer.getTableSchema(schema, options);
+    
+    // 使用 transformer 逻辑提取实际的资源 schema
+    const transformedSchema = this.extractActualResourceSchema(schema);
+    return this.renderer.getTableSchema(transformedSchema, options);
+  }
+
+  /**
+   * 获取特定资源的实际 schema（经过数据提取转换）
+   */
+  getActualResourceSchema(resourceName: string) {
+    const schema = this.parser.getResourceSchema(resourceName);
+    if (!schema) {
+      throw new Error(`Resource '${resourceName}' not found`);
+    }
+    
+    return this.extractActualResourceSchema(schema);
+  }
+
+  /**
+   * 从响应 schema 中提取实际的资源 schema
+   * 使用 DataExtractor 工具类的统一逻辑
+   */
+  private extractActualResourceSchema(responseSchema: any): any {
+    return DataExtractor.extractSchemaFromResponse(responseSchema, {
+      schemaResolver: (ref: string) => this.resolveSchemaRef(ref)
+    });
+  }
+
+  /**
+   * 解析 schema 引用
+   */
+  private resolveSchemaRef(ref: string): any {
+    // 简单的引用解析，只处理 #/components/schemas/ 形式的引用
+    if (ref.startsWith('#/components/schemas/')) {
+      const schemaName = ref.replace('#/components/schemas/', '');
+      const document = this.parser.getDocument();
+      
+      // 检查是否为 OpenAPI 3.x 版本（包含 components）
+      if (document && 'components' in document && document.components?.schemas?.[schemaName]) {
+        return document.components.schemas[schemaName];
+      }
+    }
+    
+    return null;
   }
 
   /**

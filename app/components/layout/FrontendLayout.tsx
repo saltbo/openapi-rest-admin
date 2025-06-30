@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Layout, Menu, Typography, theme, Button, Space, Spin, Select } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { 
@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { openAPIDocumentClient } from '~/lib/client';
-import { frontendAPIService } from '~/pages/api-explorer/services';
+import { createOpenAPIService } from '~/lib/api';
 import { capitalizeFirst } from '../shared';
 
 const { Header, Sider, Content } = Layout;
@@ -26,24 +26,87 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
   const [selectedApiId, setSelectedApiId] = useState<string>(''); // 初始为空，等待 API 配置加载后设置
   const [shouldAutoNavigate, setShouldAutoNavigate] = useState<boolean>(true); // 控制是否应该自动导航
   
-
-  
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
-
+  
   // 获取所有 API 配置
   const { data: apiConfigs = [] } = useQuery({
     queryKey: ['apiConfigs'],
     queryFn: () => openAPIDocumentClient.getConfigs({ enabled: true }),
   });
 
+  // 根据选中的API创建OpenAPIService实例
+  const openAPIService = useMemo(() => {
+    if (!selectedApiId || apiConfigs.length === 0) {
+      return null;
+    }
+    
+    const selectedConfig = apiConfigs.find((config: any) => config.id === selectedApiId);
+    if (!selectedConfig) {
+      return null;
+    }
+    
+    // 从OpenAPI文档URL提取基础URL，如果没有则使用默认值
+    // 这里我们先创建服务，稍后会初始化它
+    return createOpenAPIService('');
+  }, [selectedApiId, apiConfigs]);
+
   // 获取当前选中 API 的分析数据
   const { data: currentAnalysis, isLoading } = useQuery({
     queryKey: ['currentAnalysis', selectedApiId],
-    queryFn: () => frontendAPIService.getOpenAPIAnalysis(selectedApiId.toString())
-      .then((res: any) => ({ apiId: selectedApiId, apiName: apiConfigs.find((c: any) => c.id === selectedApiId)?.name || '', ...res.data })),
-    enabled: !!selectedApiId, // 只要有选中的 API ID 就启用查询
+    queryFn: async () => {
+      if (!openAPIService || !selectedApiId) {
+        throw new Error('OpenAPI service not initialized');
+      }
+      
+      const selectedConfig = apiConfigs.find((config: any) => config.id === selectedApiId);
+      if (!selectedConfig) {
+        throw new Error('API config not found');
+      }
+      
+      // 初始化OpenAPI服务
+      await openAPIService.initialize(selectedConfig.openapi_url);
+      
+      // 获取文档信息和资源统计
+      const documentInfo = openAPIService.getDocumentInfo();
+      const resourceStats = openAPIService.getResourceStatistics();
+      const allSchemas = openAPIService.getAllResourceSchemas();
+      
+      // 构建与原有格式兼容的分析结果
+      // 从resourceStats中获取更准确的资源信息
+      const resources = Object.keys(allSchemas).map(resourceName => {
+        // 尝试从统计信息中获取更准确的路径信息
+        const basePath = `/${resourceName.toLowerCase()}`;
+        
+        return {
+          name: resourceName,
+          path: basePath,
+          operations: {
+            get: { summary: `List ${resourceName}` },
+            post: { summary: `Create ${resourceName}` },
+            put: { summary: `Update ${resourceName}` },
+            delete: { summary: `Delete ${resourceName}` }
+          },
+          parent_resource: null, // 暂时设为null，后续可以从parser中获取层次关系
+          schema: allSchemas[resourceName],
+          tags: [],
+          isRESTful: true
+        };
+      });
+      
+      return {
+        apiId: selectedApiId,
+        apiName: selectedConfig.name,
+        base_url: documentInfo?.servers?.[0] || '',
+        title: documentInfo?.title || selectedConfig.name,
+        version: documentInfo?.version || '1.0.0',
+        description: documentInfo?.description || '',
+        resources,
+        resourceStats
+      };
+    },
+    enabled: !!selectedApiId && !!openAPIService, // 只要有选中的 API ID 和服务实例就启用查询
   });
 
   // 当 API 配置加载完成后，设置默认选中的 API

@@ -1,3 +1,95 @@
+# RESTfulAPIClient 响应转换功能 - 重构说明
+
+## 重构概述
+
+RESTfulAPIClient已经被重构以解决responseBody中的数据解析问题。新版本提供了强大的响应数据转换功能，能够自动处理各种不同的API响应格式。
+
+### 主要改进
+
+1. **智能响应转换**：自动识别和处理多种常见的API响应格式
+2. **自定义转换器支持**：允许完全自定义的响应转换逻辑
+3. **严格错误处理**：找不到期望的数据格式时立即报错，不做fallback
+4. **类型安全**：完整的TypeScript类型支持
+
+### 支持的响应格式
+
+#### 1. 直接数组响应
+```json
+[
+  { "id": 1, "name": "Item 1" },
+  { "id": 2, "name": "Item 2" }
+]
+```
+
+#### 2. 包装在数据字段中的响应
+```json
+{
+  "data": [...],           // 或 "items", "list", "results", "records"
+  "total": 100,
+  "page": 1,
+  "pageSize": 20
+}
+```
+
+#### 3. 分页信息在嵌套对象中
+```json
+{
+  "data": [...],
+  "pagination": {
+    "current": 1,
+    "size": 20,
+    "total": 100
+  }
+}
+```
+
+### 新的类型定义
+
+```typescript
+export interface PaginationInfo {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface ParsedResponseData<T = any> {
+  data: T;
+  pagination?: PaginationInfo;
+}
+
+export type ResponseTransformer<T = any> = (responseData: any) => {
+  data: T;
+  pagination?: PaginationInfo;
+};
+```
+
+### 使用方法
+
+```typescript
+// 基本使用 - 使用默认转换器
+const client = new RESTfulAPIClient('https://api.example.com');
+
+// 使用自定义转换器
+const customTransformer: ResponseTransformer = (responseData: any) => {
+  return {
+    data: responseData.custom_data,
+    pagination: {
+      page: responseData.current_page,
+      pageSize: responseData.per_page,
+      total: responseData.total_items,
+      totalPages: Math.ceil(responseData.total_items / responseData.per_page)
+    }
+  };
+};
+
+const client = new RESTfulAPIClient('https://api.example.com', customTransformer);
+
+// 运行时设置转换器
+client.setResponseTransformer(customTransformer);
+client.removeResponseTransformer();
+```
+
 # OpenAPI 服务架构
 
 这是一个基于社区标准库的 OpenAPI 服务架构，用于解析 OpenAPI 文档、生成表单和表格 schema，以及处理 RESTful API 请求。

@@ -1,11 +1,8 @@
 /**
- * OpenAPI Document Parser
- * 
- * 专门处理 OpenAPI 文档的解析，使用 swagger-parser 库作为底层解析引擎
- * 严格遵循 OpenAPI 规范，使用社区标准的数据类型
+ * 浏览器友好的 OpenAPI 文档解析器
+ * 避免使用 swagger-parser 的重量级依赖
  */
 
-const SwaggerParser = require('swagger-parser');
 import type { OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1 } from 'openapi-types';
 
 /**
@@ -72,12 +69,14 @@ export interface ResourceOperation {
 }
 
 /**
- * OpenAPI 文档解析器
+ * 浏览器友好的 OpenAPI 文档解析器
+ * 使用简化的解析逻辑，避免重量级的 Node.js 依赖
  */
 export class OpenAPIDocumentParser {
   private parsedApi: OpenAPI.Document | null = null;
   private resourceCache = new Map<string, ResourceInfo[]>();
   private statisticsCache: ResourceStatistics | null = null;
+  private documentUrl: string | null = null; // 存储文档的URL
 
   /**
    * 解析 OpenAPI 文档
@@ -85,8 +84,27 @@ export class OpenAPIDocumentParser {
    */
   async parseDocument(source: string | OpenAPI.Document): Promise<void> {
     try {
-      // 使用 swagger-parser 解析和验证文档
-      this.parsedApi = await SwaggerParser.validate(source);
+      let apiDoc: OpenAPI.Document;
+
+      if (typeof source === 'string') {
+        // 存储文档URL用于后续拼接相对路径
+        this.documentUrl = source;
+        // 从 URL 获取文档
+        const response = await fetch(source);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch OpenAPI document: ${response.statusText}`);
+        }
+        apiDoc = await response.json();
+      } else {
+        // 直接使用提供的文档对象时，无法获取URL
+        this.documentUrl = null;
+        apiDoc = source;
+      }
+
+      // 基本验证
+      this.validateDocument(apiDoc);
+      
+      this.parsedApi = apiDoc;
       
       // 清空缓存
       this.resourceCache.clear();
@@ -100,6 +118,27 @@ export class OpenAPIDocumentParser {
     } catch (error: any) {
       console.error('Failed to parse OpenAPI document:', error);
       throw new Error(`Failed to parse OpenAPI document: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * 基本文档验证
+   */
+  private validateDocument(doc: any): void {
+    if (!doc || typeof doc !== 'object') {
+      throw new Error('Invalid OpenAPI document: must be an object');
+    }
+
+    if (!doc.info || !doc.info.title || !doc.info.version) {
+      throw new Error('Invalid OpenAPI document: missing required info fields');
+    }
+
+    if (!doc.openapi && !doc.swagger) {
+      throw new Error('Invalid OpenAPI document: missing version field');
+    }
+
+    if (!doc.paths || typeof doc.paths !== 'object') {
+      throw new Error('Invalid OpenAPI document: missing or invalid paths');
     }
   }
 
@@ -211,7 +250,25 @@ export class OpenAPIDocumentParser {
 
     if (this.isV3()) {
       const v3Doc = this.parsedApi as OpenAPIV3.Document;
-      return v3Doc.servers?.map(server => server.url) || [];
+      const servers = v3Doc.servers?.map(server => {
+        let url = server.url;
+        
+        // 如果是相对路径，需要拼接文档的 host
+        if (url.startsWith('/') && this.documentUrl) {
+          try {
+            const docUrl = new URL(this.documentUrl);
+            url = `${docUrl.protocol}//${docUrl.host}${url}`;
+          } catch (error) {
+            console.warn('Failed to parse document URL for relative server path:', error);
+            // 如果解析失败，使用当前页面的 origin 作为 fallback
+            url = window.location.origin + url;
+          }
+        }
+        
+        return url;
+      }) || [];
+      
+      return servers;
     } else {
       const v2Doc = this.parsedApi as OpenAPIV2.Document;
       const scheme = v2Doc.schemes?.[0] || 'http';
@@ -239,7 +296,36 @@ export class OpenAPIDocumentParser {
   }
 
   /**
+   * 获取所有资源信息
+   */
+  getAllResources(): ResourceInfo[] {
+    return this.getResourceList();
+  }
+
+  /**
+   * 获取顶级资源（没有父资源的资源）
+   */
+  getTopLevelResources(): ResourceInfo[] {
+    const allResources = this.getResourceList();
+    console.log(allResources);
+    
+    return allResources.filter(resource => 
+      !allResources.some(other => 
+        other.subResources.some(sub => sub.name === resource.name)
+      )
+    );
+  }
+
+  /**
+   * 获取原始文档对象
+   */
+  getDocument(): OpenAPI.Document | null {
+    return this.parsedApi;
+  }
+
+  /**
    * 私有方法：获取资源列表
+   * 只从列表端点（GET /resources）提取资源，符合 RESTful 约定
    */
   private getResourceList(): ResourceInfo[] {
     const cacheKey = 'all_resources';
@@ -251,77 +337,77 @@ export class OpenAPIDocumentParser {
       return [];
     }
 
-    const resourceMap = new Map<string, ResourceInfo>();
-
-    // 分析所有路径，提取资源信息
+    // 第一步：按资源链分组所有路径
+    const resourceGroups = new Map<string, Array<{path: string, pathItem: any}>>();
+    
     Object.entries(this.parsedApi.paths).forEach(([path, pathItem]) => {
       if (!pathItem) return;
 
-      const resourceNames = this.extractResourceNamesFromPath(path);
-      if (resourceNames.length === 0) return;
+      const resourceChain = this.extractResourceChainFromPath(path);
+      if (resourceChain.length === 0) return;
 
-      resourceNames.forEach((resourceName, index) => {
-        const isNestedResource = index > 0;
-        const parentResourceName = index > 0 ? resourceNames[index - 1] : null;
+      const resourceKey = resourceChain.join('.');
+      if (!resourceGroups.has(resourceKey)) {
+        resourceGroups.set(resourceKey, []);
+      }
+      resourceGroups.get(resourceKey)!.push({ path, pathItem });
+    });
 
-        if (!resourceMap.has(resourceName)) {
-          resourceMap.set(resourceName, {
-            name: resourceName,
-            pathPattern: this.buildPathPattern(resourceName, path),
-            basePath: this.extractBasePath(resourceName, path),
-            operations: [],
-            isRESTful: false,
-            tags: [],
-            subResources: []
-          });
-        }
+    // 第二步：只从列表端点创建资源
+    const resourceMap = new Map<string, ResourceInfo>();
+    
+    resourceGroups.forEach((pathGroup, resourceKey) => {
+      const resourceChain = resourceKey.split('.');
+      const resourceName = resourceChain[resourceChain.length - 1];
+      
+      // 查找列表端点（GET /resources，不带 ID 参数）
+      const listEndpoint = this.findListEndpoint(pathGroup);
+      if (!listEndpoint) {
+        console.warn(`No RESTful list endpoint found for resource: ${resourceName}`);
+        return;
+      }
 
-        const resource = resourceMap.get(resourceName)!;
-        
-        // 添加操作
+      // 收集该资源的所有操作
+      const allOperations: ResourceOperation[] = [];
+      const tags = new Set<string>();
+      
+      pathGroup.forEach(({ path, pathItem }) => {
         const operations = this.extractOperationsFromPathItem(path, pathItem);
         operations.forEach(operation => {
-          if (!resource.operations.find(op => op.method === operation.method && op.path === operation.path)) {
-            resource.operations.push(operation);
-          }
+          allOperations.push(operation);
+          operation.tags.forEach(tag => tags.add(tag));
         });
-
-        // 收集标签
-        operations.forEach(op => {
-          op.tags.forEach(tag => {
-            if (!resource.tags.includes(tag)) {
-              resource.tags.push(tag);
-            }
-          });
-        });
-
-        // 处理嵌套关系
-        if (isNestedResource && parentResourceName) {
-          const parentResource = resourceMap.get(parentResourceName);
-          if (parentResource && !parentResource.subResources.find(sub => sub.name === resourceName)) {
-            parentResource.subResources.push(resource);
-          }
-        }
       });
+
+      // 既然找到了列表端点，该资源就是 RESTful 的
+      const resource: ResourceInfo = {
+        name: resourceName,
+        pathPattern: this.buildResourcePathPattern(resourceName, pathGroup),
+        basePath: this.extractResourceBasePath(resourceName, pathGroup),
+        operations: allOperations,
+        isRESTful: true, // 有列表端点即为 RESTful
+        tags: Array.from(tags),
+        subResources: []
+      };
+
+      resourceMap.set(resourceKey, resource);
     });
 
-    // 判断是否为 RESTful 资源
-    resourceMap.forEach(resource => {
-      resource.isRESTful = this.isRESTfulResource(resource);
-    });
-
-    const resources = Array.from(resourceMap.values());
+    // 第三步：构建层级关系
+    const resources = this.organizeResourceHierarchy(resourceMap);
     this.resourceCache.set(cacheKey, resources);
     
     return resources;
   }
 
+  // ... 其他私有方法与原版相同，但移除了 swagger-parser 依赖
   /**
-   * 从路径中提取资源名称
+   * 从路径中提取资源链
+   * e.g., "/users/{id}/posts/{postId}/comments" -> ["users", "posts", "comments"]
    */
-  private extractResourceNamesFromPath(path: string): string[] {
+  private extractResourceChainFromPath(path: string): string[] {
     const segments = path.split('/').filter(Boolean);
-    const resourceNames: string[] = [];
+    const resourceChain: string[] = [];
 
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
@@ -336,15 +422,130 @@ export class OpenAPIDocumentParser {
         continue;
       }
 
-      resourceNames.push(segment);
+      resourceChain.push(segment);
     }
 
-    return resourceNames;
+    return resourceChain;
   }
 
   /**
-   * 判断是否为非资源段
+   * 查找列表端点（GET /resources，不带 ID 参数）
    */
+  private findListEndpoint(pathGroup: Array<{path: string, pathItem: any}>): {path: string, pathItem: any} | null {
+    return pathGroup.find(({ path, pathItem }) => {
+      // 检查是否有 GET 操作
+      if (!pathItem.get) return false;
+      
+      // 集合路径不应该以 ID 参数结尾
+      // e.g., /users 是集合，/users/{id} 是单个项目
+      const segments = path.split('/').filter(Boolean);
+      const lastSegment = segments[segments.length - 1];
+      
+      // 如果最后一段是参数，这可能是单个项目的端点
+      if (lastSegment && lastSegment.startsWith('{') && lastSegment.endsWith('}')) {
+        return false;
+      }
+      
+      return true;
+    }) || null;
+  }
+
+  /**
+   * 构建资源路径模式
+   */
+  private buildResourcePathPattern(resourceName: string, pathGroup: Array<{path: string, pathItem: any}>): string {
+    // 选择最简单的路径作为模式
+    const paths = pathGroup.map(p => p.path);
+    return this.selectMainPath(paths);
+  }
+
+  /**
+   * 提取资源基础路径
+   */
+  private extractResourceBasePath(resourceName: string, pathGroup: Array<{path: string, pathItem: any}>): string {
+    // 查找集合路径（不带参数的路径）
+    const collectionPath = pathGroup.find(({ path }) => {
+      const segments = path.split('/').filter(Boolean);
+      const lastSegment = segments[segments.length - 1];
+      return !(lastSegment && lastSegment.startsWith('{') && lastSegment.endsWith('}'));
+    });
+    
+    return collectionPath ? collectionPath.path : pathGroup[0].path;
+  }
+
+  /**
+   * 选择主要路径（最简单的路径）
+   */
+  private selectMainPath(paths: string[]): string {
+    if (paths.length === 1) return paths[0];
+    
+    // 按复杂度排序：优先选择段数较少和参数较少的路径
+    return paths.sort((a, b) => {
+      const aSegments = a.replace(/\{[^}]+\}/g, '').split('/').filter(Boolean);
+      const bSegments = b.replace(/\{[^}]+\}/g, '').split('/').filter(Boolean);
+      
+      // 优先选择段数较少的
+      if (aSegments.length !== bSegments.length) {
+        return aSegments.length - bSegments.length;
+      }
+      
+      // 优先选择无参数的路径
+      const aHasParams = /\{/.test(a);
+      const bHasParams = /\{/.test(b);
+      
+      if (aHasParams && !bHasParams) return 1;
+      if (!aHasParams && bHasParams) return -1;
+      
+      // 字典序
+      return a.localeCompare(b);
+    })[0];
+  }
+
+  /**
+   * 组织资源层级关系
+   */
+  private organizeResourceHierarchy(resourceMap: Map<string, ResourceInfo>): ResourceInfo[] {
+    const rootResources: ResourceInfo[] = [];
+    
+    // 按深度排序以确保父资源先处理
+    const sortedEntries = Array.from(resourceMap.entries()).sort((a, b) => {
+      const aDepth = a[0].split('.').length;
+      const bDepth = b[0].split('.').length;
+      return aDepth - bDepth;
+    });
+    
+    sortedEntries.forEach(([resourceKey, resource]) => {
+      const keyParts = resourceKey.split('.');
+      
+      if (keyParts.length === 1) {
+        // 顶级资源
+        rootResources.push(resource);
+      } else {
+        // 查找父资源
+        const parentKey = keyParts.slice(0, -1).join('.');
+        const parentResource = resourceMap.get(parentKey);
+        
+        if (parentResource) {
+          // 添加为子资源
+          if (!parentResource.subResources.find(sub => sub.name === resource.name)) {
+            parentResource.subResources.push(resource);
+          }
+        } else {
+          // 找不到父资源，作为顶级资源处理
+          rootResources.push(resource);
+        }
+      }
+    });
+    
+    return rootResources;
+  }
+  /**
+   * 从路径中提取资源名称（向后兼容）
+   */
+  private extractResourceNamesFromPath(path: string): string[] {
+    return this.extractResourceChainFromPath(path);
+  }
+
   private isNonResourceSegment(segment: string): boolean {
     const nonResourceSegments = [
       'api', 'v1', 'v2', 'v3', 'version',
@@ -358,17 +559,16 @@ export class OpenAPIDocumentParser {
   }
 
   /**
-   * 构建路径模式
+   * 构建路径模式（向后兼容）
    */
   private buildPathPattern(resourceName: string, originalPath: string): string {
     return originalPath;
   }
 
   /**
-   * 提取基础路径
+   * 提取基础路径（向后兼容）
    */
   private extractBasePath(resourceName: string, originalPath: string): string {
-    // 简化处理：移除最后的参数段
     const segments = originalPath.split('/');
     const lastSegment = segments[segments.length - 1];
     
@@ -379,9 +579,6 @@ export class OpenAPIDocumentParser {
     return originalPath;
   }
 
-  /**
-   * 从 PathItem 中提取操作
-   */
   private extractOperationsFromPathItem(path: string, pathItem: any): ResourceOperation[] {
     const operations: ResourceOperation[] = [];
     const methods = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'] as const;
@@ -396,21 +593,16 @@ export class OpenAPIDocumentParser {
     return operations;
   }
 
-  /**
-   * 构建操作信息
-   */
   private buildOperationInfo(
     method: string, 
     path: string, 
     operation: any,
     pathItem: any
   ): ResourceOperation {
-    // 合并路径级别和操作级别的参数
     const pathParameters = pathItem.parameters || [];
     const operationParameters = operation.parameters || [];
     const allParameters = [...pathParameters, ...operationParameters];
 
-    // 标准化参数格式（处理 v2 和 v3 的差异）
     const normalizedParameters = this.normalizeParameters(allParameters);
 
     return {
@@ -426,27 +618,21 @@ export class OpenAPIDocumentParser {
     };
   }
 
-  /**
-   * 标准化参数（处理 v2 和 v3 的差异）
-   */
   private normalizeParameters(parameters: any[]): OpenAPIV3.ParameterObject[] {
     return parameters.map(param => {
       if ('$ref' in param) {
-        return param; // 引用参数暂时保持原样
+        return param;
       }
 
-      // 处理 v2 参数格式
       if ('in' in param && param.in === 'body') {
-        // v2 的 body 参数转换为 v3 的 requestBody（这里简化处理）
         return {
           name: param.name || 'body',
-          in: 'query', // 简化处理
+          in: 'query',
           required: param.required || false,
           schema: param.schema || { type: 'object' }
         };
       }
 
-      // 标准化为 v3 格式
       return {
         name: param.name,
         in: param.in,
@@ -457,16 +643,11 @@ export class OpenAPIDocumentParser {
     });
   }
 
-  /**
-   * 标准化请求体（处理 v2 和 v3 的差异）
-   */
   private normalizeRequestBody(operation: any): OpenAPIV3.RequestBodyObject | undefined {
-    // v3 格式
     if (operation.requestBody) {
       return operation.requestBody;
     }
 
-    // v2 格式 - 从 parameters 中查找 body 参数
     if (operation.parameters) {
       const bodyParam = operation.parameters.find((p: any) => p.in === 'body');
       if (bodyParam) {
@@ -484,18 +665,13 @@ export class OpenAPIDocumentParser {
     return undefined;
   }
 
-  /**
-   * 判断是否为 RESTful 资源
-   */
   private isRESTfulResource(resource: ResourceInfo): boolean {
     const methods = resource.operations.map(op => op.method);
     
-    // 基本的 RESTful 判断：至少有 GET 操作
     if (!methods.includes('GET')) {
       return false;
     }
 
-    // 检查是否有集合和单个资源的操作
     const hasCollectionOps = resource.operations.some(op => 
       !op.path.includes('{') && (op.method === 'GET' || op.method === 'POST')
     );
@@ -507,11 +683,7 @@ export class OpenAPIDocumentParser {
     return hasCollectionOps || hasItemOps;
   }
 
-  /**
-   * 提取资源的主要 schema
-   */
   private extractResourceSchema(resource: ResourceInfo): OpenAPIV3.SchemaObject | null {
-    // 优先从 GET 操作的响应中提取 schema
     const getOperation = resource.operations.find(op => op.method === 'GET');
     if (getOperation) {
       const schema = this.extractSchemaFromResponse(getOperation.responses);
@@ -520,7 +692,6 @@ export class OpenAPIDocumentParser {
       }
     }
 
-    // 其次从 POST 操作的请求体中提取 schema
     const postOperation = resource.operations.find(op => op.method === 'POST');
     if (postOperation && postOperation.requestBody) {
       const schema = this.extractSchemaFromRequestBody(postOperation.requestBody);
@@ -532,9 +703,6 @@ export class OpenAPIDocumentParser {
     return null;
   }
 
-  /**
-   * 从响应中提取 schema
-   */
   private extractSchemaFromResponse(responses: OpenAPIV3.ResponsesObject): OpenAPIV3.SchemaObject | null {
     const successResponse = responses['200'] || responses['201'] || responses['default'];
     if (!successResponse || typeof successResponse === 'string') {
@@ -546,7 +714,6 @@ export class OpenAPIDocumentParser {
       return null;
     }
 
-    // 查找 JSON 内容
     const jsonContent = response.content['application/json'] || 
                        response.content['application/vnd.api+json'] ||
                        Object.values(response.content)[0];
@@ -557,14 +724,11 @@ export class OpenAPIDocumentParser {
 
     let schema = jsonContent.schema as OpenAPIV3.SchemaObject;
 
-    // 如果是数组，提取数组项的 schema
     if (schema.type === 'array' && schema.items) {
       schema = schema.items as OpenAPIV3.SchemaObject;
     }
 
-    // 处理常见的响应包装格式
     if (schema.type === 'object' && schema.properties) {
-      // 检查是否有 data 字段包装
       if (schema.properties.data) {
         const dataSchema = schema.properties.data as OpenAPIV3.SchemaObject;
         if (dataSchema.type === 'array' && dataSchema.items) {
@@ -574,7 +738,6 @@ export class OpenAPIDocumentParser {
         }
       }
       
-      // 检查是否有 items/list 字段包装
       if (schema.properties.items || schema.properties.list) {
         const itemsSchema = (schema.properties.items || schema.properties.list) as OpenAPIV3.SchemaObject;
         if (itemsSchema.type === 'array' && itemsSchema.items) {
@@ -586,9 +749,6 @@ export class OpenAPIDocumentParser {
     return schema;
   }
 
-  /**
-   * 从请求体中提取 schema
-   */
   private extractSchemaFromRequestBody(requestBody: OpenAPIV3.RequestBodyObject): OpenAPIV3.SchemaObject | null {
     if (!requestBody.content) {
       return null;
@@ -605,9 +765,6 @@ export class OpenAPIDocumentParser {
     return jsonContent.schema as OpenAPIV3.SchemaObject;
   }
 
-  /**
-   * 获取 OpenAPI 版本
-   */
   private getOpenAPIVersion(): string {
     if (!this.parsedApi) return 'unknown';
     
@@ -620,9 +777,6 @@ export class OpenAPIDocumentParser {
     return 'unknown';
   }
 
-  /**
-   * 判断是否为 OpenAPI 3.x
-   */
   private isV3(): boolean {
     return this.getOpenAPIVersion().startsWith('3.');
   }

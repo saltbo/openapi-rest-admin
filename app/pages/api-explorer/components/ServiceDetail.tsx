@@ -23,9 +23,8 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { frontendAPIService } from "../services";
 import { openAPIDocumentClient } from '~/lib/client';
-import { resourceManager } from '~/services';
+import { createOpenAPIService } from '~/lib/api';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -55,15 +54,35 @@ export default function ServiceDetail() {
     queryFn: () => openAPIDocumentClient.getConfigs({ enabled: true }),
   });
 
-  // 获取当前服务的分析数据
-  const { data: serviceAnalysis, isLoading } = useQuery({
-    queryKey: ["serviceAnalysis", sName],
-    queryFn: () =>
-      frontendAPIService.getOpenAPIAnalysis(sName!).then((res: any) => ({
+  // 获取当前服务的 OpenAPI 服务实例和分析数据
+  const { data: serviceData, isLoading } = useQuery({
+    queryKey: ["serviceData", sName],
+    queryFn: async () => {
+      if (!sName || apiConfigs.length === 0) return null;
+      
+      // 获取 API 配置
+      const config = apiConfigs.find((c: any) => c.id === sName);
+      if (!config) return null;
+      
+      // 创建 OpenAPI 服务
+      const openAPIService = createOpenAPIService(config.openapi_url);
+      await openAPIService.initialize(config.openapi_url);
+      
+      // 获取所有数据
+      const docInfo = openAPIService.getDocumentInfo();
+      const stats = openAPIService.getResourceStatistics();
+      const allResources = openAPIService.getAllResources();
+      const topLevelResources = openAPIService.getTopLevelResources();
+      
+      return {
         apiId: sName,
-        apiName: apiConfigs.find((c: any) => c.id === sName)?.name || sName,
-        ...res.data,
-      })),
+        apiName: config.name || sName,
+        docInfo,
+        stats,
+        allResources,
+        topLevelResources
+      };
+    },
     enabled: !!sName && apiConfigs.length > 0,
   });
 
@@ -75,7 +94,7 @@ export default function ServiceDetail() {
     );
   }
 
-  if (!serviceAnalysis) {
+  if (!serviceData) {
     return (
       <div style={{ textAlign: "center", padding: "50px" }}>
         <Text type="secondary">未找到服务信息</Text>
@@ -83,43 +102,20 @@ export default function ServiceDetail() {
     );
   }
 
-  // 使用 ResourceManager 计算统计数据
-  const resourceStats = serviceAnalysis.resources ? resourceManager.getStats(serviceAnalysis.resources) : {
-    total: 0,
-    restful: 0,
-    withSubResources: 0,
-    topLevel: 0
-  };
-  
-  const topLevelResources = serviceAnalysis.resources ? resourceManager.getTopLevelResources(serviceAnalysis.resources) : [];
-  
-  // HTTP 方法统计 - 使用 methods 属性而不是 endpoints
-  const httpMethodStats = serviceAnalysis.resources?.reduce(
-    (acc: any, resource: any) => {
-      resource.methods?.forEach((method: string) => {
-        const upperMethod = method.toUpperCase();
-        acc[upperMethod] = (acc[upperMethod] || 0) + 1;
-      });
-      return acc;
-    },
-    {} as Record<string, number>
-  ) || {};
+  // 解构数据
+  const { apiName, docInfo, stats, allResources, topLevelResources } = serviceData;
 
-  // 计算总接口数 - 基于 operations 对象
-  const totalEndpoints = serviceAnalysis.resources?.reduce(
-    (sum: number, resource: any) => {
-      // 统计每个资源的操作数量
-      const operationCount = resource.operations ? Object.keys(resource.operations).length : 0;
-      return sum + operationCount;
-    },
-    0
-  ) || 0;
+  // HTTP 方法统计
+  const httpMethodStats = stats.methodCounts;
 
-  const stats = {
-    totalResources: resourceStats.total,
-    topLevelResources: resourceStats.topLevel,
-    nestedResources: resourceStats.withSubResources,
-    restfulResources: resourceStats.restful,
+  // 计算总接口数
+  const totalEndpoints = stats.totalOperations;
+
+  const displayStats = {
+    totalResources: stats.totalResources,
+    topLevelResources: topLevelResources.length,
+    nestedResources: allResources.filter(r => r.subResources.length > 0).length,
+    restfulResources: stats.restfulResources,
     totalEndpoints: totalEndpoints,
     getEndpoints: httpMethodStats.GET || 0,
     postEndpoints: httpMethodStats.POST || 0,
@@ -184,7 +180,7 @@ export default function ServiceDetail() {
                 color: '#1a1a1a',
                 fontWeight: '600'
               }}>
-                {serviceAnalysis.apiName}
+                {apiName}
               </Title>
               <Text type="secondary" style={{ fontSize: '14px' }}>
                 服务 ID: {sName}
@@ -192,21 +188,21 @@ export default function ServiceDetail() {
             </div>
           </div>
 
-          {serviceAnalysis.description && (
+          {docInfo?.description && (
             <Descriptions column={2} style={{ marginTop: 16 }}>
               <Descriptions.Item label="版本">
-                <Tag color="blue">{serviceAnalysis.version}</Tag>
+                <Tag color="blue">{docInfo.version}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="标题">
-                {serviceAnalysis.title}
+                {docInfo.title}
               </Descriptions.Item>
               <Descriptions.Item label="描述" span={2}>
-                <Paragraph>{serviceAnalysis.description}</Paragraph>
+                <Paragraph>{docInfo.description}</Paragraph>
               </Descriptions.Item>
-              {serviceAnalysis.servers && serviceAnalysis.servers.length > 0 && (
+              {docInfo.servers && docInfo.servers.length > 0 && (
                 <Descriptions.Item label="服务器" span={2}>
                   <Space direction="vertical" size="small">
-                    {serviceAnalysis.servers.map(
+                    {docInfo.servers.map(
                       (serverUrl: string, index: number) => (
                         <div key={index}>
                           <Tag color="green">{serverUrl}</Tag>
@@ -231,7 +227,7 @@ export default function ServiceDetail() {
             }}>
               <Statistic
                 title="总资源数"
-                value={stats.totalResources}
+                value={displayStats.totalResources}
                 prefix={<DatabaseOutlined style={{ color: '#3f8600' }} />}
                 valueStyle={{ color: "#3f8600", fontWeight: '600' }}
               />
@@ -246,7 +242,7 @@ export default function ServiceDetail() {
             }}>
               <Statistic
                 title="顶级资源"
-                value={stats.topLevelResources}
+                value={displayStats.topLevelResources}
                 prefix={<ThunderboltOutlined style={{ color: '#1890ff' }} />}
                 valueStyle={{ color: "#1890ff", fontWeight: '600' }}
               />
@@ -261,7 +257,7 @@ export default function ServiceDetail() {
             }}>
               <Statistic
                 title="嵌套资源"
-                value={stats.nestedResources}
+                value={displayStats.nestedResources}
                 prefix={<BugOutlined style={{ color: '#722ed1' }} />}
                 valueStyle={{ color: "#722ed1", fontWeight: '600' }}
               />
@@ -276,7 +272,7 @@ export default function ServiceDetail() {
             }}>
               <Statistic
                 title="RESTful 资源"
-                value={stats.restfulResources}
+                value={displayStats.restfulResources}
                 prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
                 valueStyle={{ color: "#52c41a", fontWeight: '600' }}
               />
@@ -300,7 +296,7 @@ export default function ServiceDetail() {
             <Col span={5}>
               <Statistic
                 title="总接口数"
-                value={stats.totalEndpoints}
+                value={displayStats.totalEndpoints}
                 prefix={<ApiOutlined />}
                 valueStyle={{ color: "#cf1322" }}
               />
@@ -308,28 +304,28 @@ export default function ServiceDetail() {
             <Col span={5}>
               <Statistic
                 title="GET"
-                value={stats.getEndpoints}
+                value={displayStats.getEndpoints}
                 valueStyle={{ color: "#52c41a" }}
               />
             </Col>
             <Col span={5}>
               <Statistic
                 title="POST"
-                value={stats.postEndpoints}
+                value={displayStats.postEndpoints}
                 valueStyle={{ color: "#1890ff" }}
               />
             </Col>
             <Col span={5}>
               <Statistic
                 title="PUT"
-                value={stats.putEndpoints}
+                value={displayStats.putEndpoints}
                 valueStyle={{ color: "#faad14" }}
               />
             </Col>
             <Col span={4}>
               <Statistic
                 title="DELETE"
-                value={stats.deleteEndpoints}
+                value={displayStats.deleteEndpoints}
                 valueStyle={{ color: "#f5222d" }}
               />
             </Col>
@@ -367,9 +363,9 @@ export default function ServiceDetail() {
                     </Button>
                   </Link>,
                   <Text key="endpoints" type="secondary">
-                    {resource.operations ? Object.keys(resource.operations).length : 0} 个接口
+                    {resource.operations ? resource.operations.length : 0} 个接口
                   </Text>,
-                  resource.is_restful && (
+                  resource.isRESTful && (
                     <Tag key="restful" color="green">RESTful</Tag>
                   ),
                 ].filter(Boolean)}
@@ -379,29 +375,24 @@ export default function ServiceDetail() {
                   title={
                     <Space>
                       <Text strong>{resource.name}</Text>
-                      {resource.description && (
-                        <Text type="secondary">- {resource.description}</Text>
+                      {resource.operations?.[0]?.description && (
+                        <Text type="secondary">- {resource.operations[0].description}</Text>
                       )}
                     </Space>
                   }
                   description={
                     <Space wrap>
                       <Text>路径: {resource.basePath || "/"}</Text>
-                      {resource.methods && (
+                      {resource.operations && (
                         <Text type="secondary">
-                          方法: {resource.methods.join(', ')}
+                          方法: {resource.operations.map((op: any) => op.method).join(', ')}
                         </Text>
                       )}
-                      {serviceAnalysis.resources?.filter(
-                        (r: any) => r.parent_resource === resource.name
+                      {allResources.filter(
+                        (r: any) => resource.subResources.some((sub: any) => sub.name === r.name)
                       ).length > 0 && (
                         <Tag color="purple">
-                          {
-                            serviceAnalysis.resources?.filter(
-                              (r: any) => r.parent_resource === resource.name
-                            ).length
-                          }{" "}
-                          个子资源
+                          {resource.subResources.length} 个子资源
                         </Tag>
                       )}
                     </Space>
@@ -428,9 +419,9 @@ export default function ServiceDetail() {
               <Text strong>API 基本信息</Text>
               <br />
               <Text type="secondary">
-                版本: {serviceAnalysis.version} | 总路径:{" "}
-                {serviceAnalysis.total_paths} | 总操作:{" "}
-                {serviceAnalysis.total_operations}
+                版本: {docInfo?.version} | 总路径:{" "}
+                {stats.totalPaths} | 总操作:{" "}
+                {stats.totalOperations}
               </Text>
             </Timeline.Item>
 
@@ -438,7 +429,7 @@ export default function ServiceDetail() {
               <Text strong>RESTful 接口</Text>
               <br />
               <Text type="secondary">
-                已识别 {serviceAnalysis.restful_apis} 个 RESTful 风格的接口
+                已识别 {stats.restfulResources} 个 RESTful 风格的接口
               </Text>
             </Timeline.Item>
 
@@ -446,7 +437,7 @@ export default function ServiceDetail() {
               <Text strong>标签分类</Text>
               <br />
               <Space wrap>
-                {serviceAnalysis.tags?.map((tag: string) => (
+                {Object.keys(stats.tagCounts).map((tag: string) => (
                   <Tag key={tag} color="purple">
                     {tag}
                   </Tag>
@@ -459,9 +450,7 @@ export default function ServiceDetail() {
               <br />
               <Text type="secondary">
                 最后解析时间:{" "}
-                {serviceAnalysis.last_parsed
-                  ? formatDateTime(serviceAnalysis.last_parsed)
-                  : "未知"}
+                {formatDateTime(new Date().toISOString())}
               </Text>
             </Timeline.Item>
           </Timeline>
