@@ -7,7 +7,7 @@ import { ResourceDeleteConfirm } from '~/pages/api-explorer/resource/components/
 import { useOpenAPIService, useResourceInfo, useResourceTableSchema } from '~/hooks/useOpenAPIService';
 import { parseResourcePath } from '~/utils/resourceRouting';
 import { capitalizeFirst } from '~/components';
-import { Table } from '~/components/json-schema-table/antd';
+import { Table } from '~/components/json-schema-ui/themes/antd';
 import type { ResourceInfo } from '~/lib/api';
 
 const { Title } = Typography;

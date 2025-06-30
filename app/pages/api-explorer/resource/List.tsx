@@ -29,7 +29,7 @@ import {
   useResourceListData,
   useResourceTableSchema,
 } from "~/hooks/useOpenAPIService";
-import { Table } from '~/components/json-schema-table/antd';
+import { Table } from '~/components/json-schema-ui/themes/antd';
 import { useResourceDialogs } from "./hooks/useResourceDialogs";
 import { capitalizeFirst } from "~/components";
 import ResourceActionForm, { type ActionType } from './components/ResourceActionForm';

@@ -1,7 +1,7 @@
 import React from 'react';
 import type { JSONSchema7 } from 'json-schema';
-import type { JsonSchemaTableProps, TableSchema } from '../core/types';
-import { SchemaToTableConverter } from '../core/SchemaToTableConverter';
+import type { JsonSchemaTableProps, TableSchema } from '../../core/types';
+import { SchemaToTableConverter } from '../../core/SchemaToTableConverter';
 import { AntdTableRenderer } from './AntdTableRenderer';
 
 /**
@@ -11,7 +11,7 @@ import { AntdTableRenderer } from './AntdTableRenderer';
  * 
  * @example
  * ```tsx
- * import { Table } from '~/components/json-schema-table/antd';
+ * import { Table } from '~/components/json-schema-ui/themes/antd';
  * 
  * <Table
  *   schema={schema}

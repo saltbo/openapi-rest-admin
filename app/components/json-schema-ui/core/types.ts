@@ -250,3 +250,14 @@ export interface JsonSchemaTableProps extends Omit<TableRendererProps, 'schema'>
   /** 列配置覆盖 */
   columnOverrides?: Partial<Record<string, Partial<TableColumn>>>;
 }
+
+// 用于描述渲染器的接口
+export interface DescriptionRenderer {
+  render: (props: { items: any[]; column?: number }) => React.ReactElement;
+}
+
+export interface DescriptionItem {
+  key: string;
+  label: string;
+  value: any;
+}

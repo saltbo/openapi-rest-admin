@@ -11,8 +11,8 @@ import type {
   TableSchema as JsonSchemaTableSchema, 
   TableColumn as JsonSchemaTableColumn, 
   CellRenderer 
-} from '~/components/json-schema-table/core/types';
-import { SchemaToTableConverter } from '~/components/json-schema-table/core/SchemaToTableConverter';
+} from '~/components/json-schema-ui/core/types';
+import { SchemaToTableConverter } from '~/components/json-schema-ui/core/SchemaToTableConverter';
 import type { JSONSchema7 } from 'json-schema';
 
 /**

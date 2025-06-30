@@ -3,7 +3,7 @@ import { Table, Button, Space, Tag, Tooltip } from 'antd';
 import { EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import type { ColumnsType, ColumnType } from 'antd/es/table';
 import type { Key } from 'react';
-import type { TableRenderer, TableRendererProps, TableColumn, CellRenderer } from '../core/types';
+import type { TableRenderer, TableRendererProps, TableColumn, CellRenderer } from '../../core/types';
 
 /**
  * Antd Table 渲染器
