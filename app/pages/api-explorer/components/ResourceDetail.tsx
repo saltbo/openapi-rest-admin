@@ -7,13 +7,8 @@ import { ResourceHeader } from '~/components/shared/ResourceHeader';
 import { ResourceInfoCard } from '~/components/shared/ResourceInfoCard';
 import { SubResourcesList } from '~/components/shared/SubResourcesList';
 import { buildSubResourceDetailLink, buildNewResourceLink, buildPathToLevel } from '~/utils/resourceRouting';
-import { useResourceDetail } from '~/hooks/useResourceDetail';
+import { useResourceDetailAPI } from '~/hooks/useResourceDetailAPI';
 import { capitalizeFirst } from '~/components';
-
-interface ResourceItem {
-  id: string | number;
-  [key: string]: any;
-}
 
 interface ResourceDetailProps {
   apiId?: string;
@@ -30,7 +25,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
   
   const [showJsonModal, setShowJsonModal] = useState(false);
   
-  // 使用自定义 hook 管理状态
+  // 使用新的 API hook 管理状态
   const {
     loading,
     error,
@@ -44,10 +39,10 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
     isSubResourceDetail,
     apiConfig,
     refetch
-  } = useResourceDetail({ sName, rName, splat });
+  } = useResourceDetailAPI({ sName, rName, splat });
 
   // 事件处理函数
-  const handleSubResourceItemClick = (subResourceName: string, record: ResourceItem) => {
+  const handleSubResourceItemClick = (subResourceName: string, record: any) => {
     const path = buildSubResourceDetailLink(sName!, resourceHierarchy, subResourceName, record.id);
     navigate(path);
   };

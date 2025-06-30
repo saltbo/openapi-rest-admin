@@ -4,8 +4,7 @@ import { ExclamationCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createOpenAPIService, type ResourceInfo } from '~/lib/api';
 import { openAPIDocumentClient } from '~/lib/client';
-import { openAPIParser } from '~/services';
-import type { ParsedResource, ResourceDataItem } from '~/types/api';
+import type { ResourceDataItem } from '~/types/api';
 
 const { Text, Paragraph } = Typography;
 

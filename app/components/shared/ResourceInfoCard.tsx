@@ -4,19 +4,14 @@ import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useResourceDialogs } from '~/pages/api-explorer/hooks/useResourceDialogs';
 import { ResourceActionForm } from '~/pages/api-explorer/components/ResourceActionForm';
 import { ResourceDeleteConfirm } from '~/pages/api-explorer/components/ResourceDeleteConfirm';
-import type { ParsedResource } from '~/types/openapi';
+import type { ResourceInfo } from '~/lib/api';
 
 const { Text } = Typography;
 
-interface ResourceItem {
-  id: string | number;
-  [key: string]: any;
-}
-
 interface ResourceInfoCardProps {
-  data: ResourceItem;
+  data: any;
   apiId?: string;
-  resource?: ParsedResource;
+  resource?: ResourceInfo;
   onDeleteSuccess?: () => void;
 }
 

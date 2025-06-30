@@ -6,22 +6,17 @@ import { useResourceDialogs } from '~/pages/api-explorer/hooks/useResourceDialog
 import { ResourceActionForm } from '~/pages/api-explorer/components/ResourceActionForm';
 import { ResourceDeleteConfirm } from '~/pages/api-explorer/components/ResourceDeleteConfirm';
 import { capitalizeFirst } from '~/components';
-import type { ParsedResource } from '~/types/api';
+import type { ResourceInfo } from '~/lib/api';
 import type { ResourceHierarchy } from '~/utils/resourceRouting';
 
 const { Title, Text } = Typography;
 
-interface ResourceItem {
-  id: string | number;
-  [key: string]: any;
-}
-
 interface SubResourcesListProps {
-  subResources: ParsedResource[];
-  subResourceData: { [key: string]: ResourceItem[] };
+  subResources: ResourceInfo[];
+  subResourceData: { [key: string]: any[] };
   serviceName: string;
   resourceHierarchy: ResourceHierarchy[];
-  onItemClick: (subResourceName: string, record: ResourceItem) => void;
+  onItemClick: (subResourceName: string, record: any) => void;
   onCreateNew: (subResourceName: string) => void;
   apiId?: string;
 }
@@ -52,30 +47,30 @@ export const SubResourcesList: React.FC<SubResourcesListProps> = ({
   } = useResourceDialogs();
 
   // 当前操作的子资源
-  const [currentSubResource, setCurrentSubResource] = React.useState<ParsedResource | null>(null);
+  const [currentSubResource, setCurrentSubResource] = React.useState<ResourceInfo | null>(null);
 
   // 处理新增按钮点击
-  const handleAddClick = (subResource: ParsedResource) => {
-    console.log(`SubResourcesList - Adding ${subResource.name}: schema length = ${subResource.schema?.length || 0}`);
+  const handleAddClick = (subResource: ResourceInfo) => {
+    console.log(`SubResourcesList - Adding ${subResource.name}: operations length = ${subResource.operations?.length || 0}`);
     setCurrentSubResource(subResource);
     handleAdd();
   };
 
-  const generateSubResourceColumns = (subResource: ParsedResource, data: ResourceItem[]) => {
+  const generateSubResourceColumns = (subResource: ResourceInfo, data: any[]) => {
     return generateTableColumnsFromData({
       data,
       maxColumns: 4,
       showActions: true,
       actionHandlers: {
-        onDetail: (record: ResourceItem) => {
+        onDetail: (record: any) => {
           onItemClick(subResource.name, record);
           return '';
         },
-        onEdit: (record: ResourceItem) => {
+        onEdit: (record: any) => {
           setCurrentSubResource(subResource);
           handleEdit(record);
         },
-        onDelete: (record: ResourceItem) => {
+        onDelete: (record: any) => {
           setCurrentSubResource(subResource);
           handleDelete(record);
         }

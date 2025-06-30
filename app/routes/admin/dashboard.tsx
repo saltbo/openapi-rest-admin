@@ -1,5 +1,4 @@
 import type { Route } from "./+types/dashboard";
-import { AdminDashboard } from "~/pages/admin/components/Dashboard";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +8,5 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Dashboard() {
-  return <AdminDashboard />;
+  // return <AdminDashboard />;
 }

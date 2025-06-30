@@ -4,7 +4,6 @@ import type {
   OpenAPIDocumentModel, 
   CreateOpenAPIDocumentInput, 
   UpdateOpenAPIDocumentInput,
-  APIResponse 
 } from '../../types/api';
 
 /**
