@@ -22,6 +22,8 @@ export interface FormSchemaOptions {
   fieldOrder?: string[];
   /** 自定义字段配置 */
   fieldConfig?: Record<string, any>;
+  /** Schema 引用解析器 */
+  schemaResolver?: (ref: string) => any;
 }
 
 /**
@@ -113,14 +115,16 @@ export class SchemaRenderer {
       includeFields,
       excludeFields = [],
       fieldOrder,
-      fieldConfig = {}
+      fieldConfig = {},
+      schemaResolver
     } = options;
 
     // 转换 OpenAPI schema 为 JSON Schema
     const jsonSchema = this.convertToJSONSchema(openApiSchema, {
       includeFields,
       excludeFields,
-      fieldOrder
+      fieldOrder,
+      schemaResolver
     });
 
     // 生成 UI Schema
@@ -244,12 +248,18 @@ export class SchemaRenderer {
       includeFields?: string[];
       excludeFields?: string[];
       fieldOrder?: string[];
+      schemaResolver?: (ref: string) => any;
     }
   ): RJSFSchema {
-    const { includeFields, excludeFields = [], fieldOrder } = options;
+    const { includeFields, excludeFields = [], fieldOrder, schemaResolver } = options;
 
     // 深拷贝 schema 以避免修改原始数据
-    const schema = JSON.parse(JSON.stringify(openApiSchema)) as RJSFSchema;
+    let schema = JSON.parse(JSON.stringify(openApiSchema)) as RJSFSchema;
+
+    // 递归解析所有引用
+    if (schemaResolver) {
+      schema = this.resolveAllReferences(schema, schemaResolver) as RJSFSchema;
+    }
 
     // 处理字段过滤
     if (schema.type === 'object' && schema.properties) {
@@ -549,5 +559,38 @@ export class SchemaRenderer {
       .replace(/[_-]/g, ' ') // 将下划线和连字符替换为空格
       .replace(/\b\w/g, l => l.toUpperCase()) // 首字母大写
       .trim();
+  }
+
+  /**
+   * 私有方法：递归解析所有引用
+   */
+  private resolveAllReferences(schema: any, resolver: (ref: string) => any): any {
+    if (!schema || typeof schema !== 'object') {
+      return schema;
+    }
+
+    // 如果是数组，递归处理每个元素
+    if (Array.isArray(schema)) {
+      return schema.map(item => this.resolveAllReferences(item, resolver));
+    }
+
+    // 如果包含 $ref，解析引用
+    if (schema.$ref && typeof schema.$ref === 'string') {
+      const resolved = resolver(schema.$ref);
+      if (resolved) {
+        // 递归解析解析出来的 schema
+        return this.resolveAllReferences(resolved, resolver);
+      }
+      // 如果无法解析，保持原样
+      return schema;
+    }
+
+    // 递归处理对象的所有属性
+    const result: any = {};
+    for (const [key, value] of Object.entries(schema)) {
+      result[key] = this.resolveAllReferences(value, resolver);
+    }
+
+    return result;
   }
 }

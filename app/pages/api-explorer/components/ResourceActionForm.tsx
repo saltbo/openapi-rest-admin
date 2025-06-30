@@ -1,18 +1,5 @@
-import React, { useEffect } from 'react';
-import {
-  Form,
-  Input,
-  InputNumber,
-  Switch,
-  Select,
-  DatePicker,
-  Button,
-  Row,
-  Col,
-  message,
-  Space,
-  Typography
-} from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Button, Space, Typography, message, Row, Col } from 'antd';
 import { 
   PlusOutlined, 
   SaveOutlined, 
@@ -20,19 +7,22 @@ import {
   QuestionCircleOutlined
 } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { frontendAPIService } from '../services';
-import type { FieldDefinition, ParsedResource, ResourceDataItem } from '~/types/api';
-import dayjs from 'dayjs';
+import Form from '@rjsf/antd';
+import type { RJSFSchema, UiSchema } from '@rjsf/utils';
+import validator from '@rjsf/validator-ajv8';
+import { OpenAPIService, SchemaRenderer } from '~/lib/api';
+import type { ResourceInfo } from '~/lib/api';
+import { openAPIDocumentClient } from '~/lib/client';
+import type { ResourceDataItem } from '~/types/api';
+import type { OpenAPIV3 } from 'openapi-types';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
-const { Option } = Select;
 
 export type ActionType = 'create' | 'edit';
 
 interface ResourceActionFormProps {
   apiId: string;
-  resource: ParsedResource;
+  resource: ResourceInfo;
   action: ActionType;
   initialData?: ResourceDataItem;
   onSuccess?: () => void;
@@ -49,13 +39,125 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
   onCancel,
   title
 }) => {
-  const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const [schema, setSchema] = useState<RJSFSchema | null>(null);
+  const [uiSchema, setUiSchema] = useState<UiSchema>({});
+  const [formData, setFormData] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+  const [apiService, setApiService] = useState<OpenAPIService | null>(null);
 
-  // 添加资源项
+  // 初始化API服务和Schema
+  useEffect(() => {
+    const initializeForm = async () => {
+      try {
+        setLoading(true);
+        
+        // 获取API配置
+        const config = await openAPIDocumentClient.getConfig(apiId);
+        
+        // 创建API服务实例
+        const service = new OpenAPIService(config.openapi_url);
+        await service.initialize(config.openapi_url);
+        setApiService(service);
+        
+        // 获取资源的OpenAPI schema
+        let resourceSchema;
+        try {
+          resourceSchema = service.getActualResourceSchema(resource.name);
+          console.log('Got resource schema for', resource.name, ':', resourceSchema);
+        } catch (error) {
+          console.error('Failed to get resource schema:', error);
+          // 如果获取schema失败，创建一个基本的schema
+          resourceSchema = {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'ID' },
+              name: { type: 'string', description: '名称' }
+            }
+          };
+        }
+        
+        // 创建schema渲染器
+        const schemaRenderer = new SchemaRenderer();
+        
+        // 生成表单schema
+        const formSchemaOptions = {
+          excludeFields: action === 'create' 
+            ? ['id', '_id', 'createdAt', 'updatedAt', 'created_at', 'updated_at']
+            : ['createdAt', 'updatedAt', 'created_at', 'updated_at'],
+          readonly: false,
+          schemaResolver: (ref: string) => {
+            // 从当前服务实例获取 schema resolver
+            if (ref.startsWith('#/components/schemas/')) {
+              const schemaName = ref.replace('#/components/schemas/', '');
+              // 通过解析器获取文档
+              const document = service.getParser().getDocument();
+              
+              if (document && 'components' in document && document.components?.schemas?.[schemaName]) {
+                return document.components.schemas[schemaName];
+              }
+            }
+            return null;
+          }
+        };
+        
+        const formSchema = action === 'create' 
+          ? schemaRenderer.getCreateFormSchema(resourceSchema, formSchemaOptions)
+          : schemaRenderer.getEditFormSchema(resourceSchema, formSchemaOptions);
+        console.log(formSchema);
+        
+        setSchema(formSchema.schema);
+        setUiSchema(formSchema.uiSchema);
+        
+        // 设置初始数据
+        if (action === 'edit' && initialData) {
+          // 处理日期和其他特殊字段
+          const processedData = { ...initialData };
+          
+          // 转换日期字段为ISO字符串格式
+          Object.keys(processedData).forEach(key => {
+            const value = processedData[key];
+            if (value && typeof value === 'string') {
+              // 检查是否为日期字符串
+              const dateValue = new Date(value);
+              if (!isNaN(dateValue.getTime()) && value.includes('T')) {
+                processedData[key] = value;
+              }
+            }
+          });
+          
+          setFormData(processedData);
+        } else {
+          setFormData(formSchema.formData || {});
+        }
+        
+      } catch (error) {
+        console.error('Failed to initialize form:', error);
+        message.error('初始化表单失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeForm();
+  }, [apiId, resource.name, action, initialData]);
+
+  // 创建资源mutation
   const createMutation = useMutation({
-    mutationFn: (data: any) => {
-      return frontendAPIService.createResource(apiId, resource.name, data);
+    mutationFn: async (data: any) => {
+      if (!apiService) throw new Error('API服务未初始化');
+      
+      // 获取资源的创建操作
+      const allResources = apiService.getAllResources();
+      const resourceInfo = allResources.find(r => r.name === resource.name);
+      if (!resourceInfo) throw new Error(`Resource ${resource.name} not found`);
+      
+      const createOperation = resourceInfo.operations.find(op => op.method === 'POST');
+      if (!createOperation) throw new Error(`Create operation not found for ${resource.name}`);
+      
+      const client = apiService.getClient();
+      const response = await client.create(createOperation, data);
+      return response;
     },
     onSuccess: () => {
       message.success('添加成功');
@@ -69,13 +171,25 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
     },
   });
 
-  // 更新资源项
+  // 更新资源mutation
   const updateMutation = useMutation({
-    mutationFn: (data: any) => {
-      if (!initialData?.id) {
-        throw new Error('缺少资源ID');
-      }
-      return frontendAPIService.updateResource(apiId, resource.name, String(initialData.id), data);
+    mutationFn: async (data: any) => {
+      if (!apiService) throw new Error('API服务未初始化');
+      if (!initialData?.id) throw new Error('缺少资源ID');
+      
+      // 获取资源的更新操作
+      const allResources = apiService.getAllResources();
+      const resourceInfo = allResources.find(r => r.name === resource.name);
+      if (!resourceInfo) throw new Error(`Resource ${resource.name} not found`);
+      
+      const updateOperation = resourceInfo.operations.find(op => 
+        op.method === 'PUT' || op.method === 'PATCH'
+      );
+      if (!updateOperation) throw new Error(`Update operation not found for ${resource.name}`);
+      
+      const client = apiService.getClient();
+      const response = await client.update(updateOperation, String(initialData.id), data);
+      return response;
     },
     onSuccess: () => {
       message.success('更新成功');
@@ -89,7 +203,7 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
     },
   });
 
-  const loading = createMutation.isPending || updateMutation.isPending;
+  const submitting = createMutation.isPending || updateMutation.isPending;
 
   // 根据操作类型设置默认标题和图标
   const getActionConfig = () => {
@@ -113,263 +227,18 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
 
   const actionConfig = getActionConfig();
 
-  // 初始化表单数据
-  useEffect(() => {
-    if (initialData && action === 'edit') {
-      // 处理日期字段
-      const processedData = { ...initialData };
-      
-      if (resource.schema) {
-        resource.schema.forEach(field => {
-          const value = processedData[field.name];
-          if (value && (field.type === 'date' || field.type === 'datetime')) {
-            // 如果是日期字符串，转换为dayjs对象
-            if (typeof value === 'string') {
-              processedData[field.name] = dayjs(value);
-            }
-          } else if (value && field.type === 'array' && Array.isArray(value)) {
-            // 数组转换为逗号分隔的字符串
-            processedData[field.name] = value.join(', ');
-          } else if (value && field.type === 'object' && typeof value === 'object') {
-            // 对象转换为JSON字符串
-            processedData[field.name] = JSON.stringify(value, null, 2);
-          }
-        });
-      }
-      
-      form.setFieldsValue(processedData);
-    } else if (action === 'create') {
-      // 创建模式时清空表单
-      form.resetFields();
-    }
-  }, [initialData, action, resource.schema, form]);
-
-  // 根据字段类型渲染表单项
-  const renderFormItem = (field: FieldDefinition) => {
-    const { name, type, required, description, enum: enumValues, format } = field;
-
-    // 检查是否为ID字段
-    const isIdField = ['id', '_id'].includes(name);
-    
-    // 表单项的基本配置
-    const formItemProps = {
-      name,
-      label: <span style={{ fontWeight: 500 }}>{name}</span>,
-      tooltip: description ? {
-        title: description,
-        placement: 'topLeft' as const,
-        color: '#108ee9'
-      } : undefined,
-      required: isIdField ? false : required, // ID字段不需要必填验证
-      rules: isIdField ? [] : [
-        {
-          required,
-          message: `请输入${description || name}`
-        }
-      ]
-    };
-
-    // 如果是编辑模式且为ID字段，显示为只读
-    if (action === 'edit' && isIdField) {
-      return (
-        <Form.Item {...formItemProps}>
-          <Input 
-            disabled 
-            style={{ 
-              backgroundColor: '#f5f5f5',
-              color: '#999',
-              cursor: 'not-allowed'
-            }}
-            placeholder="系统自动生成"
-          />
-        </Form.Item>
-      );
-    }
-
-    // 根据类型渲染不同的输入组件
-    switch (type) {
-      case 'string':
-        if (enumValues && enumValues.length > 0) {
-          return (
-            <Form.Item {...formItemProps}>
-              <Select placeholder={`请选择${description || name}`}>
-                {enumValues.map(value => (
-                  <Option key={value} value={value}>
-                    {value}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          );
-        } else if (format === 'email') {
-          return (
-            <Form.Item 
-              {...formItemProps}
-              rules={[
-                ...formItemProps.rules,
-                { type: 'email', message: '请输入有效的邮箱地址' }
-              ]}
-            >
-              <Input placeholder={`请输入${description || name}`} />
-            </Form.Item>
-          );
-        } else if (format === 'url') {
-          return (
-            <Form.Item 
-              {...formItemProps}
-              rules={[
-                ...formItemProps.rules,
-                { type: 'url', message: '请输入有效的URL' }
-              ]}
-            >
-              <Input placeholder={`请输入${description || name}`} />
-            </Form.Item>
-          );
-        } else {
-          const isLongText = description && description.includes('描述') || 
-                            name.toLowerCase().includes('desc') || 
-                            name.toLowerCase().includes('content') ||
-                            name.toLowerCase().includes('note');
-          
-          return (
-            <Form.Item {...formItemProps}>
-              {isLongText ? (
-                <TextArea 
-                  rows={3} 
-                  placeholder={`请输入${description || name}`} 
-                />
-              ) : (
-                <Input placeholder={`请输入${description || name}`} />
-              )}
-            </Form.Item>
-          );
-        }
-
-      case 'number':
-      case 'integer':
-        return (
-          <Form.Item {...formItemProps}>
-            <InputNumber 
-              style={{ width: '100%' }}
-              placeholder={`请输入${description || name}`}
-              precision={type === 'integer' ? 0 : undefined}
-            />
-          </Form.Item>
-        );
-
-      case 'boolean':
-        return (
-          <Form.Item {...formItemProps} valuePropName="checked">
-            <Switch checkedChildren="是" unCheckedChildren="否" />
-          </Form.Item>
-        );
-
-      case 'date':
-        return (
-          <Form.Item {...formItemProps}>
-            <DatePicker 
-              style={{ width: '100%' }}
-              placeholder={`请选择${description || name}`}
-            />
-          </Form.Item>
-        );
-
-      case 'datetime':
-        return (
-          <Form.Item {...formItemProps}>
-            <DatePicker 
-              showTime
-              style={{ width: '100%' }}
-              placeholder={`请选择${description || name}`}
-            />
-          </Form.Item>
-        );
-
-      case 'array':
-        return (
-          <Form.Item 
-            {...formItemProps}
-            help={
-              <Space size={4} style={{ fontSize: '12px', color: '#666' }}>
-                <QuestionCircleOutlined />
-                <span>多个值请用逗号分隔</span>
-              </Space>
-            }
-          >
-            <Input placeholder={`请输入${description || name}，多个值用逗号分隔`} />
-          </Form.Item>
-        );
-
-      case 'object':
-        return (
-          <Form.Item 
-            {...formItemProps}
-            help={
-              <Space size={4} style={{ fontSize: '12px', color: '#666' }}>
-                <QuestionCircleOutlined />
-                <span>请输入有效的JSON格式</span>
-              </Space>
-            }
-          >
-            <TextArea 
-              rows={4} 
-              placeholder={`请输入${description || name}的JSON数据`}
-            />
-          </Form.Item>
-        );
-
-      default:
-        return (
-          <Form.Item {...formItemProps}>
-            <Input placeholder={`请输入${description || name}`} />
-          </Form.Item>
-        );
-    }
-  };
-
   // 处理表单提交
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (data: { formData?: any }) => {
     try {
-      // 处理特殊字段类型的值
-      const processedValues = { ...values };
+      if (!data.formData) return;
       
-      if (resource.schema) {
-        resource.schema.forEach(field => {
-          const value = processedValues[field.name];
-          if (value !== undefined && value !== null) {
-            switch (field.type) {
-              case 'array':
-                if (typeof value === 'string') {
-                  processedValues[field.name] = value.split(',').map(v => v.trim()).filter(v => v);
-                }
-                break;
-              
-              case 'object':
-                if (typeof value === 'string') {
-                  try {
-                    processedValues[field.name] = JSON.parse(value);
-                  } catch (e) {
-                    message.error(`字段 ${field.name} 的JSON格式无效`);
-                    return;
-                  }
-                }
-                break;
-              
-              case 'date':
-              case 'datetime':
-                if (dayjs.isDayjs(value)) {
-                  processedValues[field.name] = value.toISOString();
-                }
-                break;
-            }
-          }
-        });
-      }
-
+      // 处理特殊字段类型的值
+      const processedData = { ...data.formData };
+      
       // 对于编辑操作，合并原始数据
       const finalData = action === 'edit' && initialData 
-        ? { ...initialData, ...processedValues }
-        : processedValues;
+        ? { ...initialData, ...processedData }
+        : processedData;
 
       // 根据操作类型调用相应的mutation
       if (action === 'create') {
@@ -384,29 +253,29 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
     }
   };
 
-  // 获取表单字段
-  const getFormFields = () => {
-    if (!resource.schema || resource.schema.length === 0) {
-      return null; // 没有schema就返回null
-    }
-    
-    // 创建时过滤掉ID和时间戳字段
-    if (action === 'create') {
-      return resource.schema.filter(field => 
-        !['id', '_id', 'createdAt', 'updatedAt', 'created_at', 'updated_at'].includes(field.name)
-      );
-    }
-    
-    // 编辑时显示所有字段（包括ID，但ID会是只读的），除了自动生成的时间戳
-    return resource.schema.filter(field => 
-      !['createdAt', 'updatedAt', 'created_at', 'updated_at'].includes(field.name)
+  // 如果正在加载或没有schema，显示加载状态
+  if (loading || !schema) {
+    return (
+      <div style={{ 
+        padding: '24px', 
+        backgroundColor: '#fafafa',
+        minHeight: '100%'
+      }}>
+        <div style={{ 
+          backgroundColor: 'white', 
+          padding: '48px 24px', 
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          textAlign: 'center'
+        }}>
+          <Text>正在加载表单...</Text>
+        </div>
+      </div>
     );
-  };
-
-  const formFields = getFormFields();
+  }
 
   // 如果没有schema，显示错误信息
-  if (!formFields) {
+  if (!schema || Object.keys(schema.properties || {}).length === 0) {
     return (
       <div style={{ 
         padding: '24px', 
@@ -455,65 +324,62 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       backgroundColor: '#fafafa',
       minHeight: '100%'
     }}>
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        autoComplete="off"
-        size="large"
-      >
-        <div style={{ 
-          backgroundColor: 'white', 
-          padding: '24px', 
-          borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-          marginBottom: '24px'
-        }}>
-          <Row gutter={[24, 16]}>
-            {formFields!.map((field) => (
-              <Col 
-                key={field.name} 
-                xs={24} 
-                sm={24} 
-                md={formFields!.length > 4 ? 12 : 24}
-                lg={formFields!.length > 6 ? 8 : formFields!.length > 2 ? 12 : 24}
-              >
-                {renderFormItem(field)}
-              </Col>
-            ))}
-          </Row>
-        </div>
-
-        <div style={{ 
-          backgroundColor: 'white', 
-          padding: '16px 24px', 
-          borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-          borderTop: '3px solid #1890ff'
-        }}>
-          <Row justify="end">
-            <Space size="middle">
-              <Button 
-                size="large" 
-                onClick={onCancel}
-                style={{ minWidth: '80px' }}
-              >
-                取消
-              </Button>
-              <Button 
-                type="primary"
-                size="large"
-                htmlType="submit" 
-                icon={actionConfig.buttonIcon}
-                loading={loading}
-                style={{ minWidth: '120px' }}
-              >
-                {actionConfig.buttonText}
-              </Button>
-            </Space>
-          </Row>
-        </div>
-      </Form>
+      <div style={{ 
+        backgroundColor: 'white', 
+        padding: '24px', 
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        marginBottom: '24px'
+      }}>
+        <Row justify="space-between" align="middle" style={{ marginBottom: '24px' }}>
+          <Col>
+            <Title level={3} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {actionConfig.icon}
+              {actionConfig.title}
+            </Title>
+          </Col>
+        </Row>
+        
+        <Form
+          schema={schema}
+          uiSchema={uiSchema}
+          formData={formData}
+          validator={validator}
+          onSubmit={handleSubmit}
+          onChange={({ formData: newFormData }) => setFormData(newFormData)}
+          disabled={submitting}
+        >
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '16px 0', 
+            borderTop: '1px solid #f0f0f0',
+            marginTop: '24px'
+          }}>
+            <Row justify="end">
+              <Space size="middle">
+                <Button 
+                  size="large" 
+                  onClick={onCancel}
+                  disabled={submitting}
+                  style={{ minWidth: '80px' }}
+                >
+                  取消
+                </Button>
+                <Button 
+                  type="primary"
+                  size="large"
+                  htmlType="submit" 
+                  icon={actionConfig.buttonIcon}
+                  loading={submitting}
+                  style={{ minWidth: '120px' }}
+                >
+                  {actionConfig.buttonText}
+                </Button>
+              </Space>
+            </Row>
+          </div>
+        </Form>
+      </div>
     </div>
   );
 };

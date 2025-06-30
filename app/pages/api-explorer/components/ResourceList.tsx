@@ -33,8 +33,8 @@ import {
 import { convertTableSchemaToAntdColumns } from "~/utils/openAPITableUtils";
 import { useResourceDialogs } from "../hooks/useResourceDialogs";
 import { capitalizeFirst } from "~/components";
-// import ResourceActionForm, { type ActionType } from './ResourceActionForm';
-// import ResourceDeleteConfirm from './ResourceDeleteConfirm';
+import ResourceActionForm, { type ActionType } from './ResourceActionForm';
+import ResourceDeleteConfirm from './ResourceDeleteConfirm';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -249,7 +249,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({
       </Card>
 
       {/* 资源操作表单 */}
-      {/* <Drawer
+      <Drawer
         title={`${currentAction === 'create' ? '添加' : '编辑'}资源`}
         placement="right"
         size="large"
@@ -270,7 +270,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({
             onCancel={closeActionForm}
           />
         )}
-      </Drawer> */}
+      </Drawer>
 
       {/* 删除确认对话框 */}
       {/* {resource && itemToDelete && sName && (

@@ -135,7 +135,12 @@ export class OpenAPIService {
     
     // 使用 transformer 逻辑提取实际的资源 schema
     const transformedSchema = this.extractActualResourceSchema(schema);
-    return this.renderer.getFormSchema(transformedSchema, options);
+    
+    // 传递 schema resolver 给 renderer
+    return this.renderer.getFormSchema(transformedSchema, {
+      ...options,
+      schemaResolver: (ref: string) => this.resolveSchemaRef(ref)
+    });
   }
 
   /**
