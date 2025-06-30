@@ -171,6 +171,7 @@ export class SchemaToTableConverter {
    * 获取单元格渲染器
    */
   private static getCellRenderer(schema: JSONSchema7, dataType: TableColumn['dataType']) {
+    // 处理枚举类型
     if (schema.enum) {
       return {
         type: 'tag' as const,
@@ -180,10 +181,46 @@ export class SchemaToTableConverter {
       };
     }
 
+    // 根据 format 和 dataType 选择渲染器
+    if (schema.format) {
+      switch (schema.format) {
+        case 'email':
+          return {
+            type: 'email' as const,
+            config: {
+              copyable: true
+            }
+          };
+        case 'uri':
+        case 'url':
+          return {
+            type: 'url' as const,
+            config: {
+              target: '_blank' as '_blank'
+            }
+          };
+        case 'date':
+          return {
+            type: 'date' as const,
+            config: {
+              format: 'YYYY-MM-DD'
+            }
+          };
+        case 'date-time':
+          return {
+            type: 'date' as const,
+            config: {
+              format: 'YYYY-MM-DD HH:mm:ss'
+            }
+          };
+      }
+    }
+
+    // 根据数据类型选择渲染器
     switch (dataType) {
       case 'boolean':
         return {
-          type: 'tag' as const,
+          type: 'boolean' as const,
           config: {
             trueText: '是',
             falseText: '否',
@@ -191,35 +228,60 @@ export class SchemaToTableConverter {
             falseColor: 'red'
           }
         };
+      case 'number':
+        return {
+          type: 'number' as const,
+          config: {
+            precision: schema.multipleOf ? this.getPrecisionFromMultiple(schema.multipleOf) : 2,
+            separator: ',',
+            ...(schema.minimum !== undefined && { min: schema.minimum }),
+            ...(schema.maximum !== undefined && { max: schema.maximum })
+          }
+        };
       case 'date':
         return {
           type: 'date' as const,
           config: {
-            format: schema.format === 'date' ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:mm:ss'
+            format: 'YYYY-MM-DD HH:mm:ss'
           }
         };
       case 'array':
         return {
           type: 'tag' as const,
           config: {
-            showCount: true
+            showCount: true,
+            maxLength: 3
           }
         };
       case 'object':
         return {
           type: 'json' as const,
           config: {
-            maxLength: 50
+            maxLength: 50,
+            ellipsis: true
           }
         };
+      case 'string':
       default:
         return {
           type: 'text' as const,
           config: {
-            maxLength: 100
+            maxLength: schema.maxLength || 100,
+            ellipsis: true,
+            copyable: !!(schema.maxLength && schema.maxLength > 50)
           }
         };
     }
+  }
+
+  /**
+   * 根据 multipleOf 推断小数精度
+   */
+  private static getPrecisionFromMultiple(multipleOf: number): number {
+    if (!multipleOf || multipleOf >= 1) return 0;
+    const str = multipleOf.toString();
+    if (str.indexOf('.') === -1) return 0;
+    return str.split('.')[1].length;
   }
 
   /**

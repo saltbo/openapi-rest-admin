@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Table,
   Card,
   Typography,
   Space,
@@ -10,7 +9,7 @@ import {
   Alert,
   Drawer,
 } from "antd";
-import { useParams, Link } from "react-router";
+import { useParams } from "react-router";
 import {
   DatabaseOutlined,
   SearchOutlined,
@@ -30,7 +29,7 @@ import {
   useResourceListData,
   useResourceTableSchema,
 } from "~/hooks/useOpenAPIService";
-import { convertTableSchemaToAntdColumns } from "~/utils/openAPITableUtils";
+import { Table } from '~/components/json-schema-table/antd';
 import { useResourceDialogs } from "./hooks/useResourceDialogs";
 import { capitalizeFirst } from "~/components";
 import ResourceActionForm, { type ActionType } from './components/ResourceActionForm';
@@ -115,15 +114,10 @@ export const ResourceList: React.FC<ResourceListProps> = ({
     return buildDetailLink(sName!, rName!, nestedPath, itemId);
   };
 
-  // 生成表格列配置
-  const generateColumns = () => {
-    const actionHandlers = {
-      onDetail: (record: any) => generateDetailLink(record.id),
-      onEdit: (record: any) => handleEdit(record),
-      onDelete: handleDelete,
-    };
-
-    return convertTableSchemaToAntdColumns(tableSchema, actionHandlers);
+  const actionHandlers = {
+    onDetail: (record: any) => generateDetailLink(record.id),
+    onEdit: (record: any) => handleEdit(record),
+    onDelete: handleDelete,
   };
 
   if (error) {
@@ -144,21 +138,18 @@ export const ResourceList: React.FC<ResourceListProps> = ({
     );
   }
 
-  if (!resource) {
+  if (!resource || !tableSchema) {
     return (
       <div style={{ padding: "24px" }}>
         <Alert
           message="资源不存在"
-          description={`找不到资源 "${currentResourceName}"`}
+          description={`找不到资源 "${currentResourceName}" 或其表格定义`}
           type="warning"
           showIcon
         />
       </div>
     );
   }
-
-  // 生成表格列
-  const columns = generateColumns();
 
   return (
     <div style={{ padding: "24px" }}>
@@ -227,9 +218,9 @@ export const ResourceList: React.FC<ResourceListProps> = ({
         </div>
 
         <Table
-          columns={columns}
-          dataSource={resourceData?.data || []}
-          rowKey="id"
+          schema={tableSchema}
+          data={resourceData?.data || []}
+          actionHandlers={actionHandlers}
           loading={isLoading}
           pagination={{
             current: currentPage,
@@ -237,14 +228,11 @@ export const ResourceList: React.FC<ResourceListProps> = ({
             total: resourceData?.pagination?.total || 0,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} 共 ${total} 条`,
             onChange: (page, size) => {
               setCurrentPage(page);
               setPageSize(size || 10);
             },
           }}
-          scroll={{ x: true }}
         />
       </Card>
 

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, Table, Drawer, Spin, Alert } from 'antd';
+import { Card, Typography, Button, Drawer, Spin, Alert } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { generateTableColumnsFromData } from '~/utils/tableUtils';
 import { useResourceDialogs } from '~/pages/api-explorer/resource/hooks/useResourceDialogs';
 import { ResourceActionForm } from '~/pages/api-explorer/resource/components/ResourceActionForm';
 import { ResourceDeleteConfirm } from '~/pages/api-explorer/resource/components/ResourceDeleteConfirm';
-import { useOpenAPIService, useResourceInfo } from '~/hooks/useOpenAPIService';
+import { useOpenAPIService, useResourceInfo, useResourceTableSchema } from '~/hooks/useOpenAPIService';
 import { parseResourcePath } from '~/utils/resourceRouting';
 import { capitalizeFirst } from '~/components';
+import { Table } from '~/components/json-schema-table/antd';
 import type { ResourceInfo } from '~/lib/api';
 
 const { Title } = Typography;
@@ -45,6 +45,7 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
 
   // 获取资源信息
   const { resource } = useResourceInfo(service, currentResourceName);
+  const tableSchema = useResourceTableSchema(service, subResource.name);
 
   // 加载子资源数据
   const loadSubResourceData = async () => {
@@ -125,24 +126,17 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
     handleAdd();
   };
 
-  const generateSubResourceColumns = (data: any[]) => {
-    return generateTableColumnsFromData({
-      data,
-      maxColumns: 4,
-      showActions: true,
-      actionHandlers: {
-        onDetail: (record: any) => {
-          onItemClick(subResource.name, record);
-          return '';
-        },
-        onEdit: (record: any) => {
-          handleEdit(record);
-        },
-        onDelete: (record: any) => {
-          handleDelete(record);
-        }
-      }
-    });
+  const actionHandlers = {
+    onDetail: (record: any) => {
+      onItemClick(subResource.name, record);
+      return '';
+    },
+    onEdit: (record: any) => {
+      handleEdit(record);
+    },
+    onDelete: (record: any) => {
+      handleDelete(record);
+    }
   };
 
   // 如果服务还没有初始化，显示加载状态
@@ -226,6 +220,47 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
     );
   }
 
+  if (!tableSchema) {
+    return (
+        <Card
+            title={
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#262626'
+                }}>
+                    <span>{capitalizeFirst(subResource.name)}</span>
+                </div>
+            }
+            bordered={false}
+            style={{
+                borderRadius: '12px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.08)',
+                background: '#fff',
+                overflow: 'hidden'
+            }}
+            headStyle={{
+                borderBottom: '1px solid #f0f0f0',
+                background: '#fafafa',
+                padding: '16px 24px'
+            }}
+            bodyStyle={{
+                padding: '24px'
+            }}
+        >
+            <Alert
+                message="无法加载表格"
+                description={`无法找到资源 "${subResource.name}" 的表格定义。`}
+                type="warning"
+                showIcon
+            />
+        </Card>
+    );
+  }
+
   return (
     <>
       <Card 
@@ -251,7 +286,7 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
                 border: 'none'
               }}
             >
-              新增
+              创建新{subResource.name}
             </Button>
           </div>
         }
@@ -271,41 +306,17 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
           padding: '0'
         }}
       >
-        <div style={{ padding: '0 24px 24px 24px' }}>
-          <Table
-            columns={generateSubResourceColumns(data)}
-            dataSource={data}
-            rowKey="id"
-            size="middle"
-            scroll={{ x: 'max-content' }}
-            pagination={{ 
-              pageSize: 5, 
-              showSizeChanger: false,
-              showQuickJumper: false,
-              size: 'small'
-            }}
-            locale={{
-              emptyText: (
-                <div style={{ 
-                  padding: '40px 0',
-                  color: '#999',
-                  fontSize: '14px'
-                }}>
-                  暂无数据
-                </div>
-              )
-            }}
-            style={{
-              borderRadius: '8px',
-              overflow: 'hidden'
-            }}
-          />
-        </div>
+        <Table
+          schema={tableSchema}
+          data={data}
+          loading={loading}
+          actionHandlers={actionHandlers}
+        />
       </Card>
 
       {/* 编辑表单抽屉 */}
       <Drawer
-        title={`${currentAction === 'create' ? '添加' : '编辑'}${subResource?.name || '资源'}`}
+        title={`${currentAction === 'create' ? '创建' : '编辑'} ${subResource.name}`}
         placement="right"
         open={showActionForm}
         onClose={closeActionForm}

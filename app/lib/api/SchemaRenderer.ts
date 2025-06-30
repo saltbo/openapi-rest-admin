@@ -7,6 +7,13 @@
 
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import type { OpenAPIV3 } from 'openapi-types';
+import type { 
+  TableSchema as JsonSchemaTableSchema, 
+  TableColumn as JsonSchemaTableColumn, 
+  CellRenderer 
+} from '~/components/json-schema-table/core/types';
+import { SchemaToTableConverter } from '~/components/json-schema-table/core/SchemaToTableConverter';
+import type { JSONSchema7 } from 'json-schema';
 
 /**
  * 表单配置选项
@@ -31,17 +38,27 @@ export interface FormSchemaOptions {
  */
 export interface TableSchemaOptions {
   /** 要显示的列 */
-  columns?: string[];
-  /** 列顺序 */
-  columnOrder?: string[];
-  /** 可排序的列 */
-  sortableColumns?: string[];
-  /** 可筛选的列 */
-  filterableColumns?: string[];
-  /** 列宽配置 */
-  columnWidths?: Record<string, number>;
-  /** 自定义列渲染 */
-  customRenderers?: Record<string, string>;
+  includeFields?: string[];
+  /** 要排除的列 */
+  excludeFields?: string[];
+  /** 列配置覆盖 */
+  columnOverrides?: Record<string, Partial<JsonSchemaTableColumn>>;
+  /** 是否显示操作列 */
+  showActions?: boolean;
+  /** 操作列配置 */
+  actionsConfig?: {
+    detail?: boolean;
+    edit?: boolean;
+    delete?: boolean;
+    custom?: Array<{
+      key: string;
+      title: string;
+      icon?: string;
+      type?: 'primary' | 'default' | 'danger';
+    }>;
+  };
+  /** 主键字段 */
+  primaryKey?: string;
 }
 
 /**
@@ -57,45 +74,9 @@ export interface FormSchema {
 }
 
 /**
- * 表格列定义
+ * 表格 Schema 结果（使用 json-schema-table 的类型）
  */
-export interface TableColumn {
-  /** 列键 */
-  key: string;
-  /** 列标题 */
-  title: string;
-  /** 数据类型 */
-  dataType: string;
-  /** 是否可排序 */
-  sortable: boolean;
-  /** 是否可筛选 */
-  filterable: boolean;
-  /** 列宽 */
-  width?: number;
-  /** 自定义渲染器 */
-  render?: string;
-  /** 格式化函数 */
-  format?: string;
-}
-
-/**
- * 表格 Schema 结果
- */
-export interface TableSchema {
-  /** 列定义 */
-  columns: TableColumn[];
-  /** 排序配置 */
-  defaultSort?: {
-    field: string;
-    order: 'asc' | 'desc';
-  };
-  /** 分页配置 */
-  pagination?: {
-    pageSize: number;
-    showSizeChanger: boolean;
-    showQuickJumper: boolean;
-  };
-}
+export type TableSchema = JsonSchemaTableSchema;
 
 /**
  * Schema 渲染器
@@ -183,60 +164,59 @@ export class SchemaRenderer {
 
   /**
    * 获取表格 schema
-   * 基于 OpenAPI schema 生成表格列定义
+   * 基于 OpenAPI schema 生成表格列定义，使用 json-schema-table 组件
    */
   getTableSchema(
     openApiSchema: OpenAPIV3.SchemaObject,
     options: TableSchemaOptions = {}
   ): TableSchema {
     const {
-      columns,
-      columnOrder,
-      sortableColumns,
-      filterableColumns,
-      columnWidths = {},
-      customRenderers = {}
+      includeFields,
+      excludeFields,
+      columnOverrides,
+      showActions = false,
+      actionsConfig,
+      primaryKey
     } = options;
 
-    // 提取字段定义
-    const fields = this.extractFields(openApiSchema);
-    
-    // 生成列定义
-    let tableColumns = this.generateTableColumns(fields, {
-      sortableColumns,
-      filterableColumns,
-      columnWidths,
-      customRenderers
+    // 将 OpenAPI schema 转换为 JSON Schema
+    const jsonSchema = this.convertOpenAPISchemaToJSONSchema(openApiSchema);
+
+    // 使用 SchemaToTableConverter 生成表格 schema
+    const tableSchema = SchemaToTableConverter.convertJsonSchemaToTableSchema(jsonSchema, {
+      includeFields,
+      excludeFields,
+      columnOverrides,
+      showActions
     });
 
-    // 过滤指定的列
-    if (columns && columns.length > 0) {
-      tableColumns = tableColumns.filter(col => columns.includes(col.key));
+    // 应用自定义配置
+    if (actionsConfig) {
+      tableSchema.actions = actionsConfig;
     }
 
-    // 应用列顺序
-    if (columnOrder && columnOrder.length > 0) {
-      tableColumns.sort((a, b) => {
-        const aIndex = columnOrder.indexOf(a.key);
-        const bIndex = columnOrder.indexOf(b.key);
-        
-        if (aIndex === -1 && bIndex === -1) return 0;
-        if (aIndex === -1) return 1;
-        if (bIndex === -1) return -1;
-        
-        return aIndex - bIndex;
-      });
+    if (primaryKey) {
+      tableSchema.primaryKey = primaryKey;
     }
 
-    return {
-      columns: tableColumns,
-      defaultSort: this.getDefaultSort(tableColumns),
-      pagination: {
-        pageSize: 20,
-        showSizeChanger: true,
-        showQuickJumper: true
-      }
-    };
+    return tableSchema;
+  }
+
+  /**
+   * 私有方法：将 OpenAPI Schema 转换为 JSON Schema
+   */
+  private convertOpenAPISchemaToJSONSchema(openApiSchema: OpenAPIV3.SchemaObject): JSONSchema7 {
+    // 深拷贝避免修改原始数据
+    const jsonSchema = JSON.parse(JSON.stringify(openApiSchema)) as JSONSchema7;
+    
+    // OpenAPI schema 与 JSON Schema 基本兼容，只需要做少量转换
+    // 移除 OpenAPI 特有的属性
+    const openApiOnlyFields = ['discriminator', 'xml', 'externalDocs', 'example'];
+    openApiOnlyFields.forEach(field => {
+      delete (jsonSchema as any)[field];
+    });
+
+    return jsonSchema;
   }
 
   /**
@@ -434,120 +414,6 @@ export class SchemaRenderer {
     });
 
     return formData;
-  }
-
-  /**
-   * 私有方法：提取字段定义
-   */
-  private extractFields(schema: OpenAPIV3.SchemaObject): Array<{
-    name: string;
-    type: string;
-    title: string;
-    description?: string;
-    required: boolean;
-    format?: string;
-    enum?: any[];
-  }> {
-    const fields: any[] = [];
-
-    if (schema.type === 'object' && schema.properties) {
-      const required = schema.required || [];
-      
-      Object.entries(schema.properties).forEach(([name, fieldSchema]) => {
-        if (typeof fieldSchema === 'object' && !('$ref' in fieldSchema)) {
-          fields.push({
-            name,
-            type: fieldSchema.type || 'string',
-            title: fieldSchema.title || this.humanizeFieldName(name),
-            description: fieldSchema.description,
-            required: required.includes(name),
-            format: fieldSchema.format,
-            enum: fieldSchema.enum
-          });
-        }
-      });
-    }
-
-    return fields;
-  }
-
-  /**
-   * 私有方法：生成表格列
-   */
-  private generateTableColumns(
-    fields: any[],
-    options: {
-      sortableColumns?: string[];
-      filterableColumns?: string[];
-      columnWidths?: Record<string, number>;
-      customRenderers?: Record<string, string>;
-    }
-  ): TableColumn[] {
-    const {
-      sortableColumns = [],
-      filterableColumns = [],
-      columnWidths = {},
-      customRenderers = {}
-    } = options;
-
-    return fields.map(field => ({
-      key: field.name,
-      title: field.title,
-      dataType: field.type,
-      sortable: sortableColumns.includes(field.name) || this.isDefaultSortable(field.type),
-      filterable: filterableColumns.includes(field.name) || this.isDefaultFilterable(field.type),
-      width: columnWidths[field.name],
-      render: customRenderers[field.name],
-      format: this.getDefaultFormat(field.type, field.format)
-    }));
-  }
-
-  /**
-   * 私有方法：获取默认排序
-   */
-  private getDefaultSort(columns: TableColumn[]): { field: string; order: 'asc' | 'desc' } | undefined {
-    // 优先选择 ID 字段
-    const idColumn = columns.find(col => col.key === 'id');
-    if (idColumn) {
-      return { field: 'id', order: 'asc' };
-    }
-
-    // 选择第一个可排序的字段
-    const sortableColumn = columns.find(col => col.sortable);
-    if (sortableColumn) {
-      return { field: sortableColumn.key, order: 'asc' };
-    }
-
-    return undefined;
-  }
-
-  /**
-   * 私有方法：是否默认可排序
-   */
-  private isDefaultSortable(type: string): boolean {
-    return ['string', 'number', 'integer', 'boolean'].includes(type);
-  }
-
-  /**
-   * 私有方法：是否默认可筛选
-   */
-  private isDefaultFilterable(type: string): boolean {
-    return ['string', 'boolean'].includes(type);
-  }
-
-  /**
-   * 私有方法：获取默认格式
-   */
-  private getDefaultFormat(type: string, format?: string): string | undefined {
-    if (format === 'date') return 'date';
-    if (format === 'date-time') return 'datetime';
-    if (format === 'email') return 'email';
-    if (format === 'uri') return 'url';
-    
-    if (type === 'number' || type === 'integer') return 'number';
-    if (type === 'boolean') return 'boolean';
-    
-    return undefined;
   }
 
   /**
