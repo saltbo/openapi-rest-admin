@@ -1,5 +1,5 @@
 import type { Route } from "./+types/service-detail";
-import ServiceDetail from "~/pages/api-explorer/components/ServiceDetail";
+import ServiceDetail from "~/pages/api-explorer/ServiceDetail";
 
 export function meta({}: Route.MetaArgs) {
   return [

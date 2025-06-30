@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { Spin, Alert, Modal } from 'antd';
+import { Modal } from 'antd';
 import { JsonViewer } from '~/components/shared/JsonViewer';
 import { ResourceBreadcrumb } from '~/components/shared/ResourceBreadcrumb';
-import { ResourceHeader } from '~/components/shared/ResourceHeader';
-import { ResourceInfoCard } from '~/components/shared/ResourceInfoCard';
-import { SubResourcesList } from '~/components/shared/SubResourcesList';
-import { buildSubResourceDetailLink, buildNewResourceLink, buildPathToLevel } from '~/utils/resourceRouting';
-import { useResourceDetailAPI } from '~/hooks/useResourceDetailAPI';
+import { ResourceHeader } from '~/pages/api-explorer/resource/components/ResourceHeader';
+import { ResourceInfoCard } from '~/pages/api-explorer/resource/components/ResourceInfoCard';
+import { SubResourcesContainer } from '~/pages/api-explorer/resource/components/SubResourcesContainer';
+import { buildSubResourceDetailLink, buildNewResourceLink, buildPathToLevel, parseResourcePath } from '~/utils/resourceRouting';
 import { capitalizeFirst } from '~/components';
 
 interface ResourceDetailProps {
@@ -24,22 +23,17 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
   const splat = params['*'];
   
   const [showJsonModal, setShowJsonModal] = useState(false);
+  const [jsonData, setJsonData] = useState<any>(null);
   
-  // 使用新的 API hook 管理状态
-  const {
-    loading,
-    error,
-    currentItem,
-    currentResource,
-    subResources,
-    subResourceData,
-    resourceHierarchy,
-    currentResourceName,
-    currentItemId,
-    isSubResourceDetail,
-    apiConfig,
-    refetch
-  } = useResourceDetailAPI({ sName, rName, splat });
+  // 解析资源路径信息
+  const { 
+    currentResourceName, 
+    resourceHierarchy 
+  } = parseResourcePath(splat || '', rName || '');
+
+  const currentLevel = resourceHierarchy[resourceHierarchy.length - 1];
+  const currentItemId = currentLevel.itemId || '';
+  const isSubResourceDetail = resourceHierarchy.length > 1;
 
   // 事件处理函数
   const handleSubResourceItemClick = (subResourceName: string, record: any) => {
@@ -52,6 +46,17 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
     navigate(newResourceUrl);
   };
 
+  // 显示JSON数据
+  const handleShowJson = (data: any) => {
+    setJsonData(data);
+    setShowJsonModal(true);
+  };
+
+  // 处理数据加载
+  const handleDataLoaded = (data: any) => {
+    setJsonData(data);
+  };
+
   // 删除成功后的处理
   const handleDeleteSuccess = () => {
     // 根据当前资源层次结构，跳转到上级列表页面
@@ -61,37 +66,15 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
       navigate(listUrl);
     } else {
       // 如果是子资源，跳转到上一级的列表页面
-      // 构建到上一级（不包含当前级别的itemId）的路径
       const parentListUrl = buildPathToLevel(
         sName!, 
-        resourceHierarchy.slice(0, -1), // 移除最后一级（当前级别）
-        resourceHierarchy.length - 2,   // 目标是倒数第二级
-        true  // 包含itemId，因为我们要显示该级别下的子资源列表
+        resourceHierarchy.slice(0, -1),
+        resourceHierarchy.length - 2,
+        true
       );
       navigate(parentListUrl);
     }
   };
-
-  // 加载状态
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
-
-  // 错误状态
-  if (error || !currentResource || !currentItem) {
-    return (
-      <Alert
-        message="数据加载失败"
-        description={error || "无法加载资源详情，请检查配置或刷新页面"}
-        type="error"
-        showIcon
-      />
-    );
-  }
 
   return (
     <div style={{ 
@@ -117,30 +100,33 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
       <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
         {/* 页面头部 */}
         <ResourceHeader
-          resourceName={capitalizeFirst(currentResource.name)}
+          resourceName={capitalizeFirst(currentResourceName)}
           itemId={currentItemId}
           isSubResourceDetail={isSubResourceDetail}
           resourceHierarchy={resourceHierarchy}
-          onShowJson={() => setShowJsonModal(true)}
+          onShowJson={() => handleShowJson(jsonData)}
         />
 
         {/* 资源详情信息 */}
         <ResourceInfoCard 
-          data={currentItem} 
-          apiId={apiConfig?.id}
-          resource={currentResource}
+          serviceName={sName}
+          resourceName={rName}
+          itemId={currentItemId}
+          nestedPath={splat}
+          apiId={apiId}
           onDeleteSuccess={handleDeleteSuccess}
+          onDataLoaded={handleDataLoaded}
         />
 
         {/* 子资源列表 */}
-        <SubResourcesList
-          subResources={subResources}
-          subResourceData={subResourceData}
-          serviceName={sName!}
-          resourceHierarchy={resourceHierarchy}
+        <SubResourcesContainer
+          serviceName={sName}
+          resourceName={rName}
+          itemId={currentItemId}
+          nestedPath={splat}
           onItemClick={handleSubResourceItemClick}
           onCreateNew={handleCreateNew}
-          apiId={apiConfig?.id}
+          apiId={apiId}
         />
 
         {/* JSON数据模态框 */}
@@ -152,7 +138,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
           width="80%"
           style={{ top: 20 }}
         >
-          <JsonViewer data={currentItem} />
+          <JsonViewer data={jsonData} />
         </Modal>
       </div>
     </div>

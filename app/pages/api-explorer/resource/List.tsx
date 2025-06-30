@@ -31,10 +31,10 @@ import {
   useResourceTableSchema,
 } from "~/hooks/useOpenAPIService";
 import { convertTableSchemaToAntdColumns } from "~/utils/openAPITableUtils";
-import { useResourceDialogs } from "../hooks/useResourceDialogs";
+import { useResourceDialogs } from "./hooks/useResourceDialogs";
 import { capitalizeFirst } from "~/components";
-import ResourceActionForm, { type ActionType } from './ResourceActionForm';
-import ResourceDeleteConfirm from './ResourceDeleteConfirm';
+import ResourceActionForm, { type ActionType } from './components/ResourceActionForm';
+import ResourceDeleteConfirm from './components/ResourceDeleteConfirm';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;

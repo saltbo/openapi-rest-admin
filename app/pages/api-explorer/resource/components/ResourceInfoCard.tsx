@@ -1,21 +1,93 @@
-import React from 'react';
-import { Card, Typography, Descriptions, Tooltip, Tag, Button, Space, Drawer } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Typography, Descriptions, Tooltip, Tag, Button, Space, Drawer, Spin, Alert } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useResourceDialogs } from '~/pages/api-explorer/hooks/useResourceDialogs';
-import { ResourceActionForm } from '~/pages/api-explorer/components/ResourceActionForm';
-import { ResourceDeleteConfirm } from '~/pages/api-explorer/components/ResourceDeleteConfirm';
+import { useResourceDialogs } from '~/pages/api-explorer/resource/hooks/useResourceDialogs';
+import { ResourceActionForm } from '~/pages/api-explorer/resource/components/ResourceActionForm';
+import { ResourceDeleteConfirm } from '~/pages/api-explorer/resource/components/ResourceDeleteConfirm';
+import { useOpenAPIService, useResourceInfo } from '~/hooks/useOpenAPIService';
+import { parseResourcePath } from '~/utils/resourceRouting';
 import type { ResourceInfo } from '~/lib/api';
 
 const { Text } = Typography;
 
 interface ResourceInfoCardProps {
-  data: any;
+  serviceName?: string;
+  resourceName?: string;
+  itemId?: string;
+  nestedPath?: string;
   apiId?: string;
-  resource?: ResourceInfo;
   onDeleteSuccess?: () => void;
+  onDataLoaded?: (data: any) => void;
 }
 
-export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({ data, apiId, resource, onDeleteSuccess }) => {
+export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({ 
+  serviceName, 
+  resourceName, 
+  itemId, 
+  nestedPath, 
+  apiId, 
+  onDeleteSuccess,
+  onDataLoaded
+}) => {
+  const [loading, setLoading] = useState(true);
+  const [currentItem, setCurrentItem] = useState<any>(null);
+  const [currentResource, setCurrentResource] = useState<ResourceInfo | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // 获取 OpenAPI 服务
+  const { service, isInitialized } = useOpenAPIService(serviceName);
+
+  // 解析资源路径
+  const { currentResourceName } = parseResourcePath(nestedPath || '', resourceName || '');
+
+  // 获取资源信息
+  const { resource } = useResourceInfo(service, currentResourceName);
+
+  // 加载数据
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!service || !resource || !itemId) {
+        throw new Error('Missing required parameters or service not initialized');
+      }
+
+      setCurrentResource(resource);
+      
+      // 查找 GET 单个资源的操作
+      const getByIdOperation = resource.operations.find(op => 
+        op.method.toLowerCase() === 'get' && 
+        op.path.includes('{id}')
+      );
+      
+      if (!getByIdOperation) {
+        throw new Error(`No GET by ID operation found for resource ${resource.name}`);
+      }
+
+      // 使用新的 API 客户端获取资源详情
+      const response = await service.getClient().getById(getByIdOperation, itemId);
+      setCurrentItem(response.data);
+      
+      // 通知父组件数据已加载
+      if (onDataLoaded) {
+        onDataLoaded(response.data);
+      }
+      
+    } catch (error) {
+      console.error('Failed to load resource detail:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isInitialized && service && resource && itemId) {
+      loadData();
+    }
+  }, [isInitialized, service, resource, itemId]);
+
   // 使用 useResourceDialogs hook 管理对话框状态 
   const {
     showActionForm,
@@ -33,13 +105,38 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({ data, apiId,
 
   // 编辑按钮点击处理
   const handleEditClick = () => {
-    handleEdit(data);
+    handleEdit(currentItem);
   };
 
   // 删除按钮点击处理
   const handleDeleteClick = () => {
-    handleDelete(data);
+    handleDelete(currentItem);
   };
+
+  // 如果服务还没有初始化，显示加载状态
+  if (!isInitialized || loading) {
+    return (
+      <Card style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+          <Spin size="large" />
+        </div>
+      </Card>
+    );
+  }
+
+  // 错误状态
+  if (error || !currentResource || !currentItem) {
+    return (
+      <Card style={{ marginBottom: '24px' }}>
+        <Alert
+          message="数据加载失败"
+          description={error || "无法加载资源详情，请检查配置或刷新页面"}
+          type="error"
+          showIcon
+        />
+      </Card>
+    );
+  }
   const formatValue = (key: string, value: any) => {
     if (value === null || value === undefined) {
       return <Text type="secondary">-</Text>;
@@ -119,7 +216,7 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({ data, apiId,
   };
 
   const generateDescriptions = () => {
-    return Object.entries(data).map(([key, value]) => (
+    return Object.entries(currentItem).map(([key, value]) => (
       <Descriptions.Item 
         label={
           <Text strong>
