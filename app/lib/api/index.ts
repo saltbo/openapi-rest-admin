@@ -21,7 +21,6 @@ export type {
   FormSchemaOptions, 
   TableSchemaOptions, 
   FormSchema, 
-  TableColumn, 
   TableSchema 
 } from './SchemaRenderer';
 
@@ -125,58 +124,83 @@ export class OpenAPIService {
   }
 
   /**
-   * 为特定资源生成表单 schema
+   * 为特定资源生成表单 schema（支持 create/edit，自动处理初始数据）
+   * @param resourceName 资源名
+   * @param options 选项 { action, initialData, excludeFields, ... }
+   * @returns { schema, uiSchema, formData }
    */
-  getResourceFormSchema(resourceName: string, options?: any) {
-    const schema = this.parser.getResourceSchema(resourceName);
-    if (!schema) {
+  getResourceFormSchema(
+    resourceName: string,
+    options: {
+      action?: 'create' | 'edit',
+      initialData?: any,
+      excludeFields?: string[],
+      [key: string]: any
+    } = {}
+  ) {
+    const { action = 'create', initialData, excludeFields = [], ...rest } = options;
+    const resourceSchema = this.parser.getResourceSchema(resourceName);
+    if (!resourceSchema) {
       throw new Error(`Resource '${resourceName}' not found`);
     }
-    
-    // 使用 transformer 逻辑提取实际的资源 schema
-    const transformedSchema = this.extractActualResourceSchema(schema);
-    
-    // 传递 schema resolver 给 renderer
-    return this.renderer.getFormSchema(transformedSchema, {
-      ...options,
-      schemaResolver: (ref: string) => this.resolveSchemaRef(ref)
-    });
+    // 判断是否为 ReferenceObject
+    const actualSchema = (typeof resourceSchema === 'object' && resourceSchema !== null && '$ref' in resourceSchema)
+      ? this.resolveSchemaRef((resourceSchema as any).$ref) || resourceSchema
+      : resourceSchema;
+
+    // 选择表单 schema 生成器
+    let formSchemaResult;
+    if (action === 'edit') {
+      formSchemaResult = this.renderer.getEditFormSchema(actualSchema, {
+        excludeFields,
+        ...rest,
+        schemaResolver: (ref: string) => this.resolveSchemaRef(ref)
+      });
+    } else {
+      formSchemaResult = this.renderer.getCreateFormSchema(actualSchema, {
+        excludeFields,
+        ...rest,
+        schemaResolver: (ref: string) => this.resolveSchemaRef(ref)
+      });
+    }
+
+    // 处理初始数据（如日期字段格式化）
+    let formData = formSchemaResult.formData || {};
+    if (action === 'edit' && initialData) {
+      const processedData = { ...initialData };
+      Object.keys(processedData).forEach(key => {
+        const value = processedData[key];
+        if (value && typeof value === 'string') {
+          // 检查是否为日期字符串
+          const dateValue = new Date(value);
+          if (!isNaN(dateValue.getTime()) && value.includes('T')) {
+            processedData[key] = value;
+          }
+        }
+      });
+      formData = processedData;
+    }
+
+    return {
+      schema: formSchemaResult.schema,
+      uiSchema: formSchemaResult.uiSchema,
+      formData
+    };
   }
 
   /**
    * 为特定资源生成表格 schema
    */
   getResourceTableSchema(resourceName: string, options?: any) {
-    const schema = this.parser.getResourceSchema(resourceName);
-    if (!schema) {
+    const resourceSchema = this.parser.getResourceSchema(resourceName);
+    if (!resourceSchema) {
       throw new Error(`Resource '${resourceName}' not found`);
     }
-    
-    // 使用 transformer 逻辑提取实际的资源 schema
-    const transformedSchema = this.extractActualResourceSchema(schema);
-    return this.renderer.getTableSchema(transformedSchema, options);
-  }
-
-  /**
-   * 获取特定资源的实际 schema（经过数据提取转换）
-   */
-  getActualResourceSchema(resourceName: string) {
-    const schema = this.parser.getResourceSchema(resourceName);
-    if (!schema) {
-      throw new Error(`Resource '${resourceName}' not found`);
-    }
-    
-    return this.extractActualResourceSchema(schema);
-  }
-
-  /**
-   * 从响应 schema 中提取实际的资源 schema
-   * 使用 DataExtractor 工具类的统一逻辑
-   */
-  private extractActualResourceSchema(responseSchema: any): any {
-    return DataExtractor.extractSchemaFromResponse(responseSchema, {
-      schemaResolver: (ref: string) => this.resolveSchemaRef(ref)
-    });
+    // 判断是否为 ReferenceObject
+    const actualSchema = (typeof resourceSchema === 'object' && resourceSchema !== null && '$ref' in resourceSchema)
+      ? this.resolveSchemaRef((resourceSchema as any).$ref) || resourceSchema
+      : resourceSchema;
+    return this.renderer.getTableSchema(actualSchema, options);
   }
 
   /**

@@ -51,86 +51,20 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
     const initializeForm = async () => {
       try {
         setLoading(true);
-        
         // 获取API配置
         const config = await openAPIDocumentClient.getConfig(apiId);
-        
         // 创建API服务实例
         const service = new OpenAPIService(config.openapi_url);
         await service.initialize(config.openapi_url);
         setApiService(service);
-        
-        // 获取资源的OpenAPI schema
-        let resourceSchema;
-        try {
-          resourceSchema = service.getActualResourceSchema(resource.name);
-          console.log('Got resource schema for', resource.name, ':', resourceSchema);
-        } catch (error) {
-          console.error('Failed to get resource schema:', error);
-          // 如果获取schema失败，创建一个基本的schema
-          resourceSchema = {
-            type: 'object',
-            properties: {
-              id: { type: 'string', description: 'ID' },
-              name: { type: 'string', description: '名称' }
-            }
-          };
-        }
-        
-        // 创建schema渲染器
-        const schemaRenderer = new SchemaRenderer();
-        
-        // 生成表单schema
-        const formSchemaOptions = {
-          excludeFields: action === 'create' 
-            ? ['id', '_id', 'createdAt', 'updatedAt', 'created_at', 'updated_at']
-            : ['createdAt', 'updatedAt', 'created_at', 'updated_at'],
-          readonly: false,
-          schemaResolver: (ref: string) => {
-            // 从当前服务实例获取 schema resolver
-            if (ref.startsWith('#/components/schemas/')) {
-              const schemaName = ref.replace('#/components/schemas/', '');
-              // 通过解析器获取文档
-              const document = service.getParser().getDocument();
-              
-              if (document && 'components' in document && document.components?.schemas?.[schemaName]) {
-                return document.components.schemas[schemaName];
-              }
-            }
-            return null;
-          }
-        };
-        
-        const formSchema = action === 'create' 
-          ? schemaRenderer.getCreateFormSchema(resourceSchema, formSchemaOptions)
-          : schemaRenderer.getEditFormSchema(resourceSchema, formSchemaOptions);
-        console.log(formSchema);
-        
+        // 直接通过 getResourceFormSchema 获取所有表单渲染数据
+        const formSchema = service.getResourceFormSchema(resource.name, {
+          action,
+          initialData,
+        });
         setSchema(formSchema.schema);
         setUiSchema(formSchema.uiSchema);
-        
-        // 设置初始数据
-        if (action === 'edit' && initialData) {
-          // 处理日期和其他特殊字段
-          const processedData = { ...initialData };
-          
-          // 转换日期字段为ISO字符串格式
-          Object.keys(processedData).forEach(key => {
-            const value = processedData[key];
-            if (value && typeof value === 'string') {
-              // 检查是否为日期字符串
-              const dateValue = new Date(value);
-              if (!isNaN(dateValue.getTime()) && value.includes('T')) {
-                processedData[key] = value;
-              }
-            }
-          });
-          
-          setFormData(processedData);
-        } else {
-          setFormData(formSchema.formData || {});
-        }
-        
+        setFormData(formSchema.formData || {});
       } catch (error) {
         console.error('Failed to initialize form:', error);
         message.error('初始化表单失败');
@@ -138,7 +72,6 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
         setLoading(false);
       }
     };
-
     initializeForm();
   }, [apiId, resource.name, action, initialData]);
 
