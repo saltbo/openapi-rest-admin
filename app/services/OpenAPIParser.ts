@@ -1083,6 +1083,16 @@ export class OpenAPIParserService {
 
     try {
       const analysis = await OpenAPIParser.parseDocument(url);
+      console.log(analysis);
+      
+      // Ensure base_url is a complete URL
+      if (analysis.base_url && !this.isCompleteUrl(analysis.base_url)) {
+        const docUrl = new URL(url);
+        const baseUrl = analysis.base_url.startsWith('/') 
+          ? analysis.base_url 
+          : '/' + analysis.base_url;
+        analysis.base_url = `${docUrl.protocol}//${docUrl.host}${baseUrl}`;
+      }
       
       // Set the API ID
       analysis.id = apiId;
@@ -1150,6 +1160,18 @@ export class OpenAPIParserService {
    */
   isCached(apiId: string): boolean {
     return this.cache.has(apiId);
+  }
+
+  /**
+   * Check if a URL is complete (has protocol and host)
+   */
+  private isCompleteUrl(url: string): boolean {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.protocol !== '' && urlObj.host !== '';
+    } catch {
+      return false;
+    }
   }
 }
 
