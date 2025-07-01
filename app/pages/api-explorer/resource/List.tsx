@@ -22,18 +22,20 @@ import {
 } from "@ant-design/icons";
 import { JsonViewer } from "~/components/shared/JsonViewer";
 import { ResourceBreadcrumb } from "~/components/shared/ResourceBreadcrumb";
-import { parseResourcePath, buildDetailLink } from "~/utils/resourceRouting";
+import { parseResourcePath } from "~/utils/resourceRouting";
 import {
   useOpenAPIService,
   useResourceInfo,
   useResourceListData,
   useResourceTableSchema,
 } from "~/hooks/useOpenAPIService";
-import { Table } from '~/components/json-schema-ui/themes/antd';
+import { Table } from "~/components/json-schema-ui/themes/antd";
 import { useResourceDialogs } from "./hooks/useResourceDialogs";
 import { capitalizeFirst } from "~/components";
-import ResourceActionForm, { type ActionType } from './components/ResourceActionForm';
-import ResourceDeleteConfirm from './components/ResourceDeleteConfirm';
+import ResourceActionForm, {
+  type ActionType,
+} from "./components/ResourceActionForm";
+import ResourceDeleteConfirm from "./components/ResourceDeleteConfirm";
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -109,13 +111,15 @@ export const ResourceList: React.FC<ResourceListProps> = ({
     setCurrentPage(1);
   };
 
-  // 使用工具函数生成详情页面链接
-  const generateDetailLink = (itemId: string | number) => {
-    return buildDetailLink(sName!, rName!, nestedPath, itemId);
-  };
-
   const actionHandlers = {
-    onDetail: (record: any) => generateDetailLink(record.id),
+    onDetail: (record: any) => {
+      const serviceName = encodeURIComponent(sName!);
+      const itemId = service?.getResourceIdentifier(
+        currentResourceName,
+        record
+      );
+      return `/services/${serviceName}/resources/${currentResourceName}/${itemId}`;
+    },
     onEdit: (record: any) => handleEdit(record),
     onDelete: handleDelete,
   };
@@ -238,14 +242,14 @@ export const ResourceList: React.FC<ResourceListProps> = ({
 
       {/* 资源操作表单 */}
       <Drawer
-        title={`${currentAction === 'create' ? '添加' : '编辑'}资源`}
+        title={`${currentAction === "create" ? "添加" : "编辑"}资源`}
         placement="right"
         size="large"
         open={showActionForm}
         onClose={closeActionForm}
         destroyOnClose
         styles={{
-          body: { padding: 0 }
+          body: { padding: 0 },
         }}
       >
         {resource && sName && (

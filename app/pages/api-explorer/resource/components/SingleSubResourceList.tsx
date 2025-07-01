@@ -18,8 +18,6 @@ interface SingleSubResourceListProps {
   itemId?: string;
   nestedPath?: string;
   subResource: ResourceInfo;
-  onItemClick: (subResourceName: string, record: any) => void;
-  onCreateNew: (subResourceName: string) => void;
   apiId?: string;
 }
 
@@ -29,8 +27,6 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
   itemId,
   nestedPath,
   subResource,
-  onItemClick,
-  onCreateNew,
   apiId
 }) => {
   const [loading, setLoading] = useState(true);
@@ -128,7 +124,6 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
 
   const actionHandlers = {
     onDetail: (record: any) => {
-      onItemClick(subResource.name, record);
       return '';
     },
     onEdit: (record: any) => {

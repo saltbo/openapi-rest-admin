@@ -42,21 +42,19 @@ export const ResourceDeleteConfirm: React.FC<ResourceDeleteConfirmProps> = ({
       // 获取资源的删除操作
       const resources = apiService.getAllResources();
       const resourceInfo = resources.find(r => r.name === resource.name);
-      
       if (!resourceInfo) {
         throw new Error(`资源 '${resource.name}' 未找到`);
       }
       
       // 查找DELETE操作
       const deleteOperation = resourceInfo.operations.find(op => op.method === 'DELETE');
-      
       if (!deleteOperation) {
         throw new Error(`资源 '${resource.name}' 不支持删除操作`);
       }
       
       // 使用RESTful API客户端执行删除
       const client = apiService.getClient();
-      return await client.delete(deleteOperation, String(item.id));
+      return await client.request(deleteOperation, { pathParams: { [resourceInfo.identifierField]: apiService.getResourceIdentifier(resource.name, item) } });
     },
     onSuccess: () => {
       message.success('删除成功');

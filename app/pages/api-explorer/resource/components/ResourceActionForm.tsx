@@ -89,7 +89,7 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       if (!createOperation) throw new Error(`Create operation not found for ${resource.name}`);
       
       const client = apiService.getClient();
-      const response = await client.create(createOperation, data);
+      const response = await client.request(createOperation, {body: data});
       return response;
     },
     onSuccess: () => {
@@ -121,7 +121,10 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       if (!updateOperation) throw new Error(`Update operation not found for ${resource.name}`);
       
       const client = apiService.getClient();
-      const response = await client.update(updateOperation, String(initialData.id), data);
+      const response = await client.request(updateOperation, {
+        pathParams: { [resourceInfo.identifierField]: initialData.id },
+        body: data
+      });
       return response;
     },
     onSuccess: () => {

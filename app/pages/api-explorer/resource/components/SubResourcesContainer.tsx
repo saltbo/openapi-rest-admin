@@ -12,8 +12,6 @@ interface SubResourcesContainerProps {
   resourceName?: string;
   itemId?: string;
   nestedPath?: string;
-  onItemClick: (subResourceName: string, record: any) => void;
-  onCreateNew: (subResourceName: string) => void;
   apiId?: string;
 }
 
@@ -22,8 +20,6 @@ export const SubResourcesContainer: React.FC<SubResourcesContainerProps> = ({
   resourceName,
   itemId,
   nestedPath,
-  onItemClick,
-  onCreateNew,
   apiId
 }) => {
   const [loading, setLoading] = useState(true);
@@ -175,8 +171,6 @@ export const SubResourcesContainer: React.FC<SubResourcesContainerProps> = ({
             itemId={itemId}
             nestedPath={nestedPath}
             subResource={subResource}
-            onItemClick={onItemClick}
-            onCreateNew={onCreateNew}
             apiId={apiId}
           />
         ))}

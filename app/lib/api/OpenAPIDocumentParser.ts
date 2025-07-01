@@ -43,6 +43,8 @@ export interface ResourceInfo {
   basePath: string;
   /** 支持的操作 */
   operations: ResourceOperation[];
+  /** 资源标识字段（通常是 ID） */
+  identifierField: string; 
   /** 是否为 RESTful 资源 */
   isRESTful: boolean;
   /** 标签 */
@@ -397,6 +399,7 @@ export class OpenAPIDocumentParser {
         pathPattern: this.buildResourcePathPattern(resourceName, pathGroup),
         basePath: this.extractResourceBasePath(resourceName, pathGroup),
         operations: allOperations,
+        identifierField: this.extractResourceIdentifier(resourceName, pathGroup),
         isRESTful: true, // 有列表端点即为 RESTful
         tags: Array.from(tags),
         subResources: []
@@ -1018,5 +1021,178 @@ export class OpenAPIDocumentParser {
     }
 
     return result as OpenAPIV3.SchemaObject;
+  }
+
+  /**
+   * 提取资源的标识符字段
+   * 从路径参数中分析出资源的唯一标识符
+   * 处理特殊情况：如 bookName -> name, userId -> id 等
+   */
+  private extractResourceIdentifier(resourceName: string, pathGroup: Array<{path: string, pathItem: any}>): string {
+    const identifierCandidates = new Set<string>();
+    
+    // 遍历所有路径，收集可能的标识符
+    pathGroup.forEach(({ path, pathItem }) => {
+      const segments = path.split('/').filter(Boolean);
+      
+      // 查找路径参数 (形如 {id}, {userId}, {bookName} 等)
+      segments.forEach(segment => {
+        if (segment.startsWith('{') && segment.endsWith('}')) {
+          const paramName = segment.slice(1, -1); // 移除大括号
+          identifierCandidates.add(paramName);
+        }
+      });
+      
+      // 从 pathItem 的参数中提取
+      const allParameters = [
+        ...(pathItem.parameters || []),
+        ...Object.values(pathItem).flatMap((operation: any) => operation?.parameters || [])
+      ];
+      
+      allParameters.forEach((param: any) => {
+        if (param && param.in === 'path' && param.name) {
+          identifierCandidates.add(param.name);
+        }
+      });
+    });
+    
+    if (identifierCandidates.size === 0) {
+      return 'id'; // 默认标识符
+    }
+    
+    // 转换为数组并按优先级排序
+    const candidates = Array.from(identifierCandidates);
+    
+    // 查找最合适的标识符
+    const bestIdentifier = this.selectBestIdentifier(resourceName, candidates);
+    
+    // 将复合标识符转换为简单字段名
+    return this.normalizeIdentifierField(resourceName, bestIdentifier);
+  }
+  
+  /**
+   * 选择最佳的标识符
+   * 优先级：直接匹配 > 资源名+Id > 资源名+其他后缀 > 通用id
+   */
+  private selectBestIdentifier(resourceName: string, candidates: string[]): string {
+    const resourceNameLower = resourceName.toLowerCase();
+    const resourceNameSingular = this.getSingularForm(resourceNameLower);
+    
+    // 1. 直接匹配：id
+    if (candidates.includes('id')) {
+      return 'id';
+    }
+    
+    // 2. 资源名 + Id：userId, bookId 等
+    const resourceIdPattern = new RegExp(`^${resourceNameSingular}Id$`, 'i');
+    const resourceIdMatch = candidates.find(c => resourceIdPattern.test(c));
+    if (resourceIdMatch) {
+      return resourceIdMatch;
+    }
+    
+    // 3. 资源名 + 其他常见后缀：userName, bookName, userCode 等
+    const resourceFieldPattern = new RegExp(`^${resourceNameSingular}(Name|Code|Key|Identifier)$`, 'i');
+    const resourceFieldMatch = candidates.find(c => resourceFieldPattern.test(c));
+    if (resourceFieldMatch) {
+      return resourceFieldMatch;
+    }
+    
+    // 4. 包含资源名的任何参数
+    const containsResourceName = candidates.find(c => 
+      c.toLowerCase().includes(resourceNameSingular)
+    );
+    if (containsResourceName) {
+      return containsResourceName;
+    }
+    
+    // 5. 常见的标识符名称
+    const commonIdentifiers = ['uuid', 'guid', 'key', 'identifier', 'code', 'name'];
+    const commonMatch = candidates.find(c => 
+      commonIdentifiers.some(common => c.toLowerCase().includes(common))
+    );
+    if (commonMatch) {
+      return commonMatch;
+    }
+    
+    // 6. 返回第一个候选项
+    return candidates[0] || 'id';
+  }
+  
+  /**
+   * 将标识符字段规范化为简单的字段名
+   * 例如：bookName -> name, userId -> id, bookId -> id
+   */
+  private normalizeIdentifierField(resourceName: string, identifierParam: string): string {
+    const resourceNameSingular = this.getSingularForm(resourceName.toLowerCase());
+    const identifierLower = identifierParam.toLowerCase();
+    
+    // 如果就是 id，直接返回
+    if (identifierLower === 'id') {
+      return 'id';
+    }
+    
+    // 移除资源名前缀，获取实际字段名
+    // 例如：bookName -> name, userId -> id, bookCode -> code
+    const resourcePrefix = resourceNameSingular;
+    if (identifierLower.startsWith(resourcePrefix)) {
+      const fieldName = identifierParam.substring(resourcePrefix.length);
+      
+      // 如果剩余部分是常见的标识符后缀，进行转换
+      const normalizedField = this.normalizeFieldName(fieldName);
+      return normalizedField;
+    }
+    
+    // 如果不以资源名开头，检查是否以资源名结尾
+    // 例如：nameOfBook -> name
+    if (identifierLower.endsWith(resourcePrefix)) {
+      const fieldName = identifierParam.substring(0, identifierParam.length - resourcePrefix.length);
+      return this.normalizeFieldName(fieldName) || identifierParam;
+    }
+    
+    // 直接返回原始字段名
+    return identifierParam;
+  }
+  
+  /**
+   * 标准化字段名
+   */
+  private normalizeFieldName(fieldName: string): string {
+    const fieldLower = fieldName.toLowerCase();
+    
+    // 常见的标识符字段映射
+    const fieldMappings: Record<string, string> = {
+      'id': 'id',
+      'identifier': 'id',
+      'key': 'id',
+      'uuid': 'id',
+      'guid': 'id',
+      'name': 'name',
+      'title': 'name',
+      'code': 'code',
+      'number': 'number',
+      'num': 'number'
+    };
+    
+    return fieldMappings[fieldLower] || fieldName;
+  }
+  
+  /**
+   * 获取单数形式（简单实现）
+   */
+  private getSingularForm(pluralName: string): string {
+    const name = pluralName.toLowerCase();
+    
+    // 常见复数形式转换
+    if (name.endsWith('ies')) {
+      return name.slice(0, -3) + 'y'; // categories -> category
+    }
+    if (name.endsWith('es')) {
+      return name.slice(0, -2); // boxes -> box
+    }
+    if (name.endsWith('s') && !name.endsWith('ss')) {
+      return name.slice(0, -1); // users -> user
+    }
+    
+    return name;
   }
 }

@@ -70,28 +70,6 @@ export function parseResourcePath(
   };
 }
 
-/**
- * 构建资源详情页面的链接
- * @param serviceName 服务名称
- * @param topLevelResource 顶级资源名称
- * @param nestedPath 嵌套路径
- * @param itemId 资源项ID
- * @returns 完整的链接路径
- */
-export function buildDetailLink(
-  serviceName: string,
-  topLevelResource: string,
-  nestedPath: string | undefined,
-  itemId: string | number
-): string {
-  if (nestedPath) {
-    // 嵌套路径：构建完整的嵌套链接
-    return `/services/${encodeURIComponent(serviceName)}/resources/${topLevelResource}/${nestedPath}/${itemId}`;
-  } else {
-    // 顶级资源：简单链接
-    return `/services/${encodeURIComponent(serviceName)}/resources/${topLevelResource}/${itemId}`;
-  }
-}
 
 /**
  * 构建到指定层级的路径
@@ -131,70 +109,3 @@ export function buildPathToLevel(
   return path;
 }
 
-/**
- * 构建子资源详情页面的链接
- * @param serviceName 服务名称
- * @param resourceHierarchy 当前资源层次结构
- * @param subResourceName 子资源名称
- * @param itemId 子资源项ID
- * @returns 完整的子资源详情链接
- */
-export function buildSubResourceDetailLink(
-  serviceName: string,
-  resourceHierarchy: ResourceHierarchy[],
-  subResourceName: string,
-  itemId: string | number
-): string {
-  if (resourceHierarchy.length === 0) {
-    return `/services/${encodeURIComponent(serviceName)}/resources/${subResourceName}/${itemId}`;
-  }
-  
-  let path = `/services/${encodeURIComponent(serviceName)}/resources/${resourceHierarchy[0].resourceName}`;
-  
-  // 添加所有现有层级的路径
-  for (let i = 0; i < resourceHierarchy.length; i++) {
-    if (i === 0 && resourceHierarchy[i].itemId) {
-      path += `/${resourceHierarchy[i].itemId}`;
-    } else if (i > 0) {
-      path += `/${resourceHierarchy[i].resourceName}`;
-      if (resourceHierarchy[i].itemId) {
-        path += `/${resourceHierarchy[i].itemId}`;
-      }
-    }
-  }
-  
-  // 添加新的子资源层级
-  path += `/${subResourceName}/${itemId}`;
-  
-  return path;
-}
-
-/**
- * 构建新建资源页面的链接，包含父资源上下文
- * @param serviceName 服务名称
- * @param resourceName 要新建的资源名称
- * @param resourceHierarchy 父资源层次结构
- * @returns 完整的新建页面链接（包含query参数）
- */
-export function buildNewResourceLink(
-  serviceName: string,
-  resourceName: string,
-  resourceHierarchy: ResourceHierarchy[]
-): string {
-  const baseUrl = `/services/${encodeURIComponent(serviceName)}/resources/${resourceName}/new`;
-  
-  if (resourceHierarchy.length === 0) {
-    return baseUrl;
-  }
-  
-  // 构建父资源链（支持多级嵌套）
-  const parentChain = resourceHierarchy.map((level, index) => {
-    if (index === 0) {
-      return `parent=${level.resourceName}&parentId=${level.itemId}`;
-    } else {
-      return `parent${index}=${level.resourceName}&parentId${index}=${level.itemId}`;
-    }
-  }).join('&');
-  
-  return `${baseUrl}?${parentChain}`;
-}

@@ -6,7 +6,7 @@ import { ResourceBreadcrumb } from '~/components/shared/ResourceBreadcrumb';
 import { ResourceHeader } from '~/pages/api-explorer/resource/components/ResourceHeader';
 import { ResourceInfoCard } from '~/pages/api-explorer/resource/components/ResourceInfoCard';
 import { SubResourcesContainer } from '~/pages/api-explorer/resource/components/SubResourcesContainer';
-import { buildSubResourceDetailLink, buildNewResourceLink, buildPathToLevel, parseResourcePath } from '~/utils/resourceRouting';
+import { buildPathToLevel, parseResourcePath } from '~/utils/resourceRouting';
 import { capitalizeFirst } from '~/components';
 
 interface ResourceDetailProps {
@@ -34,17 +34,6 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
   const currentLevel = resourceHierarchy[resourceHierarchy.length - 1];
   const currentItemId = currentLevel.itemId || '';
   const isSubResourceDetail = resourceHierarchy.length > 1;
-
-  // 事件处理函数
-  const handleSubResourceItemClick = (subResourceName: string, record: any) => {
-    const path = buildSubResourceDetailLink(sName!, resourceHierarchy, subResourceName, record.id);
-    navigate(path);
-  };
-
-  const handleCreateNew = (subResourceName: string) => {
-    const newResourceUrl = buildNewResourceLink(sName!, subResourceName, resourceHierarchy);
-    navigate(newResourceUrl);
-  };
 
   // 显示JSON数据
   const handleShowJson = (data: any) => {
@@ -124,8 +113,6 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({ apiId, resourceI
           resourceName={rName}
           itemId={currentItemId}
           nestedPath={splat}
-          onItemClick={handleSubResourceItemClick}
-          onCreateNew={handleCreateNew}
           apiId={apiId}
         />
 

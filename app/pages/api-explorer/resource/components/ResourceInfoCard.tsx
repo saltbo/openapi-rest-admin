@@ -58,7 +58,7 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({
       // 查找 GET 单个资源的操作
       const getByIdOperation = resource.operations.find(op => 
         op.method.toLowerCase() === 'get' && 
-        op.path.includes('{id}')
+        op.path.includes(`/{${resource.identifierField}}`) 
       );
       
       if (!getByIdOperation) {
@@ -66,7 +66,7 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({
       }
 
       // 使用新的 API 客户端获取资源详情
-      const response = await service.getClient().getById(getByIdOperation, itemId);
+      const response = await service.getClient().request(getByIdOperation, {pathParams: { [resource.identifierField]: itemId } });
       setCurrentItem(response.data);
       
       // 通知父组件数据已加载

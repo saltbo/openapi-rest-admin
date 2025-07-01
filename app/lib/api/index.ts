@@ -124,6 +124,31 @@ export class OpenAPIService {
   }
 
   /**
+   * 获取特定资源唯一标识符的值
+   * @param resourceName 资源名
+   * @param resourceData 资源数据
+   * @returns {string} 资源的唯一标识符
+   */
+  getResourceIdentifier(resourceName: string, data: any): string|number {
+    const allResources = this.parser.getAllResources();
+    const resource = allResources.find(r => r.name === resourceName);
+    if (!resource) {
+      throw new Error(`Resource '${resourceName}' not found`);
+    }
+    
+    const identifierField = resource.identifierField;
+    if (!identifierField) {
+      throw new Error(`Resource '${resourceName}' does not have an identifier field`);
+    }
+
+    const identifierValue = data[identifierField];
+    if (identifierValue === undefined || identifierValue === null) {
+      throw new Error(`Resource '${resourceName}' identifier field '${identifierField}' is missing in data`);
+    }
+    return identifierValue;
+  }
+
+  /**
    * 为特定资源生成表单 schema（支持 create/edit，自动处理初始数据）
    * @param resourceName 资源名
    * @param options 选项 { action, initialData, excludeFields, ... }
