@@ -11,6 +11,7 @@ import { capitalizeFirst } from "~/components";
 import { Table } from "~/components/json-schema-ui/themes/antd";
 import type { ResourceInfo } from "~/lib/api";
 import { PathParamResolver } from "~/lib/api";
+import { useNavigate } from "react-router";
 
 const { Title } = Typography;
 
@@ -21,6 +22,7 @@ interface SingleSubResourceListProps {
 export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
   subResource,
 }) => {
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -86,23 +88,15 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
 
   const actionHandlers = {
     onDetail: (record: any) => {
-      console.log(
-        `SingleSubResourceList - Navigating to detail for ${subResource.name}:`,
-        record
-      );
-
       const id = service?.getResourceIdentifier(subResource.name, record);
       if (!id) {
-        console.warn(
-          "Cannot navigate to detail: no identifier found for record"
+        throw new Error(
+          `无法获取资源标识符: ${subResource.name} - ${JSON.stringify(record)}`
         );
-        return location.pathname;
       }
 
       // 从当前路径参数构建详情页路径
       const currentParams = { ...pathParams };
-
-      // 添加当前记录的ID
       currentParams[subResource.identifierField] = String(id);
 
       // 构建详情页路径
@@ -111,7 +105,9 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
         currentParams
       );
 
-      return `/services/${resourceIdentifier.serviceName}/resources${detailPath}`;
+      navigate(
+        `/services/${resourceIdentifier.serviceName}/resources${detailPath}`
+      );
     },
     onEdit: (record: any) => {
       handleEdit(record);

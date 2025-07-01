@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router";
 import {
   Card,
   Typography,
@@ -48,6 +49,7 @@ interface ResourceListProps {
 }
 
 export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,7 +105,8 @@ export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
         throw new Error("服务名称未提供");
       }
 
-      return `/services/${serviceName}/resources/${resource?.name}/${itemId}`;
+      const path = `/services/${serviceName}/resources/${resource?.name}/${itemId}`;
+      navigate(path);
     },
     onEdit: (record: ResourceData) => handleEdit(record),
     onDelete: handleDelete,
