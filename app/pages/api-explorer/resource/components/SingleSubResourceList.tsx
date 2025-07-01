@@ -72,9 +72,7 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
       }
 
       // 查找子资源的 GET 列表操作
-      const getListOperation = subResource.operations.find(op => {
-        return op.method.toLowerCase() === 'get' && op.path.includes(`/{${resource.identifierField}}`) 
-      });
+      const getListOperation = subResource.operations.find(op => op.method.toLowerCase() === 'get' && !op.path.endsWith(`}`) );
       if (!getListOperation) {
         throw new Error(`No GET list operation found for sub-resource ${subResource.name}, identifier: ${resource.identifierField}`);
       }

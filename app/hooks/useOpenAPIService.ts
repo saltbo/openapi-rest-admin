@@ -76,7 +76,7 @@ export function useResourceInfo(service: OpenAPIService | null, resourceName: st
   return useMemo(() => {
     if (!service || !resourceName) {
       console.log('useResourceInfo: service or resourceName is null', { service: !!service, resourceName });
-      return { resource: null, allResources: [] };
+      return { resource: null };
     }
 
     console.log('useResourceInfo: Looking for resource:', resourceName);
