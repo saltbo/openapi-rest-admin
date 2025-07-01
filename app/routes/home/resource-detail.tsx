@@ -1,7 +1,7 @@
-import type { Route } from "./+types/nested-resource-list";
+import type { Route } from "./+types/resource-detail";
 import { useParams } from 'react-router';
-import ResourceList from "~/pages/api-explorer/resource/List";
-import ResourceDetail from "~/pages/api-explorer/resource/Detail";
+import ResourceList from "~/pages/resource-explorer/List";
+import ResourceDetail from "~/pages/resource-explorer/Detail";
 
 export function meta({}: Route.MetaArgs) {
   return [

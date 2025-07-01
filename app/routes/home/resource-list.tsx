@@ -1,5 +1,5 @@
 import type { Route } from "./+types/resource-list";
-import ResourceList from "~/pages/api-explorer/resource/List";
+import ResourceList from "~/pages/resource-explorer/List";
 
 export function meta({}: Route.MetaArgs) {
   return [

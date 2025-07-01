@@ -3,9 +3,9 @@ import { useParams, useNavigate } from 'react-router';
 import { Modal } from 'antd';
 import { JsonViewer } from '~/components/shared/JsonViewer';
 import { ResourceBreadcrumb } from '~/components/shared/ResourceBreadcrumb';
-import { ResourceHeader } from '~/pages/api-explorer/resource/components/ResourceHeader';
-import { ResourceInfoCard } from '~/pages/api-explorer/resource/components/ResourceInfoCard';
-import { SubResourcesContainer } from '~/pages/api-explorer/resource/components/SubResourcesContainer';
+import { ResourceHeader } from '~/pages/resource-explorer/components/ResourceHeader';
+import { ResourceInfoCard } from '~/pages/resource-explorer/components/ResourceInfoCard';
+import { SubResourcesContainer } from '~/pages/resource-explorer/components/SubResourcesContainer';
 import { buildPathToLevel, parseResourcePath } from '~/utils/resourceRouting';
 import { capitalizeFirst } from '~/components';
 

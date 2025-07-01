@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Typography, Descriptions, Tooltip, Tag, Button, Space, Drawer, Spin, Alert } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useResourceDialogs } from '~/pages/api-explorer/resource/hooks/useResourceDialogs';
-import { ResourceActionForm } from '~/pages/api-explorer/resource/components/ResourceActionForm';
-import { ResourceDeleteConfirm } from '~/pages/api-explorer/resource/components/ResourceDeleteConfirm';
+import { useResourceDialogs } from '~/pages/resource-explorer/hooks/useResourceDialogs';
+import { ResourceActionForm } from '~/pages/resource-explorer/components/ResourceActionForm';
+import { ResourceDeleteConfirm } from '~/pages/resource-explorer/components/ResourceDeleteConfirm';
 import { useOpenAPIService, useResourceInfo } from '~/hooks/useOpenAPIService';
 import { parseResourcePath } from '~/utils/resourceRouting';
 import { PathParamResolver, type ResourceInfo } from '~/lib/api';

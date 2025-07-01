@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ResourceDataItem } from '~/types/api';
-import type { ActionType } from '~/pages/api-explorer/resource/components/ResourceActionForm';
+import type { ActionType } from '~/pages/resource-explorer/components/ResourceActionForm';
 
 /**
  * 资源对话框状态管理 Hook
