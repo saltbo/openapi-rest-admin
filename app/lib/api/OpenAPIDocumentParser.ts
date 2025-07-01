@@ -4,6 +4,7 @@
  */
 
 import type { OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1 } from 'openapi-types';
+import { DataExtractor } from './DataExtractor';
 
 /**
  * 资源统计信息
@@ -216,7 +217,13 @@ export class OpenAPIDocumentParser {
    */
   getResourceSchema(resourceName: string): OpenAPIV3.SchemaObject | null {
     const schemas = this.getAllResourceSchemas();
-    return schemas[resourceName] || null;
+    const resourceSchema = schemas[resourceName];
+    if (!resourceSchema) {
+      console.warn(`Resource schema for '${resourceName}' not found`);
+      return null;
+    }
+
+    return resourceSchema;
   }
 
   /**
@@ -685,22 +692,19 @@ export class OpenAPIDocumentParser {
 
   private extractResourceSchema(resource: ResourceInfo): OpenAPIV3.SchemaObject | null {
     const getOperation = resource.operations.find(op => op.method === 'GET');
-    if (getOperation) {
-      const schema = this.extractSchemaFromResponse(getOperation.responses);
-      if (schema) {
-        return schema;
-      }
+    if (!getOperation) {
+      console.warn(`No GET operation found for resource: ${resource.name}`);
+      return null;
     }
 
-    const postOperation = resource.operations.find(op => op.method === 'POST');
-    if (postOperation && postOperation.requestBody) {
-      const schema = this.extractSchemaFromRequestBody(postOperation.requestBody);
-      if (schema) {
-        return schema;
-      }
+    const responseSchema = this.extractSchemaFromResponse(getOperation.responses);
+    if (!responseSchema) {
+      console.warn(`No response schema found for GET operation of resource: ${resource.name}`);
+      return null;
     }
 
-    return null;
+    // 解析响应schema获取资源对象schema
+    return this.resolveResourceSchemaFromResponse(responseSchema); 
   }
 
   private extractSchemaFromResponse(responses: OpenAPIV3.ResponsesObject): OpenAPIV3.SchemaObject | null {
@@ -749,20 +753,141 @@ export class OpenAPIDocumentParser {
     return schema;
   }
 
-  private extractSchemaFromRequestBody(requestBody: OpenAPIV3.RequestBodyObject): OpenAPIV3.SchemaObject | null {
-    if (!requestBody.content) {
+  /**
+   * 从响应schema中解析出资源对象的schema
+   * 处理两种情况：
+   * 1. 直接返回对象数组：{ type: 'array', items: ResourceSchema }
+   * 2. 包装在对象中：{ type: 'object', properties: { data: { type: 'array', items: ResourceSchema } } }
+   */
+  private resolveResourceSchemaFromResponse(responseSchema: OpenAPIV3.SchemaObject): OpenAPIV3.SchemaObject | null {
+    // 首先解引用
+    const resolvedSchema = this.resolveSchemaReference(responseSchema);
+    if (!resolvedSchema) {
       return null;
     }
 
-    const jsonContent = requestBody.content['application/json'] || 
-                       requestBody.content['application/vnd.api+json'] ||
-                       Object.values(requestBody.content)[0];
+    // 情况1: 直接是数组类型
+    if (resolvedSchema.type === 'array' && resolvedSchema.items) {
+      const itemSchema = this.resolveSchemaReference(resolvedSchema.items as OpenAPIV3.SchemaObject);
+      return itemSchema;
+    }
 
-    if (!jsonContent || !jsonContent.schema) {
+    // 情况2: 对象包装的数组
+    if (resolvedSchema.type === 'object' && resolvedSchema.properties) {
+      // 尝试常见的包装字段名
+      const wrapperFields = ['data', 'items', 'list', 'results', 'content', 'records'];
+      
+      for (const fieldName of wrapperFields) {
+        const fieldSchema = resolvedSchema.properties[fieldName];
+        if (fieldSchema) {
+          const resolvedFieldSchema = this.resolveSchemaReference(fieldSchema as OpenAPIV3.SchemaObject);
+          if (resolvedFieldSchema) {
+            // 如果包装字段是数组
+            if (resolvedFieldSchema.type === 'array' && resolvedFieldSchema.items) {
+              const itemSchema = this.resolveSchemaReference(resolvedFieldSchema.items as OpenAPIV3.SchemaObject);
+              return itemSchema;
+            }
+            // 如果包装字段直接是对象（单个资源的情况）
+            if (resolvedFieldSchema.type === 'object') {
+              return resolvedFieldSchema;
+            }
+          }
+        }
+      }
+
+      // 如果没有找到明显的包装字段，检查是否有唯一的数组类型属性
+      const arrayProperties = Object.entries(resolvedSchema.properties).filter(([_, propSchema]) => {
+        const resolved = this.resolveSchemaReference(propSchema as OpenAPIV3.SchemaObject);
+        return resolved && resolved.type === 'array';
+      });
+
+      if (arrayProperties.length === 1) {
+        const [_, arrayPropSchema] = arrayProperties[0];
+        const resolvedArraySchema = this.resolveSchemaReference(arrayPropSchema as OpenAPIV3.SchemaObject);
+        if (resolvedArraySchema && resolvedArraySchema.type === 'array' && resolvedArraySchema.items) {
+          const itemSchema = this.resolveSchemaReference(resolvedArraySchema.items as OpenAPIV3.SchemaObject);
+          return itemSchema;
+        }
+      }
+    }
+
+    // 如果都不匹配，返回原始schema（可能本身就是资源对象）
+    return resolvedSchema;
+  }
+
+  /**
+   * 解析schema引用
+   * 递归解析 $ref 引用，返回实际的schema对象
+   */
+  private resolveSchemaReference(schema: OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject): OpenAPIV3.SchemaObject | null {
+    if (!schema) {
       return null;
     }
 
-    return jsonContent.schema as OpenAPIV3.SchemaObject;
+    // 如果是引用对象
+    if ('$ref' in schema) {
+      const refPath = schema.$ref;
+      return this.resolveRef(refPath);
+    }
+
+    // 如果是allOf, anyOf, oneOf，选择第一个有效的schema
+    if (schema.allOf && schema.allOf.length > 0) {
+      for (const subSchema of schema.allOf) {
+        const resolved = this.resolveSchemaReference(subSchema);
+        if (resolved) {
+          // 如果有多个allOf，应该合并它们，这里简化处理
+          return resolved;
+        }
+      }
+    }
+
+    if (schema.anyOf && schema.anyOf.length > 0) {
+      const resolved = this.resolveSchemaReference(schema.anyOf[0]);
+      return resolved;
+    }
+
+    if (schema.oneOf && schema.oneOf.length > 0) {
+      const resolved = this.resolveSchemaReference(schema.oneOf[0]);
+      return resolved;
+    }
+
+    // 直接返回schema对象
+    return schema as OpenAPIV3.SchemaObject;
+  }
+
+  /**
+   * 解析引用路径，从文档中获取实际的schema
+   */
+  private resolveRef(refPath: string): OpenAPIV3.SchemaObject | null {
+    if (!this.parsedApi || !refPath.startsWith('#/')) {
+      return null;
+    }
+
+    try {
+      // 移除开头的 '#/' 并按 '/' 分割路径
+      const pathParts = refPath.substring(2).split('/');
+      let current: any = this.parsedApi;
+
+      // 遍历路径获取目标对象
+      for (const part of pathParts) {
+        if (current && typeof current === 'object' && part in current) {
+          current = current[part];
+        } else {
+          console.warn(`Cannot resolve reference path: ${refPath}`);
+          return null;
+        }
+      }
+
+      // 如果解析的结果还是引用，递归解析
+      if (current && typeof current === 'object' && '$ref' in current) {
+        return this.resolveRef(current.$ref);
+      }
+
+      return current as OpenAPIV3.SchemaObject;
+    } catch (error) {
+      console.warn(`Error resolving reference ${refPath}:`, error);
+      return null;
+    }
   }
 
   private getOpenAPIVersion(): string {

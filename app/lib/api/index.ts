@@ -143,24 +143,18 @@ export class OpenAPIService {
     if (!resourceSchema) {
       throw new Error(`Resource '${resourceName}' not found`);
     }
-    // 判断是否为 ReferenceObject
-    const actualSchema = (typeof resourceSchema === 'object' && resourceSchema !== null && '$ref' in resourceSchema)
-      ? this.resolveSchemaRef((resourceSchema as any).$ref) || resourceSchema
-      : resourceSchema;
 
     // 选择表单 schema 生成器
     let formSchemaResult;
     if (action === 'edit') {
-      formSchemaResult = this.renderer.getEditFormSchema(actualSchema, {
+      formSchemaResult = this.renderer.getEditFormSchema(resourceSchema, {
         excludeFields,
         ...rest,
-        schemaResolver: (ref: string) => this.resolveSchemaRef(ref)
       });
     } else {
-      formSchemaResult = this.renderer.getCreateFormSchema(actualSchema, {
+      formSchemaResult = this.renderer.getCreateFormSchema(resourceSchema, {
         excludeFields,
         ...rest,
-        schemaResolver: (ref: string) => this.resolveSchemaRef(ref)
       });
     }
 
@@ -196,29 +190,8 @@ export class OpenAPIService {
     if (!resourceSchema) {
       throw new Error(`Resource '${resourceName}' not found`);
     }
-    // 判断是否为 ReferenceObject
-    const actualSchema = (typeof resourceSchema === 'object' && resourceSchema !== null && '$ref' in resourceSchema)
-      ? this.resolveSchemaRef((resourceSchema as any).$ref) || resourceSchema
-      : resourceSchema;
-    return this.renderer.getTableSchema(actualSchema, options);
-  }
-
-  /**
-   * 解析 schema 引用
-   */
-  private resolveSchemaRef(ref: string): any {
-    // 简单的引用解析，只处理 #/components/schemas/ 形式的引用
-    if (ref.startsWith('#/components/schemas/')) {
-      const schemaName = ref.replace('#/components/schemas/', '');
-      const document = this.parser.getDocument();
-      
-      // 检查是否为 OpenAPI 3.x 版本（包含 components）
-      if (document && 'components' in document && document.components?.schemas?.[schemaName]) {
-        return document.components.schemas[schemaName];
-      }
-    }
     
-    return null;
+    return this.renderer.getTableSchema(resourceSchema, options);
   }
 
   /**
