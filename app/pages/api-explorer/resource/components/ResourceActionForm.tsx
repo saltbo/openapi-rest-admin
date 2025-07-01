@@ -10,7 +10,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Form from '@rjsf/antd';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { OpenAPIService, SchemaRenderer } from '~/lib/api';
+import { OpenAPIService, PathParamResolver, SchemaRenderer } from '~/lib/api';
 import type { ResourceInfo } from '~/lib/api';
 import { openAPIDocumentClient } from '~/lib/client';
 import type { ResourceDataItem } from '~/types/api';
@@ -88,8 +88,10 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       const createOperation = resourceInfo.operations.find(op => op.method === 'POST');
       if (!createOperation) throw new Error(`Create operation not found for ${resource.name}`);
       
+
       const client = apiService.getClient();
-      const response = await client.request(createOperation, {body: data});
+      const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
+      const response = await client.request(createOperation, {pathParams, body: data});
       return response;
     },
     onSuccess: () => {
@@ -108,7 +110,6 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
       if (!apiService) throw new Error('API服务未初始化');
-      if (!initialData?.id) throw new Error('缺少资源ID');
       
       // 获取资源的更新操作
       const allResources = apiService.getAllResources();
@@ -121,10 +122,9 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       if (!updateOperation) throw new Error(`Update operation not found for ${resource.name}`);
       
       const client = apiService.getClient();
-      const response = await client.request(updateOperation, {
-        pathParams: { [resourceInfo.identifierField]: initialData.id },
-        body: data
-      });
+      const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
+      pathParams[resourceInfo.identifierField] = apiService.getResourceIdentifier(resource.name, initialData);
+      const response = await client.request(updateOperation, { pathParams, body: data});
       return response;
     },
     onSuccess: () => {

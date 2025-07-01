@@ -6,7 +6,7 @@ import { ResourceActionForm } from '~/pages/api-explorer/resource/components/Res
 import { ResourceDeleteConfirm } from '~/pages/api-explorer/resource/components/ResourceDeleteConfirm';
 import { useOpenAPIService, useResourceInfo } from '~/hooks/useOpenAPIService';
 import { parseResourcePath } from '~/utils/resourceRouting';
-import type { ResourceInfo } from '~/lib/api';
+import { PathParamResolver, type ResourceInfo } from '~/lib/api';
 
 const { Text } = Typography;
 
@@ -65,8 +65,11 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({
         throw new Error(`No GET by ID operation found for resource ${resource.name}`);
       }
 
+      const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
+      pathParams[resource.identifierField] = itemId;
+
       // 使用新的 API 客户端获取资源详情
-      const response = await service.getClient().request(getByIdOperation, {pathParams: { [resource.identifierField]: itemId } });
+      const response = await service.getClient().request(getByIdOperation, { pathParams });
       setCurrentItem(response.data);
       
       // 通知父组件数据已加载

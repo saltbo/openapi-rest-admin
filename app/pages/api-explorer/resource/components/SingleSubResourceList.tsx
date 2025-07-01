@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Typography, Button, Drawer, Spin, Alert } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { useParams } from 'react-router';
 import { useResourceDialogs } from '~/pages/api-explorer/resource/hooks/useResourceDialogs';
 import { ResourceActionForm } from '~/pages/api-explorer/resource/components/ResourceActionForm';
 import { ResourceDeleteConfirm } from '~/pages/api-explorer/resource/components/ResourceDeleteConfirm';
 import { useOpenAPIService, useResourceInfo, useResourceTableSchema } from '~/hooks/useOpenAPIService';
-import { parseResourcePath } from '~/utils/resourceRouting';
 import { capitalizeFirst } from '~/components';
 import { Table } from '~/components/json-schema-ui/themes/antd';
 import type { ResourceInfo } from '~/lib/api';
+import { PathParamResolver } from '~/lib/api';
 
 const { Title } = Typography;
 
@@ -36,12 +37,27 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
   // 获取 OpenAPI 服务
   const { service, isInitialized } = useOpenAPIService(serviceName);
 
-  // 解析资源路径
-  const { currentResourceName } = parseResourcePath(nestedPath || '', resourceName || '');
+  // 直接使用当前资源名称，如果有嵌套路径，则取最后一个资源名
+  const currentResourceName = nestedPath ? 
+    (() => {
+      const segments = nestedPath.split('/').filter(Boolean);
+      // 如果有嵌套路径，找到最后一个资源名（偶数索引位置）
+      for (let i = segments.length - 1; i >= 0; i--) {
+        if (i % 2 === 1) { // 奇数索引是资源名，偶数索引是ID
+          return segments[i];
+        }
+      }
+      return resourceName || '';
+    })() : 
+    resourceName || '';
 
   // 获取资源信息
   const { resource } = useResourceInfo(service, currentResourceName);
   const tableSchema = useResourceTableSchema(service, subResource.name);
+
+  // 获取路由参数
+  const params = useParams<{ sName: string; rName: string; '*': string }>();
+  const splat = params['*'] || '';
 
   // 加载子资源数据
   const loadSubResourceData = async () => {
@@ -56,22 +72,12 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
 
       // 查找子资源的 GET 列表操作
       const getListOperation = subResource.operations.find(op => {
-        const isGet = op.method.toLowerCase() === 'get';
-        const pathEndsWithId = op.path.endsWith('{id}') || op.path.endsWith(`{${subResource.name}Id}`);
-        return isGet && !pathEndsWithId;
+        return op.method.toLowerCase() === 'get' && op.path.includes(`/{${resource.identifierField}}`) 
       });
       
       if (getListOperation) {
-        // 构建路径参数
-        const pathParams: Record<string, any> = {};
-        
-        if (getListOperation.path.includes('{id}')) {
-          pathParams['id'] = itemId;
-        } else if (getListOperation.path.includes(`{${resource.name}Id}`)) {
-          pathParams[`${resource.name}Id`] = itemId;
-        } else if (getListOperation.path.includes('{parentId}')) {
-          pathParams['parentId'] = itemId;
-        }
+        // 构建路径参数 - 使用新的简化API，直接从当前URL提取
+        const pathParams = PathParamResolver.extractPathParams(getListOperation.path);
         
         // 使用新的 API 客户端获取子资源列表
         const subResourceResponse = await service.getClient().getList(getListOperation, {
@@ -124,7 +130,24 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
 
   const actionHandlers = {
     onDetail: (record: any) => {
-      return '';
+      console.log(`SingleSubResourceList - Navigating to detail for ${subResource.name}:`, record);
+      
+      const id = service?.getResourceIdentifier(subResource.name, record);
+      if (!id) {
+        console.warn('Cannot navigate to detail: no identifier found for record');
+        return location.pathname;
+      }
+      
+      // 从当前URL提取现有的路径参数
+      const currentParams = PathParamResolver.extractPathParams(subResource.pathPattern);
+      
+      // 添加当前记录的ID
+      currentParams[subResource.identifierField] = String(id);
+      
+      // 构建详情页路径
+      const detailPath = PathParamResolver.buildPath(subResource.pathPattern, currentParams);
+      
+      return `/services/${serviceName}/resources${detailPath}`;
     },
     onEdit: (record: any) => {
       handleEdit(record);

@@ -8,6 +8,7 @@ import { OpenAPIDocumentParser } from './OpenAPIDocumentParser';
 import { SchemaRenderer } from './SchemaRenderer';
 import { RESTfulAPIClient } from './RESTfulAPIClient';
 import { DataExtractor } from './DataExtractor';
+import { PathParamResolver } from './PathParamResolver';
 
 export { OpenAPIDocumentParser } from './OpenAPIDocumentParser';
 export type { 
@@ -17,6 +18,7 @@ export type {
 } from './OpenAPIDocumentParser';
 
 export { SchemaRenderer } from './SchemaRenderer';
+export { PathParamResolver } from './PathParamResolver';
 export type { 
   FormSchemaOptions, 
   TableSchemaOptions, 
@@ -129,7 +131,7 @@ export class OpenAPIService {
    * @param resourceData 资源数据
    * @returns {string} 资源的唯一标识符
    */
-  getResourceIdentifier(resourceName: string, data: any): string|number {
+  getResourceIdentifier(resourceName: string, data: any): string {
     const allResources = this.parser.getAllResources();
     const resource = allResources.find(r => r.name === resourceName);
     if (!resource) {
@@ -145,7 +147,7 @@ export class OpenAPIService {
     if (identifierValue === undefined || identifierValue === null) {
       throw new Error(`Resource '${resourceName}' identifier field '${identifierField}' is missing in data`);
     }
-    return identifierValue;
+    return String(identifierValue);
   }
 
   /**

@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { Modal, Typography, Space, Tag, Descriptions, message } from 'antd';
 import { ExclamationCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createOpenAPIService, type ResourceInfo } from '~/lib/api';
+import { createOpenAPIService, PathParamResolver, type ResourceInfo } from '~/lib/api';
 import { openAPIDocumentClient } from '~/lib/client';
 import type { ResourceDataItem } from '~/types/api';
 
@@ -40,21 +40,17 @@ export const ResourceDeleteConfirm: React.FC<ResourceDeleteConfirmProps> = ({
       await apiService.initialize(config.openapi_url);
       
       // 获取资源的删除操作
-      const resources = apiService.getAllResources();
-      const resourceInfo = resources.find(r => r.name === resource.name);
-      if (!resourceInfo) {
-        throw new Error(`资源 '${resource.name}' 未找到`);
-      }
-      
-      // 查找DELETE操作
-      const deleteOperation = resourceInfo.operations.find(op => op.method === 'DELETE');
+      const deleteOperation = resource.operations.find(op => op.method === 'DELETE');
       if (!deleteOperation) {
         throw new Error(`资源 '${resource.name}' 不支持删除操作`);
       }
       
+      const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
+      pathParams[resource.identifierField] = apiService.getResourceIdentifier(resource.name, item);
+
       // 使用RESTful API客户端执行删除
       const client = apiService.getClient();
-      return await client.request(deleteOperation, { pathParams: { [resourceInfo.identifierField]: apiService.getResourceIdentifier(resource.name, item) } });
+      return await client.request(deleteOperation, { pathParams });
     },
     onSuccess: () => {
       message.success('删除成功');
