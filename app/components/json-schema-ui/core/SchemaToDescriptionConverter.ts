@@ -1,16 +1,16 @@
 // 用于描述渲染器的接口
-export interface DescriptionRenderer {
-  render: (props: { items: DescriptionItem[]; column?: number }) => React.ReactElement;
+export interface DescriptionsRenderer {
+  render: (props: { items: DescriptionsItem[]; column?: number }) => React.ReactElement;
 }
 
-export interface DescriptionItem {
+export interface DescriptionsItem {
   key: string;
   label: string;
   value: any;
 }
 
-export class SchemaToDescriptionConverter {
-  static convert(schema: any, data: Record<string, any>): DescriptionItem[] {
+export class SchemaToDescriptionsConverter {
+  static convert(schema: any, data: Record<string, any>): DescriptionsItem[] {
     if (!schema || typeof schema !== 'object') return [];
     const properties = schema.properties || {};
     return Object.keys(properties).map((key) => ({

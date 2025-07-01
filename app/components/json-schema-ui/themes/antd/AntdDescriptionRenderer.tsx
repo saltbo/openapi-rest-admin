@@ -1,6 +1,6 @@
 import React from 'react';
 import { Descriptions, Tooltip, Typography, Tag } from 'antd';
-import type { DescriptionItem, DescriptionRenderer } from '../../core';
+import type { DescriptionsItem, DescriptionsRenderer } from '../../core';
 
 const { Text } = Typography;
 
@@ -46,11 +46,11 @@ function formatValue(key: string, value: any) {
   return <Text copyable={textStr.length > 20}>{textStr}</Text>;
 }
 
-export class AntdDescriptionRenderer implements DescriptionRenderer {
-  render({ items, column }: { items: DescriptionItem[]; column?: number }) {
+export class AntdDescriptionRenderer implements DescriptionsRenderer {
+  render({ items, column }: { items: DescriptionsItem[]; column?: number }) {
     return (
       <Descriptions bordered column={column} size="middle">
-        {items.map((item: DescriptionItem) => (
+        {items.map((item: DescriptionsItem) => (
           <Descriptions.Item label={item.label} key={item.key}>
             {formatValue(item.key, item.value)}
           </Descriptions.Item>

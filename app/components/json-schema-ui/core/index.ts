@@ -10,5 +10,5 @@ export type {
 } from './types';
 
 export { SchemaToTableConverter } from './SchemaToTableConverter';
-export { SchemaToDescriptionConverter } from './SchemaToDescriptionConverter';
-export type { DescriptionRenderer, DescriptionItem } from './SchemaToDescriptionConverter';
+export { SchemaToDescriptionsConverter } from './SchemaToDescriptionConverter';
+export type { DescriptionsRenderer, DescriptionsItem } from './SchemaToDescriptionConverter';
