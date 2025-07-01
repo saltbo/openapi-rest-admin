@@ -721,7 +721,7 @@ export class OpenAPIDocumentParser {
       return null;
     }
 
-    const responseSchema = this.extractSchemaFromResponse(getOperation.responses);
+    const responseSchema = this.extractResponseSchema(getOperation.responses);
     if (!responseSchema) {
       console.warn(`No response schema found for GET operation: ${getOperation.path}`);
       return null;
@@ -730,6 +730,7 @@ export class OpenAPIDocumentParser {
     // 解析响应schema获取资源对象schema
     const resourceSchema = this.resolveResourceSchemaFromResponse(responseSchema);
     if (!resourceSchema) {
+      console.warn(`Failed to resolve resource schema from response schema`, responseSchema);
       return null;
     }
 
@@ -737,7 +738,7 @@ export class OpenAPIDocumentParser {
     return this.fullyResolveSchema(resourceSchema);
   }
 
-  private extractSchemaFromResponse(responses: OpenAPIV3.ResponsesObject): OpenAPIV3.SchemaObject | null {
+  private extractResponseSchema(responses: OpenAPIV3.ResponsesObject): OpenAPIV3.SchemaObject | null {
     const successResponse = responses['200'] || responses['201'] || responses['default'];
     if (!successResponse || typeof successResponse === 'string') {
       return null;
@@ -756,31 +757,7 @@ export class OpenAPIDocumentParser {
       return null;
     }
 
-    let schema = jsonContent.schema as OpenAPIV3.SchemaObject;
-
-    if (schema.type === 'array' && schema.items) {
-      schema = schema.items as OpenAPIV3.SchemaObject;
-    }
-
-    if (schema.type === 'object' && schema.properties) {
-      if (schema.properties.data) {
-        const dataSchema = schema.properties.data as OpenAPIV3.SchemaObject;
-        if (dataSchema.type === 'array' && dataSchema.items) {
-          return dataSchema.items as OpenAPIV3.SchemaObject;
-        } else if (dataSchema.type === 'object') {
-          return dataSchema;
-        }
-      }
-      
-      if (schema.properties.items || schema.properties.list) {
-        const itemsSchema = (schema.properties.items || schema.properties.list) as OpenAPIV3.SchemaObject;
-        if (itemsSchema.type === 'array' && itemsSchema.items) {
-          return itemsSchema.items as OpenAPIV3.SchemaObject;
-        }
-      }
-    }
-
-    return schema;
+    return jsonContent.schema as OpenAPIV3.SchemaObject;
   }
 
   /**
