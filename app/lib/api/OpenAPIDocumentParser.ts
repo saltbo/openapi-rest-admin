@@ -1,10 +1,16 @@
 /**
  * 浏览器友好的 OpenAPI 文档解析器
  * 避免使用 swagger-parser 的重量级依赖
+ * 
+ * 主要功能：
+ * - 解析 OpenAPI 2.0/3.0/3.1 文档
+ * - 提取资源信息和操作
+ * - 构建资源层级关系
+ * - 解析 schema 并解引用
+ * - 提供统计信息
  */
 
 import type { OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1 } from 'openapi-types';
-import { DataExtractor } from './DataExtractor';
 
 /**
  * 资源统计信息
@@ -77,7 +83,7 @@ export class OpenAPIDocumentParser {
   private parsedApi: OpenAPI.Document | null = null;
   private resourceCache = new Map<string, ResourceInfo[]>();
   private statisticsCache: ResourceStatistics | null = null;
-  private documentUrl: string | null = null; // 存储文档的URL
+  private documentUrl: string | null = null;
 
   /**
    * 解析 OpenAPI 文档
@@ -90,7 +96,6 @@ export class OpenAPIDocumentParser {
       if (typeof source === 'string') {
         // 存储文档URL用于后续拼接相对路径
         this.documentUrl = source;
-        // 从 URL 获取文档
         const response = await fetch(source);
         if (!response.ok) {
           throw new Error(`Failed to fetch OpenAPI document: ${response.statusText}`);
@@ -104,7 +109,6 @@ export class OpenAPIDocumentParser {
 
       // 基本验证
       this.validateDocument(apiDoc);
-      
       this.parsedApi = apiDoc;
       
       // 清空缓存
@@ -143,9 +147,10 @@ export class OpenAPIDocumentParser {
     }
   }
 
+  // ==================== 公共方法 ====================
+
   /**
    * 获取所有资源的 schema
-   * 返回按资源组织的 OpenAPI schema，用于后续渲染表单和表格
    */
   getAllResourceSchemas(): Record<string, OpenAPIV3.SchemaObject> {
     if (!this.parsedApi) {
@@ -314,8 +319,6 @@ export class OpenAPIDocumentParser {
    */
   getTopLevelResources(): ResourceInfo[] {
     const allResources = this.getResourceList();
-    console.log(allResources);
-    
     return allResources.filter(resource => 
       !allResources.some(other => 
         other.subResources.some(sub => sub.name === resource.name)
@@ -330,8 +333,10 @@ export class OpenAPIDocumentParser {
     return this.parsedApi;
   }
 
+  // ==================== 私有方法 ====================
+
   /**
-   * 私有方法：获取资源列表
+   * 获取资源列表（核心私有方法）
    * 只从列表端点（GET /resources）提取资源，符合 RESTful 约定
    */
   private getResourceList(): ResourceInfo[] {
@@ -407,7 +412,6 @@ export class OpenAPIDocumentParser {
     return resources;
   }
 
-  // ... 其他私有方法与原版相同，但移除了 swagger-parser 依赖
   /**
    * 从路径中提取资源链
    * e.g., "/users/{id}/posts/{postId}/comments" -> ["users", "posts", "comments"]
@@ -704,7 +708,13 @@ export class OpenAPIDocumentParser {
     }
 
     // 解析响应schema获取资源对象schema
-    return this.resolveResourceSchemaFromResponse(responseSchema); 
+    const resourceSchema = this.resolveResourceSchemaFromResponse(responseSchema);
+    if (!resourceSchema) {
+      return null;
+    }
+
+    // 递归解析所有引用，确保返回完整的schema
+    return this.fullyResolveSchema(resourceSchema);
   }
 
   private extractSchemaFromResponse(responses: OpenAPIV3.ResponsesObject): OpenAPIV3.SchemaObject | null {
@@ -904,5 +914,109 @@ export class OpenAPIDocumentParser {
 
   private isV3(): boolean {
     return this.getOpenAPIVersion().startsWith('3.');
+  }
+
+  /**
+   * 递归解析schema中的所有引用
+   * 确保返回的schema是完全展开的，不包含任何$ref引用
+   */
+  private fullyResolveSchema(
+    schema: OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, 
+    visitedRefs: Set<string> = new Set()
+  ): OpenAPIV3.SchemaObject {
+    // 检查循环引用
+    if ('$ref' in schema && visitedRefs.has(schema.$ref)) {
+      console.warn(`Circular reference detected: ${schema.$ref}. Using generic object schema.`);
+      return { type: 'object', properties: {} };
+    }
+
+    // 首先解析顶层引用
+    const resolvedSchema = this.resolveSchemaReference(schema);
+    if (!resolvedSchema) {
+      // 如果解析失败，返回通用object schema
+      return { type: 'object', properties: {} };
+    }
+
+    // 如果原始schema是引用，添加到访问集合中
+    if ('$ref' in schema) {
+      visitedRefs.add(schema.$ref);
+    }
+
+    // 深度复制schema避免修改原始对象
+    const result: any = JSON.parse(JSON.stringify(resolvedSchema));
+
+    try {
+      // 递归解析properties中的引用
+      if (result.properties) {
+        const resolvedProperties: Record<string, OpenAPIV3.SchemaObject> = {};
+        
+        for (const [propName, propSchema] of Object.entries(result.properties)) {
+          resolvedProperties[propName] = this.fullyResolveSchema(
+            propSchema as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, 
+            new Set(visitedRefs)
+          );
+        }
+        
+        result.properties = resolvedProperties;
+      }
+
+      // 递归解析items中的引用（用于数组类型）
+      if (result.type === 'array' && result.items) {
+        result.items = this.fullyResolveSchema(
+          result.items as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, 
+          new Set(visitedRefs)
+        );
+      }
+
+      // 递归解析additionalProperties中的引用
+      if (result.additionalProperties && typeof result.additionalProperties === 'object') {
+        result.additionalProperties = this.fullyResolveSchema(
+          result.additionalProperties as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, 
+          new Set(visitedRefs)
+        );
+      }
+
+      // 处理allOf, anyOf, oneOf中的引用
+      if (result.allOf) {
+        result.allOf = result.allOf.map((subSchema: any) => 
+          this.fullyResolveSchema(
+            subSchema as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, 
+            new Set(visitedRefs)
+          )
+        );
+      }
+
+      if (result.anyOf) {
+        result.anyOf = result.anyOf.map((subSchema: any) => 
+          this.fullyResolveSchema(
+            subSchema as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, 
+            new Set(visitedRefs)
+          )
+        );
+      }
+
+      if (result.oneOf) {
+        result.oneOf = result.oneOf.map((subSchema: any) => 
+          this.fullyResolveSchema(
+            subSchema as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, 
+            new Set(visitedRefs)
+          )
+        );
+      }
+    } catch (error) {
+      console.warn(`Error while fully resolving schema:`, error);
+      // 发生错误时返回安全的fallback
+      return { type: 'object', properties: {} };
+    }
+
+    // 确保返回的schema至少有基本的type
+    if (!result.type && !result.allOf && !result.anyOf && !result.oneOf) {
+      result.type = 'object';
+      if (!result.properties) {
+        result.properties = {};
+      }
+    }
+
+    return result as OpenAPIV3.SchemaObject;
   }
 }
