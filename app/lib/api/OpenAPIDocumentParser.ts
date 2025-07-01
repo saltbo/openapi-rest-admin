@@ -51,6 +51,8 @@ export interface ResourceInfo {
   tags: string[];
   /** 子资源 */
   subResources: ResourceInfo[];
+  /** 资源的 schema 信息 */
+  schema: OpenAPIV3.SchemaObject | null;
 }
 
 /**
@@ -163,10 +165,9 @@ export class OpenAPIDocumentParser {
     const resources = this.getResourceList();
 
     resources.forEach(resource => {
-      // 为每个资源提取主要的 schema
-      const resourceSchema = this.extractResourceSchema(resource);
-      if (resourceSchema) {
-        schemas[resource.name] = resourceSchema;
+      // 直接使用资源对象中预计算的 schema
+      if (resource.schema) {
+        schemas[resource.name] = resource.schema;
       }
     });
 
@@ -223,14 +224,20 @@ export class OpenAPIDocumentParser {
    * 获取特定资源的 schema
    */
   getResourceSchema(resourceName: string): OpenAPIV3.SchemaObject | null {
-    const schemas = this.getAllResourceSchemas();
-    const resourceSchema = schemas[resourceName];
-    if (!resourceSchema) {
+    const resources = this.getResourceList();
+    const resource = resources.find(r => r.name === resourceName);
+    
+    if (!resource) {
+      console.warn(`Resource '${resourceName}' not found`);
+      return null;
+    }
+
+    if (!resource.schema) {
       console.warn(`Resource schema for '${resourceName}' not found`);
       return null;
     }
 
-    return resourceSchema;
+    return resource.schema;
   }
 
   /**
@@ -402,7 +409,8 @@ export class OpenAPIDocumentParser {
         identifierField: this.extractResourceIdentifier(resourceName, pathGroup),
         isRESTful: true, // 有列表端点即为 RESTful
         tags: Array.from(tags),
-        subResources: []
+        subResources: [],
+        schema: this.extractResourceSchemaFromOperations(allOperations)
       };
 
       resourceMap.set(resourceKey, resource);
@@ -697,16 +705,25 @@ export class OpenAPIDocumentParser {
     return hasCollectionOps || hasItemOps;
   }
 
-  private extractResourceSchema(resource: ResourceInfo): OpenAPIV3.SchemaObject | null {
-    const getOperation = resource.operations.find(op => op.method === 'GET');
+  /**
+   * 从操作列表中提取资源的 schema
+   * 这个方法替代了原来的 extractResourceSchema 方法，
+   * 直接在创建资源时调用，避免重复查询
+   */
+  private extractResourceSchemaFromOperations(operations: ResourceOperation[]): OpenAPIV3.SchemaObject | null {
+    // 查找 GET 操作，优先选择集合操作（不包含路径参数的）
+    const getOperation = operations.find(op => 
+      op.method === 'GET' && !op.path.includes('{')
+    ) || operations.find(op => op.method === 'GET');
+    
     if (!getOperation) {
-      console.warn(`No GET operation found for resource: ${resource.name}`);
+      console.warn(`No GET operation found for extracting resource schema`);
       return null;
     }
 
     const responseSchema = this.extractSchemaFromResponse(getOperation.responses);
     if (!responseSchema) {
-      console.warn(`No response schema found for GET operation of resource: ${resource.name}`);
+      console.warn(`No response schema found for GET operation: ${getOperation.path}`);
       return null;
     }
 
