@@ -31,13 +31,13 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({
   };
 
   // Debug 信息（仅在开发模式下显示）
-  if (process.env.NODE_ENV === 'development') {
-    console.log('ResourceDetail Debug:', {
+  if (process.env.NODE_ENV === "development") {
+    console.log("ResourceDetail Debug:", {
       isInitialized,
       serviceName,
       resource: resource?.name,
       pathParams,
-      currentItem: !!currentItem
+      currentItem: !!currentItem,
     });
   }
 
@@ -48,7 +48,8 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({
     }
 
     // 检查是否有必要的路径参数
-    const hasRequiredParams = resource.identifierField && pathParams[resource.identifierField];
+    const hasRequiredParams =
+      resource.identifierField && pathParams[resource.identifierField];
     if (!hasRequiredParams) {
       setError(`Missing required parameter: ${resource.identifierField}`);
       setLoading(false);
@@ -88,12 +89,15 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({
   useEffect(() => {
     if (isInitialized && service && resource) {
       // 只有当我们有必要的路径参数时才加载数据
-      const hasRequiredParams = resource.identifierField && pathParams[resource.identifierField];
+      const hasRequiredParams =
+        resource.identifierField && pathParams[resource.identifierField];
       if (hasRequiredParams) {
         loadData();
       } else {
         setLoading(false);
-        setError(`Missing required parameter: ${resource.identifierField || 'id'}`);
+        setError(
+          `Missing required parameter: ${resource.identifierField || "id"}`
+        );
       }
     }
   }, [isInitialized, service, resource, JSON.stringify(pathParams)]);
@@ -224,21 +228,19 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({
           boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
         }}
       >
-        {/* <ResourceBreadcrumb
-          serviceName={serviceName}
-          topLevelResource={topLevelResource}
-          nestedPath={nestedPath}
-        /> */}
+        <ResourceBreadcrumb style={{ marginBottom: "16px" }} />
       </div>
 
       {/* 主内容区域 */}
-      <div style={{ 
-        padding: "24px", 
-        maxWidth: "1400px", 
-        margin: "0 auto",
-        width: "100%",
-        boxSizing: "border-box"
-      }}>
+      <div
+        style={{
+          padding: "24px",
+          maxWidth: "1400px",
+          margin: "0 auto",
+          width: "100%",
+          boxSizing: "border-box",
+        }}
+      >
         {/* 页面头部 */}
         {resource && currentItem && (
           <ResourceHeader resource={resource} resourceData={currentItem} />

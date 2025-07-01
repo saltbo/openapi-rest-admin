@@ -58,7 +58,7 @@ export class PathParamResolver {
    * @param fullUrl 完整URL，如 "/services/test/resources/authors/123/books/456"
    * @returns 资源路径部分，如 "/authors/123/books/456"
    */
-  private static extractResourcePathFromUrl(fullUrl: string): string {
+  static extractResourcePathFromUrl(fullUrl: string): string {
     const segments = fullUrl.split('/').filter(Boolean);
     
     // 查找路由模式：services/{serviceName}/resources/

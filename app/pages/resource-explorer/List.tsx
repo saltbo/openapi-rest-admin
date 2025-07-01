@@ -29,7 +29,7 @@ import ResourceActionForm from "./components/ResourceActionForm";
 import ResourceDeleteConfirm from "./components/ResourceDeleteConfirm";
 import { useResource } from "./hooks/useResource";
 import { PathParamResolver } from "~/lib/api";
-import { useResourceList } from "./hooks/useResourceList"; // TODO: 文件名拼写错误，应该是 useResourceList
+import { useResourceList } from "./hooks/useResourceList";
 import type { ResourceDataItem } from "~/types/api";
 
 const { Title, Paragraph } = Typography;
@@ -58,7 +58,14 @@ export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
     isLoading,
     error,
     refetch,
-  } = useResourceList(service, resource, currentPage, pageSize, searchQuery, {});
+  } = useResourceList(
+    service,
+    resource,
+    currentPage,
+    pageSize,
+    searchQuery,
+    {}
+  );
 
   // 获取表格 schema
   const tableSchema = service?.getResourceTableSchema(resource?.name!);
@@ -104,13 +111,15 @@ export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
   // 如果服务还没有初始化，显示加载状态
   if (!isInitialized) {
     return (
-      <div style={{ 
-        padding: "24px",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "400px"
-      }}>
+      <div
+        style={{
+          padding: "24px",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
         <Spin size="large" />
       </div>
     );
@@ -163,13 +172,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
 
   return (
     <div style={{ padding: "24px" }}>
-      {/* <ResourceBreadcrumb
-        serviceName={sName}
-        topLevelResource={rName}
-        nestedPath={nestedPath}
-        style={{ marginBottom: "16px" }}
-      /> */}
-
+      <ResourceBreadcrumb style={{ marginBottom: "16px" }} />
       <div style={{ marginBottom: "24px" }}>
         <Space align="start">
           <DatabaseOutlined style={{ fontSize: "32px", color: "#1890ff" }} />

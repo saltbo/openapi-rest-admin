@@ -1,144 +1,123 @@
 import React from 'react';
 import { Breadcrumb } from 'antd';
-import { Link, useParams } from 'react-router';
-import { parseResourcePath, buildPathToLevel } from '~/utils/resourceRouting';
+import { Link, useParams, useLocation } from 'react-router';
+import { PathParamResolver } from '~/lib/api';
 
 interface ResourceBreadcrumbProps {
-  /** 服务名称 */
-  serviceName?: string;
-  /** 顶级资源名称 */
-  topLevelResource?: string;
-  /** 嵌套路径 (splat 参数) */
-  nestedPath?: string;
   /** 自定义样式 */
   style?: React.CSSProperties;
 }
 
 /**
- * 资源页面通用面包屑组件
- * 根据 URL 路径自动生成面包屑导航
+ * 重构后的面包屑组件
+ * 分为两部分：
+ * 1. 全局部分：基于 routes 中定义的路由结构
+ * 2. Resource Explorer 部分：基于 PathParamResolver 的逻辑生成
  * 
  * URL 格式：/services/{serviceName}/resources/{topLevelResource}/{nestedPath}
- * nestedPath 格式：{id1}/{resource2}/{id2}/{resource3}/{id3}/...
  */
 export const ResourceBreadcrumb: React.FC<ResourceBreadcrumbProps> = ({
-  serviceName,
-  topLevelResource,
-  nestedPath,
   style
 }) => {
   const params = useParams<{ sName: string; rName: string; '*': string }>();
+  const location = useLocation();
   
-  // 使用参数或从路由参数获取
-  const sName = serviceName || params.sName;
-  const rName = topLevelResource || params.rName;
-  const splat = nestedPath || params['*'] || '';
+  const { sName, rName } = params;
+  const splat = params['*'] || '';
   
-  // 使用工具函数解析资源层次结构
-  const { resourceHierarchy } = parseResourcePath(splat, rName || '');
-  
-  // 判断是否为最后一个项目
-  const isLastItem = (index: number, hasItemId: boolean) => {
-    return index === resourceHierarchy.length - 1 && hasItemId;
-  };
-  
-  // 判断是否为当前列表页面
-  const isCurrentListPage = (index: number) => {
-    return index === resourceHierarchy.length - 1 && !resourceHierarchy[index].itemId;
-  };
-
-  return (
-    <Breadcrumb style={style}>
-      {/* 首页 */}
-      <Breadcrumb.Item>
+  // 生成全局面包屑项
+  const generateGlobalBreadcrumbs = () => {
+    const items = [];
+    
+    // 首页
+    items.push(
+      <Breadcrumb.Item key="home">
         <Link to="/" style={{ color: '#1890ff' }}>首页</Link>
       </Breadcrumb.Item>
+    );
+    
+    // 服务详情页
+    if (sName) {
+      items.push(
+        <Breadcrumb.Item key="service">
+          <Link to={`/services/${encodeURIComponent(sName)}`} style={{ color: '#1890ff' }}>
+            {sName}
+          </Link>
+        </Breadcrumb.Item>
+      );
+    }
+    
+    return items;
+  };
+  
+  // 生成资源浏览器面包屑项
+  const generateResourceBreadcrumbs = () => {
+    if (!rName) return [];
+    
+    const items = [];
+    const currentUrl = location.pathname;
+    
+    // 提取资源路径部分
+    const resourcePath = PathParamResolver.extractResourcePathFromUrl ? 
+      PathParamResolver.extractResourcePathFromUrl(currentUrl) : 
+      `/${rName}${splat ? '/' + splat : ''}`;
+    
+    // 解析路径段
+    const pathSegments = resourcePath.split('/').filter(Boolean);
+    
+    // 生成面包屑项
+    let currentPath = `/services/${encodeURIComponent(sName!)}/resources`;
+    
+    for (let i = 0; i < pathSegments.length; i++) {
+      const segment = pathSegments[i];
+      const isLast = i === pathSegments.length - 1;
+      const isId = i % 2 === 1; // 奇数位置是ID，偶数位置是资源名
       
-      {/* 服务名称 */}
-      <Breadcrumb.Item>
-        <Link to={`/services/${encodeURIComponent(sName!)}`} style={{ color: '#1890ff' }}>
-          {sName}
-        </Link>
-      </Breadcrumb.Item>
+      currentPath += `/${segment}`;
       
-      {/* 动态生成资源层级面包屑 */}
-      {resourceHierarchy.map((level, index) => {
-        const hasItemId = !!level.itemId;
-        const isLast = isLastItem(index, hasItemId);
-        const isCurrent = isCurrentListPage(index);
+      if (isId) {
+        // 资源ID - 如果是最后一个，不加链接
+        items.push(
+          <Breadcrumb.Item key={`id-${i}`}>
+            {isLast ? (
+              segment
+            ) : (
+              <Link to={currentPath} style={{ color: '#1890ff' }}>
+                {segment}
+              </Link>
+            )}
+          </Breadcrumb.Item>
+        );
+      } else {
+        // 资源名 - 如果是最后一个且没有后续ID，不加链接
+        const hasSubsequentId = i + 1 < pathSegments.length;
+        const shouldAddLink = !isLast || hasSubsequentId;
         
-        if (index === 0) {
-          // 顶级资源
-          return (
-            <React.Fragment key={`resource-${index}`}>
-              {/* 资源名称 */}
-              <Breadcrumb.Item>
-                {isCurrent ? (
-                  level.resourceName
-                ) : (
-                  <Link 
-                    to={`/services/${encodeURIComponent(sName!)}/resources/${level.resourceName}`}
-                    style={{ color: '#1890ff' }}
-                  >
-                    {level.resourceName}
-                  </Link>
-                )}
-              </Breadcrumb.Item>
-              
-              {/* 资源项目ID */}
-              {hasItemId && (
-                <Breadcrumb.Item>
-                  {isLast ? (
-                    level.itemId
-                  ) : (
-                    <Link 
-                      to={buildPathToLevel(sName!, resourceHierarchy, index, true)}
-                      style={{ color: '#1890ff' }}
-                    >
-                      {level.itemId}
-                    </Link>
-                  )}
-                </Breadcrumb.Item>
-              )}
-            </React.Fragment>
-          );
-        } else {
-          // 子资源
-          return (
-            <React.Fragment key={`resource-${index}`}>
-              {/* 子资源名称 */}
-              <Breadcrumb.Item>
-                {isCurrent ? (
-                  level.resourceName
-                ) : (
-                  <Link 
-                    to={buildPathToLevel(sName!, resourceHierarchy, index - 1, true) + `/${level.resourceName}`}
-                    style={{ color: '#1890ff' }}
-                  >
-                    {level.resourceName}
-                  </Link>
-                )}
-              </Breadcrumb.Item>
-              
-              {/* 子资源项目ID */}
-              {hasItemId && (
-                <Breadcrumb.Item>
-                  {isLast ? (
-                    level.itemId
-                  ) : (
-                    <Link 
-                      to={buildPathToLevel(sName!, resourceHierarchy, index, true)}
-                      style={{ color: '#1890ff' }}
-                    >
-                      {level.itemId}
-                    </Link>
-                  )}
-                </Breadcrumb.Item>
-              )}
-            </React.Fragment>
-          );
-        }
-      })}
+        items.push(
+          <Breadcrumb.Item key={`resource-${i}`}>
+            {shouldAddLink ? (
+              <Link to={currentPath} style={{ color: '#1890ff' }}>
+                {segment}
+              </Link>
+            ) : (
+              segment
+            )}
+          </Breadcrumb.Item>
+        );
+      }
+    }
+    
+    return items;
+  };
+
+  
+  return (
+    <Breadcrumb style={style}>
+      {/* 全局面包屑 */}
+      {generateGlobalBreadcrumbs()}
+      
+      {/* 资源浏览器面包屑 */}
+      {generateResourceBreadcrumbs()}
     </Breadcrumb>
   );
 };
