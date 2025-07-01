@@ -71,29 +71,7 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
       // 获取文档信息和资源统计
       const documentInfo = openAPIService.getDocumentInfo();
       const resourceStats = openAPIService.getResourceStatistics();
-      const allSchemas = openAPIService.getAllResourceSchemas();
-      
-      // 构建与原有格式兼容的分析结果
-      // 从resourceStats中获取更准确的资源信息
-      const resources = Object.keys(allSchemas).map(resourceName => {
-        // 尝试从统计信息中获取更准确的路径信息
-        const basePath = `/${resourceName.toLowerCase()}`;
-        
-        return {
-          name: resourceName,
-          path: basePath,
-          operations: {
-            get: { summary: `List ${resourceName}` },
-            post: { summary: `Create ${resourceName}` },
-            put: { summary: `Update ${resourceName}` },
-            delete: { summary: `Delete ${resourceName}` }
-          },
-          parent_resource: null, // 暂时设为null，后续可以从parser中获取层次关系
-          schema: allSchemas[resourceName],
-          tags: [],
-          isRESTful: true
-        };
-      });
+      const resources = openAPIService.getTopLevelResources();
       
       return {
         apiId: selectedApiId,

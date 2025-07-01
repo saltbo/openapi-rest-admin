@@ -81,11 +81,7 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       if (!apiService) throw new Error('API服务未初始化');
       
       // 获取资源的创建操作
-      const allResources = apiService.getAllResources();
-      const resourceInfo = allResources.find(r => r.name === resource.name);
-      if (!resourceInfo) throw new Error(`Resource ${resource.name} not found`);
-      
-      const createOperation = resourceInfo.operations.find(op => op.method === 'POST');
+      const createOperation = resource.operations.find(op => op.method === 'POST');
       if (!createOperation) throw new Error(`Create operation not found for ${resource.name}`);
       
 
@@ -112,18 +108,14 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       if (!apiService) throw new Error('API服务未初始化');
       
       // 获取资源的更新操作
-      const allResources = apiService.getAllResources();
-      const resourceInfo = allResources.find(r => r.name === resource.name);
-      if (!resourceInfo) throw new Error(`Resource ${resource.name} not found`);
-      
-      const updateOperation = resourceInfo.operations.find(op => 
+      const updateOperation = resource.operations.find(op => 
         op.method === 'PUT' || op.method === 'PATCH'
       );
       if (!updateOperation) throw new Error(`Update operation not found for ${resource.name}`);
       
       const client = apiService.getClient();
       const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
-      pathParams[resourceInfo.identifierField] = apiService.getResourceIdentifier(resource.name, initialData);
+      pathParams[resource.identifierField] = apiService.getResourceIdentifier(resource.name, initialData);
       const response = await client.request(updateOperation, { pathParams, body: data});
       return response;
     },

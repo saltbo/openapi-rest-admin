@@ -53,7 +53,8 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
 
   // 获取资源信息
   const { resource } = useResourceInfo(service, currentResourceName);
-  const tableSchema = useResourceTableSchema(service, subResource.name);
+  
+  const tableSchema = useResourceTableSchema(service, `${resource?.name}.${subResource.name}`);
 
   // 获取路由参数
   const params = useParams<{ sName: string; rName: string; '*': string }>();
@@ -74,23 +75,14 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
       const getListOperation = subResource.operations.find(op => {
         return op.method.toLowerCase() === 'get' && op.path.includes(`/{${resource.identifierField}}`) 
       });
-      
-      if (getListOperation) {
-        // 构建路径参数 - 使用新的简化API，直接从当前URL提取
-        const pathParams = PathParamResolver.extractPathParams(getListOperation.path);
-        
-        // 使用新的 API 客户端获取子资源列表
-        const subResourceResponse = await service.getClient().getList(getListOperation, {
-          pathParams,
-          page: 1,
-          pageSize: 10
-        });
-        
-        setData(subResourceResponse.data || []);
-      } else {
-        setData([]);
+      if (!getListOperation) {
+        throw new Error(`No GET list operation found for sub-resource ${subResource.name}, identifier: ${resource.identifierField}`);
       }
-      
+
+      // 使用新的 API 客户端获取子资源列表
+      const pathParams = PathParamResolver.extractPathParams(getListOperation.path);
+      const subResourceResponse = await service.getClient().getList(getListOperation, { pathParams, page: 1, pageSize: 10 });
+      setData(subResourceResponse.data || []);
     } catch (error) {
       console.error(`Failed to load sub-resource ${subResource.name}:`, error);
       setError(error instanceof Error ? error.message : 'Unknown error');

@@ -222,22 +222,44 @@ export class OpenAPIDocumentParser {
 
   /**
    * 获取特定资源的 schema
+   * 支持层级路径查询，如 'books.notes' 或 'users.posts.comments'
+   * @param resourcePath 资源路径，可以是简单名称或层级路径（用点分隔）
    */
-  getResourceSchema(resourceName: string): OpenAPIV3.SchemaObject | null {
-    const resources = this.getResourceList();
-    const resource = resources.find(r => r.name === resourceName);
-    
+  getResourceSchema(resourcePath: string): OpenAPIV3.SchemaObject | null {
+    const resource = this.getResourceByPath(resourcePath);
     if (!resource) {
-      console.warn(`Resource '${resourceName}' not found`);
+      console.warn(`Resource '${resourcePath}' not found`);
       return null;
     }
 
     if (!resource.schema) {
-      console.warn(`Resource schema for '${resourceName}' not found`);
+      console.warn(`Resource schema for '${resourcePath}' not found`);
       return null;
     }
 
     return resource.schema;
+  }
+
+  /**
+   * 根据资源路径获取资源信息
+   * 支持层级路径查询，如 'books.notes' 或 'users.posts.comments'
+   * @param resourcePath 资源路径，可以是简单名称或层级路径（用点分隔）
+   */
+  getResourceByPath(resourcePath: string): ResourceInfo | null {
+    if (!resourcePath) {
+      return null;
+    }
+
+    const pathParts = resourcePath.split('.');
+    const resources = this.getResourceList();
+
+    // 如果是简单路径（不包含点），直接查找
+    if (pathParts.length === 1) {
+      return resources.find(r => r.name === resourcePath) || null;
+    }
+
+    // 层级路径查询
+    return this.findResourceByPathParts(resources, pathParts);
   }
 
   /**
@@ -320,7 +342,9 @@ export class OpenAPIDocumentParser {
    * 获取所有资源信息
    */
   getAllResources(): ResourceInfo[] {
-    return this.getResourceList();
+    const resources =  this.getResourceList();
+    console.log('All resources found:', resources);
+    return resources;
   }
 
   /**
@@ -343,6 +367,41 @@ export class OpenAPIDocumentParser {
   }
 
   // ==================== 私有方法 ====================
+
+  /**
+   * 根据路径部分递归查找资源
+   * @param resources 要搜索的资源列表
+   * @param pathParts 路径部分数组
+   * @param currentIndex 当前搜索的路径部分索引
+   */
+  private findResourceByPathParts(
+    resources: ResourceInfo[], 
+    pathParts: string[], 
+    currentIndex: number = 0
+  ): ResourceInfo | null {
+    if (currentIndex >= pathParts.length) {
+      return null;
+    }
+
+    const currentPart = pathParts[currentIndex];
+    const resource = resources.find(r => r.name === currentPart);
+
+    if (!resource) {
+      return null;
+    }
+
+    // 如果这是最后一个路径部分，返回找到的资源
+    if (currentIndex === pathParts.length - 1) {
+      return resource;
+    }
+
+    // 否则在子资源中继续查找
+    return this.findResourceByPathParts(
+      resource.subResources, 
+      pathParts, 
+      currentIndex + 1
+    );
+  }
 
   /**
    * 获取资源列表（核心私有方法）

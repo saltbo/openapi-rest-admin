@@ -71,7 +71,6 @@ export default function ServiceDetail() {
       // 获取所有数据
       const docInfo = openAPIService.getDocumentInfo();
       const stats = openAPIService.getResourceStatistics();
-      const allResources = openAPIService.getAllResources();
       const topLevelResources = openAPIService.getTopLevelResources();
       
       return {
@@ -79,7 +78,6 @@ export default function ServiceDetail() {
         apiName: config.name || sName,
         docInfo,
         stats,
-        allResources,
         topLevelResources
       };
     },
@@ -103,7 +101,7 @@ export default function ServiceDetail() {
   }
 
   // 解构数据
-  const { apiName, docInfo, stats, allResources, topLevelResources } = serviceData;
+  const { apiName, docInfo, stats, topLevelResources } = serviceData;
 
   // HTTP 方法统计
   const httpMethodStats = stats.methodCounts;
@@ -114,7 +112,6 @@ export default function ServiceDetail() {
   const displayStats = {
     totalResources: stats.totalResources,
     topLevelResources: topLevelResources.length,
-    nestedResources: allResources.filter(r => r.subResources.length > 0).length,
     restfulResources: stats.restfulResources,
     totalEndpoints: totalEndpoints,
     getEndpoints: httpMethodStats.GET || 0,
@@ -255,12 +252,12 @@ export default function ServiceDetail() {
               boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
               background: 'rgba(255,255,255,0.9)'
             }}>
-              <Statistic
+              {/* <Statistic
                 title="嵌套资源"
                 value={displayStats.nestedResources}
                 prefix={<BugOutlined style={{ color: '#722ed1' }} />}
                 valueStyle={{ color: "#722ed1", fontWeight: '600' }}
-              />
+              /> */}
             </Card>
           </Col>
           <Col span={6}>
@@ -388,13 +385,13 @@ export default function ServiceDetail() {
                           方法: {resource.operations.map((op: any) => op.method).join(', ')}
                         </Text>
                       )}
-                      {allResources.filter(
+                      {/* {allResources.filter(
                         (r: any) => resource.subResources.some((sub: any) => sub.name === r.name)
                       ).length > 0 && (
                         <Tag color="purple">
                           {resource.subResources.length} 个子资源
                         </Tag>
-                      )}
+                      )} */}
                     </Space>
                   }
                 />

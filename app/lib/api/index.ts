@@ -4,7 +4,7 @@
  * 统一导出 OpenAPI 相关的核心服务类
  */
 
-import { OpenAPIDocumentParser } from './OpenAPIDocumentParser';
+import { OpenAPIDocumentParser, type ResourceInfo } from './OpenAPIDocumentParser';
 import { SchemaRenderer } from './SchemaRenderer';
 import { RESTfulAPIClient } from './RESTfulAPIClient';
 import { DataExtractor } from './DataExtractor';
@@ -105,24 +105,17 @@ export class OpenAPIService {
   }
 
   /**
-   * 获取所有资源 schemas
-   */
-  getAllResourceSchemas() {
-    return this.parser.getAllResourceSchemas();
-  }
-
-  /**
    * 获取所有资源信息
    */
-  getAllResources() {
-    return this.parser.getAllResources();
+  getResource(path: string): ResourceInfo | null {
+    return this.parser.getResourceByPath(path);
   }
 
   /**
    * 获取顶级资源
    */
   getTopLevelResources() {
-    return this.parser.getTopLevelResources();
+    return this.parser.getAllResources();
   }
 
   /**

@@ -50,10 +50,6 @@ export function useOpenAPIService(serviceName: string | undefined) {
         console.log('Initializing with OpenAPI URL:', apiConfig.openapi_url);
         await newService.initialize(apiConfig.openapi_url);
         
-        // 调试：查看解析到的资源
-        const allResources = newService.getAllResources();
-        console.log('All resources found:', allResources.map(r => r.name));
-        
         setService(newService);
         setIsInitialized(true);
       } catch (error) {
@@ -83,14 +79,11 @@ export function useResourceInfo(service: OpenAPIService | null, resourceName: st
       return { resource: null, allResources: [] };
     }
 
-    const allResources = service.getAllResources();
     console.log('useResourceInfo: Looking for resource:', resourceName);
-    console.log('useResourceInfo: Available resources:', allResources.map(r => r.name));
-    
-    const resource = allResources.find(r => r.name === resourceName) || null;
+    const resource = service.getResource(resourceName);
     console.log('useResourceInfo: Found resource:', resource);
 
-    return { resource, allResources };
+    return { resource };
   }, [service, resourceName]);
 }
 
