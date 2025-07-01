@@ -8,8 +8,8 @@ import {
   Tag,
   Alert,
   Drawer,
+  Spin,
 } from "antd";
-import { useParams } from "react-router";
 import {
   DatabaseOutlined,
   SearchOutlined,
@@ -22,54 +22,35 @@ import {
 } from "@ant-design/icons";
 import { JsonViewer } from "~/components/shared/JsonViewer";
 import { ResourceBreadcrumb } from "~/components/shared/ResourceBreadcrumb";
-import { parseResourcePath } from "~/utils/resourceRouting";
-import {
-  useOpenAPIService,
-  useResourceInfo,
-  useResourceListData,
-  useResourceTableSchema,
-} from "~/hooks/useOpenAPIService";
 import { Table } from "~/components/json-schema-ui/themes/antd";
 import { useResourceDialogs } from "./hooks/useResourceDialogs";
 import { capitalizeFirst } from "~/components";
-import ResourceActionForm, {
-  type ActionType,
-} from "./components/ResourceActionForm";
+import ResourceActionForm from "./components/ResourceActionForm";
 import ResourceDeleteConfirm from "./components/ResourceDeleteConfirm";
+import { useResource } from "./hooks/useResource";
+import { PathParamResolver } from "~/lib/api";
+import { useResourceList } from "./hooks/useResourceList"; // TODO: 文件名拼写错误，应该是 useResourceList
+import type { ResourceDataItem } from "~/types/api";
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
 
 interface ResourceListProps {
-  apiId?: string;
-  resourceId?: string;
-  nestedPath?: string; // 用于处理嵌套的子资源列表
+  serviceName?: string;
 }
 
-export const ResourceList: React.FC<ResourceListProps> = ({
-  apiId,
-  resourceId,
-  nestedPath,
-}) => {
-  const params = useParams<{ sName: string; rName: string }>();
+// 定义资源数据的类型
+type ResourceData = ResourceDataItem;
 
-  // 优先使用 props，如果没有则使用路由参数
-  const sName = apiId || params.sName;
-  const rName = resourceId || params.rName;
+interface ResourceListProps {
+  serviceName?: string;
+}
 
-  // 使用工具函数解析嵌套路径
-  const { currentResourceName, parentContext, resourceHierarchy } =
-    parseResourcePath(nestedPath, rName || "");
-
+export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // 使用 OpenAPI 服务
-  const { service, isInitialized, apiConfig } = useOpenAPIService(sName);
-
-  // 获取资源信息
-  const { resource } = useResourceInfo(service, currentResourceName);
+  const { service, resource, isInitialized } = useResource();
 
   // 获取资源数据
   const {
@@ -77,17 +58,10 @@ export const ResourceList: React.FC<ResourceListProps> = ({
     isLoading,
     error,
     refetch,
-  } = useResourceListData(
-    service,
-    resource,
-    currentPage,
-    pageSize,
-    searchQuery,
-    nestedPath
-  );
+  } = useResourceList(service, resource, currentPage, pageSize, searchQuery, {});
 
   // 获取表格 schema
-  const tableSchema = useResourceTableSchema(service, currentResourceName);
+  const tableSchema = service?.getResourceTableSchema(resource?.name!);
 
   // 使用自定义 Hook 管理对话框状态
   const {
@@ -112,17 +86,49 @@ export const ResourceList: React.FC<ResourceListProps> = ({
   };
 
   const actionHandlers = {
-    onDetail: (record: any) => {
-      const serviceName = encodeURIComponent(sName!);
-      const itemId = service?.getResourceIdentifier(
-        currentResourceName,
-        record
-      );
-      return `/services/${serviceName}/resources/${currentResourceName}/${itemId}`;
+    onDetail: (record: ResourceData) => {
+      const itemId = service?.getResourceIdentifier(resource?.name!, record);
+      if (!itemId) {
+        throw new Error(`无法获取资源标识符: ${resource?.name}`);
+      }
+      if (!serviceName) {
+        throw new Error("服务名称未提供");
+      }
+
+      return `/services/${serviceName}/resources/${resource?.name}/${itemId}`;
     },
-    onEdit: (record: any) => handleEdit(record),
+    onEdit: (record: ResourceData) => handleEdit(record),
     onDelete: handleDelete,
   };
+
+  // 如果服务还没有初始化，显示加载状态
+  if (!isInitialized) {
+    return (
+      <div style={{ 
+        padding: "24px",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "400px"
+      }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  // 资源不存在的状态
+  if (!resource) {
+    return (
+      <div style={{ padding: "24px" }}>
+        <Alert
+          message="资源不存在"
+          description="请检查URL是否正确或返回上一页"
+          type="warning"
+          showIcon
+        />
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -142,12 +148,12 @@ export const ResourceList: React.FC<ResourceListProps> = ({
     );
   }
 
-  if (!resource || !tableSchema) {
+  if (!tableSchema) {
     return (
       <div style={{ padding: "24px" }}>
         <Alert
-          message="资源不存在"
-          description={`找不到资源 "${currentResourceName}" 或其表格定义`}
+          message="表格配置缺失"
+          description={`找不到资源 "${resource.name}" 的表格定义`}
           type="warning"
           showIcon
         />
@@ -157,12 +163,12 @@ export const ResourceList: React.FC<ResourceListProps> = ({
 
   return (
     <div style={{ padding: "24px" }}>
-      <ResourceBreadcrumb
+      {/* <ResourceBreadcrumb
         serviceName={sName}
         topLevelResource={rName}
         nestedPath={nestedPath}
         style={{ marginBottom: "16px" }}
-      />
+      /> */}
 
       <div style={{ marginBottom: "24px" }}>
         <Space align="start">
@@ -170,21 +176,8 @@ export const ResourceList: React.FC<ResourceListProps> = ({
           <div>
             <Title level={2} style={{ margin: 0 }}>
               {capitalizeFirst(resource.name)}
-              {parentContext && (
-                <Tag color="blue" style={{ marginLeft: "8px" }}>
-                  子资源
-                </Tag>
-              )}
             </Title>
-            <Paragraph type="secondary">
-              {apiConfig?.name} - {resource.pathPattern}
-              {parentContext && (
-                <span style={{ marginLeft: "8px" }}>
-                  (属于 {parentContext[parentContext.length - 1]?.resourceName}:{" "}
-                  {parentContext[parentContext.length - 1]?.itemId})
-                </span>
-              )}
-            </Paragraph>
+            <Paragraph type="secondary">{resource.pathPattern}</Paragraph>
           </div>
         </Space>
       </div>
@@ -252,9 +245,9 @@ export const ResourceList: React.FC<ResourceListProps> = ({
           body: { padding: 0 },
         }}
       >
-        {resource && sName && (
+        {resource && (
           <ResourceActionForm
-            apiId={sName}
+            service={service!}
             resource={resource}
             action={currentAction}
             initialData={selectedItem}
@@ -265,9 +258,9 @@ export const ResourceList: React.FC<ResourceListProps> = ({
       </Drawer>
 
       {/* 删除确认对话框 */}
-      {resource && itemToDelete && sName && (
+      {resource && itemToDelete && (
         <ResourceDeleteConfirm
-          apiId={sName}
+          service={service!}
           resource={resource}
           item={itemToDelete}
           open={showDeleteConfirm}

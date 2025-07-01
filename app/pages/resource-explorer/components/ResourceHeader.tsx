@@ -1,29 +1,28 @@
-import React from 'react';
-import { Card, Typography, Button, Space, Tag } from 'antd';
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { ResourceHierarchy } from '~/utils/resourceRouting';
+import React, { useState } from 'react';
+import { Card, Typography, Button, Space,  Modal } from 'antd';
+import { JsonViewer } from "~/components/shared/JsonViewer";
+import type { ResourceInfo } from '~/lib/api';
 
 const { Title, Text } = Typography;
 
 interface ResourceHeaderProps {
-  resourceName: string;
-  itemId: string;
-  isSubResourceDetail: boolean;
-  resourceHierarchy: ResourceHierarchy[];
-  onShowJson: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
+  resource: ResourceInfo;
+  resourceData: any;
 }
 
 export const ResourceHeader: React.FC<ResourceHeaderProps> = ({
-  resourceName,
-  itemId,
-  isSubResourceDetail,
-  resourceHierarchy,
-  onShowJson,
-  onEdit,
-  onDelete
+  resource,
+  resourceData
 }) => {
+  const [showJsonModal, setShowJsonModal] = useState(false);
+  const handleShowJson = () => {
+    setShowJsonModal(true);
+  };
+
+
+  // 从资源数据中获取ID（假设使用第一个字段作为ID）
+  const itemId = resourceData ? Object.values(resourceData)[0] || '' : '';
+  const resourceName = resource?.name || '';
   return (
     <Card 
       bordered={false}
@@ -60,54 +59,15 @@ export const ResourceHeader: React.FC<ResourceHeaderProps> = ({
             </Title>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '16px' }}>
-                ID: {itemId}
+                ID: {String(itemId)}
               </Text>
-              {isSubResourceDetail && (
-                <Tag color="rgba(255, 255, 255, 0.2)" style={{ 
-                  color: '#fff',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '12px',
-                  padding: '2px 8px'
-                }}>
-                  {resourceHierarchy.length > 2 ? `${resourceHierarchy.length}级子资源` : '子资源'}
-                </Tag>
-              )}
             </div>
           </div>
         </div>
         <Space wrap size="middle">
-          {onEdit && (
-            <Button 
-              icon={<EditOutlined />} 
-              size="large"
-              onClick={onEdit}
-              style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                color: '#fff'
-              }}
-            >
-              编辑
-            </Button>
-          )}
-          {onDelete && (
-            <Button 
-              danger 
-              icon={<DeleteOutlined />}
-              size="large"
-              onClick={onDelete}
-              style={{
-                background: 'rgba(255, 77, 79, 0.8)',
-                border: '1px solid rgba(255, 77, 79, 0.3)',
-                color: '#fff'
-              }}
-            >
-              删除
-            </Button>
-          )}
           <Button 
             type="primary" 
-            onClick={onShowJson}
+            onClick={handleShowJson}
             size="large"
             style={{
               background: '#fff',
@@ -120,6 +80,18 @@ export const ResourceHeader: React.FC<ResourceHeaderProps> = ({
           </Button>
         </Space>
       </div>
+
+      {/* JSON数据模态框 */}
+      <Modal
+        title="原始数据"
+        open={showJsonModal}
+        onCancel={() => setShowJsonModal(false)}
+        footer={null}
+        width="80%"
+        style={{ top: 20 }}
+      >
+        <JsonViewer data={resourceData} />
+      </Modal>
     </Card>
   );
 };

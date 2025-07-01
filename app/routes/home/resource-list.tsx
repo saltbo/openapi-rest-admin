@@ -9,5 +9,5 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function ResourceListRoute({ params }: Route.ComponentProps) {
-  return <ResourceList apiId={params.sName} resourceId={params.rName} />;
+  return <ResourceList serviceName={params.sName} />;
 }

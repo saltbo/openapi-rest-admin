@@ -2,14 +2,14 @@ import React, { useCallback } from 'react';
 import { Modal, Typography, Space, Tag, Descriptions, message } from 'antd';
 import { ExclamationCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createOpenAPIService, PathParamResolver, type ResourceInfo } from '~/lib/api';
+import { createOpenAPIService, OpenAPIService, PathParamResolver, type ResourceInfo } from '~/lib/api';
 import { openAPIDocumentClient } from '~/lib/client';
 import type { ResourceDataItem } from '~/types/api';
 
 const { Text, Paragraph } = Typography;
 
 interface ResourceDeleteConfirmProps {
-  apiId: string;
+  service: OpenAPIService;
   resource: ResourceInfo;
   item: ResourceDataItem;
   open: boolean;
@@ -18,7 +18,7 @@ interface ResourceDeleteConfirmProps {
 }
 
 export const ResourceDeleteConfirm: React.FC<ResourceDeleteConfirmProps> = ({
-  apiId,
+  service,
   resource,
   item,
   open,
@@ -30,15 +30,6 @@ export const ResourceDeleteConfirm: React.FC<ResourceDeleteConfirmProps> = ({
   // 删除资源项
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      // 获取API配置
-      const config = await openAPIDocumentClient.getConfig(apiId);
-      
-      // 创建OpenAPI服务实例
-      const apiService = createOpenAPIService(config.openapi_url);
-      
-      // 初始化服务（解析OpenAPI文档）
-      await apiService.initialize(config.openapi_url);
-      
       // 获取资源的删除操作
       const deleteOperation = resource.operations.find(op => op.method === 'DELETE');
       if (!deleteOperation) {
@@ -46,15 +37,15 @@ export const ResourceDeleteConfirm: React.FC<ResourceDeleteConfirmProps> = ({
       }
       
       const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
-      pathParams[resource.identifierField] = apiService.getResourceIdentifier(resource.name, item);
+      pathParams[resource.identifierField] = service.getResourceIdentifier(resource.name, item);
 
       // 使用RESTful API客户端执行删除
-      const client = apiService.getClient();
+      const client = service.getClient();
       return await client.request(deleteOperation, { pathParams });
     },
     onSuccess: () => {
       message.success('删除成功');
-      queryClient.invalidateQueries({ queryKey: ['resourceData', apiId, resource.name] });
+      queryClient.invalidateQueries({ queryKey: ['resourceListData', resource.name] });
       onSuccess?.();
     },
     onError: (error) => {

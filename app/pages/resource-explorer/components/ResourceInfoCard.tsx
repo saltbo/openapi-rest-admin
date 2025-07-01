@@ -1,96 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Typography, Descriptions, Tooltip, Tag, Button, Space, Drawer, Spin, Alert } from 'antd';
+import React from 'react';
+import { Card, Typography, Descriptions, Tooltip, Tag, Button, Space, Drawer } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useResourceDialogs } from '~/pages/resource-explorer/hooks/useResourceDialogs';
 import { ResourceActionForm } from '~/pages/resource-explorer/components/ResourceActionForm';
 import { ResourceDeleteConfirm } from '~/pages/resource-explorer/components/ResourceDeleteConfirm';
-import { useOpenAPIService, useResourceInfo } from '~/hooks/useOpenAPIService';
-import { parseResourcePath } from '~/utils/resourceRouting';
-import { PathParamResolver, type ResourceInfo } from '~/lib/api';
+import type { OpenAPIService, ResourceInfo } from '~/lib/api';
 
 const { Text } = Typography;
 
 interface ResourceInfoCardProps {
-  serviceName?: string;
-  resourceName?: string;
-  itemId?: string;
-  nestedPath?: string;
-  apiId?: string;
-  onDeleteSuccess?: () => void;
-  onDataLoaded?: (data: any) => void;
+  service: OpenAPIService;
+  resource: ResourceInfo;
+  resourceData: any;
+  onDataChange?: () => void;
 }
 
 export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({ 
-  serviceName, 
-  resourceName, 
-  itemId, 
-  nestedPath, 
-  apiId, 
-  onDeleteSuccess,
-  onDataLoaded
+  service,
+  resource,
+  resourceData,
+  onDataChange
 }) => {
-  const [loading, setLoading] = useState(true);
-  const [currentItem, setCurrentItem] = useState<any>(null);
-  const [currentResource, setCurrentResource] = useState<ResourceInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // 获取 OpenAPI 服务
-  const { service, isInitialized } = useOpenAPIService(serviceName);
-
-  // 解析资源路径
-  const { currentResourceName } = parseResourcePath(nestedPath || '', resourceName || '');
-
-  // 获取资源信息
-  const { resource } = useResourceInfo(service, currentResourceName);
-
-  // 加载数据
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      if (!service || !resource || !itemId) {
-        throw new Error('Missing required parameters or service not initialized');
-      }
-
-      setCurrentResource(resource);
-      
-      // 查找 GET 单个资源的操作
-      const getByIdOperation = resource.operations.find(op => 
-        op.method.toLowerCase() === 'get' && 
-        op.path.includes(`/{${resource.identifierField}}`) 
-      );
-      
-      if (!getByIdOperation) {
-        throw new Error(`No GET by ID operation found for resource ${resource.name}`);
-      }
-
-      const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
-      pathParams[resource.identifierField] = itemId;
-
-      // 使用新的 API 客户端获取资源详情
-      const response = await service.getClient().request(getByIdOperation, { pathParams });
-      setCurrentItem(response.data);
-      
-      // 通知父组件数据已加载
-      if (onDataLoaded) {
-        onDataLoaded(response.data);
-      }
-      
-    } catch (error) {
-      console.error('Failed to load resource detail:', error);
-      setError(error instanceof Error ? error.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isInitialized && service && resource && itemId) {
-      loadData();
-    }
-  }, [isInitialized, service, resource, itemId]);
-
   // 使用 useResourceDialogs hook 管理对话框状态 
   const {
     showActionForm,
@@ -104,42 +34,28 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({
     handleDeleteSuccess,
     closeActionForm,
     closeDeleteConfirm,
-  } = useResourceDialogs(onDeleteSuccess);
+  } = useResourceDialogs();
 
   // 编辑按钮点击处理
   const handleEditClick = () => {
-    handleEdit(currentItem);
+    handleEdit(resourceData);
   };
 
   // 删除按钮点击处理
   const handleDeleteClick = () => {
-    handleDelete(currentItem);
+    handleDelete(resourceData);
   };
 
-  // 如果服务还没有初始化，显示加载状态
-  if (!isInitialized || loading) {
-    return (
-      <Card style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
-          <Spin size="large" />
-        </div>
-      </Card>
-    );
-  }
+  // 封装成功处理函数，加入数据刷新
+  const handleFormSuccessWithRefresh = () => {
+    handleFormSuccess();
+    onDataChange?.();
+  };
 
-  // 错误状态
-  if (error || !currentResource || !currentItem) {
-    return (
-      <Card style={{ marginBottom: '24px' }}>
-        <Alert
-          message="数据加载失败"
-          description={error || "无法加载资源详情，请检查配置或刷新页面"}
-          type="error"
-          showIcon
-        />
-      </Card>
-    );
-  }
+  const handleDeleteSuccessWithRefresh = () => {
+    handleDeleteSuccess();
+    onDataChange?.();
+  };
   const formatValue = (key: string, value: any) => {
     if (value === null || value === undefined) {
       return <Text type="secondary">-</Text>;
@@ -219,7 +135,7 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({
   };
 
   const generateDescriptions = () => {
-    return Object.entries(currentItem).map(([key, value]) => (
+    return Object.entries(resourceData).map(([key, value]) => (
       <Descriptions.Item 
         label={
           <Text strong>
@@ -331,32 +247,29 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({
       width={600}
       destroyOnClose
     >
-      {selectedItem && apiId && resource && (
+      {selectedItem && resource && (
         <ResourceActionForm
-          apiId={apiId}
+          service={service}
           resource={resource}
           action={currentAction}
           initialData={selectedItem}
-          onSuccess={handleFormSuccess}
+          onSuccess={handleFormSuccessWithRefresh}
           onCancel={closeActionForm}
         />
       )}
     </Drawer>
 
     {/* 删除确认对话框 */}
-    {apiId && resource && itemToDelete && (
+    {resource && itemToDelete && (
       <ResourceDeleteConfirm
-        apiId={apiId}
+        service={service}
         resource={resource}
         item={itemToDelete}
         open={showDeleteConfirm}
-        onSuccess={() => {
-          handleDeleteSuccess();
-          onDeleteSuccess?.();
-        }}
+        onSuccess={handleDeleteSuccessWithRefresh}
         onCancel={closeDeleteConfirm}
       />
     )}
   </>
   );
-};
+};;

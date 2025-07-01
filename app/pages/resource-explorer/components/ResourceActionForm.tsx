@@ -21,7 +21,7 @@ const { Title, Text } = Typography;
 export type ActionType = 'create' | 'edit';
 
 interface ResourceActionFormProps {
-  apiId: string;
+  service: OpenAPIService;
   resource: ResourceInfo;
   action: ActionType;
   initialData?: ResourceDataItem;
@@ -31,7 +31,7 @@ interface ResourceActionFormProps {
 }
 
 export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
-  apiId,
+  service,
   resource,
   action,
   initialData,
@@ -44,55 +44,60 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
   const [uiSchema, setUiSchema] = useState<UiSchema>({});
   const [formData, setFormData] = useState<any>({});
   const [loading, setLoading] = useState(true);
-  const [apiService, setApiService] = useState<OpenAPIService | null>(null);
 
   // 初始化API服务和Schema
   useEffect(() => {
     const initializeForm = async () => {
       try {
         setLoading(true);
-        // 获取API配置
-        const config = await openAPIDocumentClient.getConfig(apiId);
-        // 创建API服务实例
-        const service = new OpenAPIService(config.openapi_url);
-        await service.initialize(config.openapi_url);
-        setApiService(service);
+        
+        // 检查服务是否可用
+        if (!service) {
+          throw new Error('服务未初始化');
+        }
+        
         // 直接通过 getResourceFormSchema 获取所有表单渲染数据
         const formSchema = service.getResourceFormSchema(resource.name, {
           action,
           initialData,
         });
+        
+        if (!formSchema || !formSchema.schema) {
+          throw new Error(`无法获取资源 ${resource.name} 的表单配置`);
+        }
+        
         setSchema(formSchema.schema);
-        setUiSchema(formSchema.uiSchema);
+        setUiSchema(formSchema.uiSchema || {});
         setFormData(formSchema.formData || {});
       } catch (error) {
         console.error('Failed to initialize form:', error);
-        message.error('初始化表单失败');
+        message.error(`初始化表单失败: ${error instanceof Error ? error.message : '未知错误'}`);
       } finally {
         setLoading(false);
       }
     };
+    
     initializeForm();
-  }, [apiId, resource.name, action, initialData]);
+  }, [resource.name, action, initialData, service]);
 
   // 创建资源mutation
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      if (!apiService) throw new Error('API服务未初始化');
+      if (!service) throw new Error('API服务未初始化');
       
       // 获取资源的创建操作
       const createOperation = resource.operations.find(op => op.method === 'POST');
       if (!createOperation) throw new Error(`Create operation not found for ${resource.name}`);
       
 
-      const client = apiService.getClient();
+      const client = service.getClient();
       const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
       const response = await client.request(createOperation, {pathParams, body: data});
       return response;
     },
     onSuccess: () => {
       message.success('添加成功');
-      queryClient.invalidateQueries({ queryKey: ['resourceData', apiId, resource.name] });
+      queryClient.invalidateQueries({ queryKey: ['resourceListData', resource.name] });
       queryClient.invalidateQueries({ queryKey: ['resourceDetail'] });
       onSuccess?.();
     },
@@ -105,7 +110,7 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
   // 更新资源mutation
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      if (!apiService) throw new Error('API服务未初始化');
+      if (!service) throw new Error('API服务未初始化');
       
       // 获取资源的更新操作
       const updateOperation = resource.operations.find(op => 
@@ -113,15 +118,15 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       );
       if (!updateOperation) throw new Error(`Update operation not found for ${resource.name}`);
       
-      const client = apiService.getClient();
+      const client = service.getClient();
       const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
-      pathParams[resource.identifierField] = apiService.getResourceIdentifier(resource.name, initialData);
+      pathParams[resource.identifierField] = service.getResourceIdentifier(resource.name, initialData);
       const response = await client.request(updateOperation, { pathParams, body: data});
       return response;
     },
     onSuccess: () => {
       message.success('更新成功');
-      queryClient.invalidateQueries({ queryKey: ['resourceData', apiId, resource.name] });
+      queryClient.invalidateQueries({ queryKey: ['resourceListData', resource.name] });
       queryClient.invalidateQueries({ queryKey: ['resourceDetail'] });
       onSuccess?.();
     },

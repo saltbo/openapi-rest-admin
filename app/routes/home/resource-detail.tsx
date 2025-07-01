@@ -21,9 +21,9 @@ export default function NestedResourceRoute({ params }: Route.ComponentProps) {
   
   if (isDetailPage) {
     // 显示资源详情页面
-    return <ResourceDetail apiId={params.sName} resourceId={params.rName} />;
+    return <ResourceDetail serviceName={params.sName} />;
   } else {
     // 显示子资源列表页面
-    return <ResourceList apiId={params.sName} resourceId={params.rName} nestedPath={splat} />;
+    return <ResourceList serviceName={params.sName} />;
   }
 }
