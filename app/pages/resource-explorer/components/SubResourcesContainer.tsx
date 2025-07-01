@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Typography, Spin, Alert } from "antd";
 import { SingleSubResourceList } from "./SingleSubResourceList";
+import { ResourceLoading } from "./ResourceLoading";
 import { useResource } from "../hooks/useResource";
 import type { ResourceInfo } from "~/lib/api";
 
@@ -55,89 +56,54 @@ export const SubResourcesContainer: React.FC<SubResourcesContainerProps> = ({
     }
   }, [isInitialized, service, resource]);
 
-  // 如果服务还没有初始化，显示加载状态
-  if (!isInitialized || loading) {
-    return (
-      <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            marginBottom: "20px",
-          }}
-        >
-          <div
-            style={{
-              width: "4px",
-              height: "24px",
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              borderRadius: "2px",
-            }}
-          />
-          <Title
-            level={3}
-            style={{
-              margin: 0,
-              color: "#262626",
-              fontSize: "20px",
-              fontWeight: "600",
-            }}
-          >
-            关联资源
-          </Title>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: "200px",
-          }}
-        >
-          <Spin size="large" />
-        </div>
-      </div>
-    );
-  }
+  // 提取标题组件
+  const SectionTitle = () => (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        marginBottom: "20px",
+      }}
+    >
+      <div
+        style={{
+          width: "4px",
+          height: "24px",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          borderRadius: "2px",
+        }}
+      />
+      <Title
+        level={3}
+        style={{
+          margin: 0,
+          color: "#262626",
+          fontSize: "20px",
+          fontWeight: "600",
+        }}
+      >
+        关联资源
+      </Title>
+    </div>
+  );
 
-  // 错误状态
-  if (error) {
+  // 统一处理加载和错误状态
+  if (!isInitialized || loading || error) {
     return (
       <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            marginBottom: "20px",
+        <SectionTitle />
+        <ResourceLoading
+          loading={!isInitialized || loading}
+          error={error || undefined}
+          loadingText="正在加载关联资源..."
+          errorTitle="关联资源加载失败"
+          onRetry={() => {
+            setError(null);
+            loadSubResources();
           }}
-        >
-          <div
-            style={{
-              width: "4px",
-              height: "24px",
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              borderRadius: "2px",
-            }}
-          />
-          <Title
-            level={3}
-            style={{
-              margin: 0,
-              color: "#262626",
-              fontSize: "20px",
-              fontWeight: "600",
-            }}
-          >
-            关联资源
-          </Title>
-        </div>
-        <Alert
-          message="数据加载失败"
-          description={error}
-          type="error"
-          showIcon
+          showRetry={true}
+          minHeight="200px"
         />
       </div>
     );
@@ -149,35 +115,7 @@ export const SubResourcesContainer: React.FC<SubResourcesContainerProps> = ({
 
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          marginBottom: "20px",
-        }}
-      >
-        <div
-          style={{
-            width: "4px",
-            height: "24px",
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            borderRadius: "2px",
-          }}
-        />
-        <Title
-          level={3}
-          style={{
-            margin: 0,
-            color: "#262626",
-            fontSize: "20px",
-            fontWeight: "600",
-          }}
-        >
-          关联资源
-        </Title>
-      </div>
-
+      <SectionTitle />
       <div style={{ display: "grid", gap: "20px" }}>
         {subResources.map((subResource) => (
           <SingleSubResourceList

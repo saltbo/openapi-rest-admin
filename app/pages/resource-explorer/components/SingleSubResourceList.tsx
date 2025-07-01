@@ -5,6 +5,7 @@ import { useResourceDialogs } from "~/pages/resource-explorer/hooks/useResourceD
 import { useResourceList } from "~/pages/resource-explorer/hooks/useResourceList"; // TODO: 文件名拼写错误
 import { ResourceActionForm } from "~/pages/resource-explorer/components/ResourceActionForm";
 import { ResourceDeleteConfirm } from "~/pages/resource-explorer/components/ResourceDeleteConfirm";
+import { ResourceLoading } from "./ResourceLoading";
 import { useResource } from "../hooks/useResource";
 import { capitalizeFirst } from "~/components";
 import { Table } from "~/components/json-schema-ui/themes/antd";
@@ -120,139 +121,93 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
     },
   };
 
-  // 如果服务还没有初始化，显示加载状态
-  if (!isInitialized || loading) {
-    return (
-      <Card
-        title={
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontSize: "18px",
-              fontWeight: "600",
-              color: "#262626",
-            }}
-          >
-            <span>{capitalizeFirst(subResource.name)}</span>
-          </div>
-        }
-        bordered={false}
-        style={{
-          borderRadius: "12px",
-          boxShadow:
-            "0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.08)",
-          background: "#fff",
-          overflow: "hidden",
-        }}
-        headStyle={{
-          borderBottom: "1px solid #f0f0f0",
-          background: "#fafafa",
-          padding: "16px 24px",
-        }}
-        bodyStyle={{
-          padding: "0",
-        }}
-      >
-        <div
+  // 提取卡片标题组件
+  const CardTitle = ({ showAddButton = true }) => (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        fontSize: "18px",
+        fontWeight: "600",
+        color: "#262626",
+      }}
+    >
+      <span>{capitalizeFirst(subResource.name)}</span>
+      {showAddButton && (
+        <Button
+          type="primary"
+          size="middle"
+          icon={<PlusOutlined />}
+          onClick={handleAddClick}
           style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: "200px",
+            borderRadius: "8px",
+            fontWeight: "500",
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            border: "none",
           }}
         >
-          <Spin size="large" />
-        </div>
-      </Card>
-    );
-  }
+          创建新{subResource.name}
+        </Button>
+      )}
+    </div>
+  );
 
-  // 错误状态
-  if (error) {
+  // 提取卡片样式配置
+  const cardStyles = {
+    card: {
+      borderRadius: "12px",
+      boxShadow:
+        "0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.08)",
+      background: "#fff",
+      overflow: "hidden",
+    },
+    head: {
+      borderBottom: "1px solid #f0f0f0",
+      background: "#fafafa",
+      padding: "16px 24px",
+    },
+  };
+
+  // 统一处理加载和错误状态
+  if (!isInitialized || loading || error || !tableSchema) {
+    // 确定错误信息
+    let errorMessage = "";
+    let errorTitle = "";
+    let showRetry = false;
+    let retryHandler = undefined;
+
+    if (!isInitialized || loading) {
+      // 加载状态
+    } else if (error) {
+      errorMessage = error;
+      errorTitle = "数据加载失败";
+      showRetry = true;
+      retryHandler = () => refetch();
+    } else if (!tableSchema) {
+      errorMessage = `无法找到资源 "${subResource.name}" 的表格定义`;
+      errorTitle = "无法加载表格";
+      showRetry = false;
+    }
+
     return (
       <Card
-        title={
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontSize: "18px",
-              fontWeight: "600",
-              color: "#262626",
-            }}
-          >
-            <span>{capitalizeFirst(subResource.name)}</span>
-          </div>
-        }
+        title={<CardTitle showAddButton={!loading && !error} />}
         bordered={false}
-        style={{
-          borderRadius: "12px",
-          boxShadow:
-            "0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.08)",
-          background: "#fff",
-          overflow: "hidden",
-        }}
-        headStyle={{
-          borderBottom: "1px solid #f0f0f0",
-          background: "#fafafa",
-          padding: "16px 24px",
-        }}
+        style={cardStyles.card}
+        headStyle={cardStyles.head}
         bodyStyle={{
-          padding: "24px",
+          padding: error || !tableSchema ? "24px" : "0",
         }}
       >
-        <Alert
-          message="数据加载失败"
-          description={error}
-          type="error"
-          showIcon
-        />
-      </Card>
-    );
-  }
-
-  if (!tableSchema) {
-    return (
-      <Card
-        title={
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontSize: "18px",
-              fontWeight: "600",
-              color: "#262626",
-            }}
-          >
-            <span>{capitalizeFirst(subResource.name)}</span>
-          </div>
-        }
-        bordered={false}
-        style={{
-          borderRadius: "12px",
-          boxShadow:
-            "0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.08)",
-          background: "#fff",
-          overflow: "hidden",
-        }}
-        headStyle={{
-          borderBottom: "1px solid #f0f0f0",
-          background: "#fafafa",
-          padding: "16px 24px",
-        }}
-        bodyStyle={{
-          padding: "24px",
-        }}
-      >
-        <Alert
-          message="无法加载表格"
-          description={`无法找到资源 "${subResource.name}" 的表格定义。`}
-          type="warning"
-          showIcon
+        <ResourceLoading
+          loading={!isInitialized || loading}
+          error={errorMessage || undefined}
+          loadingText="正在加载数据..."
+          errorTitle={errorTitle}
+          onRetry={retryHandler}
+          showRetry={showRetry}
+          minHeight="200px"
         />
       </Card>
     );
@@ -261,47 +216,10 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
   return (
     <>
       <Card
-        title={
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontSize: "18px",
-              fontWeight: "600",
-              color: "#262626",
-            }}
-          >
-            <span>{capitalizeFirst(subResource.name)}</span>
-            <Button
-              type="primary"
-              size="middle"
-              icon={<PlusOutlined />}
-              onClick={handleAddClick}
-              style={{
-                borderRadius: "8px",
-                fontWeight: "500",
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                border: "none",
-              }}
-            >
-              创建新{subResource.name}
-            </Button>
-          </div>
-        }
+        title={<CardTitle />}
         bordered={false}
-        style={{
-          borderRadius: "12px",
-          boxShadow:
-            "0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.08)",
-          background: "#fff",
-          overflow: "hidden",
-        }}
-        headStyle={{
-          borderBottom: "1px solid #f0f0f0",
-          background: "#fafafa",
-          padding: "16px 24px",
-        }}
+        style={cardStyles.card}
+        headStyle={cardStyles.head}
         bodyStyle={{
           padding: "0",
         }}

@@ -5,6 +5,7 @@ import { ResourceBreadcrumb } from "~/components/shared/ResourceBreadcrumb";
 import { ResourceHeader } from "~/pages/resource-explorer/components/ResourceHeader";
 import { ResourceInfoCard } from "~/pages/resource-explorer/components/ResourceInfoCard";
 import { SubResourcesContainer } from "~/pages/resource-explorer/components/SubResourcesContainer";
+import { ResourceLoading } from "~/pages/resource-explorer/components/ResourceLoading";
 import { capitalizeFirst } from "~/components";
 import { useResource } from "./hooks/useResource";
 
@@ -102,112 +103,50 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({
     }
   }, [isInitialized, service, resource, JSON.stringify(pathParams)]);
 
-  // 如果服务还没有初始化，显示加载状态
-  if (!isInitialized) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-          padding: "24px",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <Spin size="large" />
-        <div style={{ marginTop: "16px", color: "#666" }}>
-          正在初始化服务...
-        </div>
-      </div>
-    );
-  }
+  // 统一处理加载和错误状态
+  if (!isInitialized || !resource || loading || error) {
+    // 确定加载状态
+    const isLoading = !isInitialized || loading;
+    
+    // 确定错误信息和标题
+    let errorMessage = "";
+    let errorTitle = "";
+    let showRetry = false;
+    let retryHandler = undefined;
+    let loadingText = "正在初始化服务...";
 
-  if (loading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-          padding: "24px",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <Spin size="large" />
-        <div style={{ marginTop: "16px", color: "#666" }}>
-          正在加载资源详情...
-        </div>
-      </div>
-    );
-  }
+    if (!isInitialized) {
+      // 服务未初始化，显示加载状态
+      loadingText = "正在初始化服务...";
+    } else if (loading) {
+      loadingText = "正在加载资源详情...";
+    } else if (!resource) {
+      errorMessage = "资源不存在，请检查URL是否正确或返回上一页";
+      errorTitle = "资源不存在";
+      showRetry = false;
+    } else if (error) {
+      errorMessage = error;
+      errorTitle = "资源详情加载失败";
+      showRetry = true;
+      retryHandler = () => {
+        setError(null);
+        loadData();
+      };
+    }
 
-  // 资源不存在的状态
-  if (!resource) {
     return (
-      <div
+      <ResourceLoading
+        loading={isLoading}
+        error={errorMessage || undefined}
+        loadingText={loadingText}
+        errorTitle={errorTitle}
+        onRetry={retryHandler}
+        showRetry={showRetry}
         style={{
           minHeight: "100vh",
           background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-          padding: "24px",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
         }}
-      >
-        <Alert
-          message="资源不存在"
-          description="请检查URL是否正确或返回上一页"
-          type="warning"
-          showIcon
-          style={{ maxWidth: "500px" }}
-        />
-      </div>
-    );
-  }
-
-  // 错误状态
-  if (error) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-          padding: "24px",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <Alert
-          message="数据加载失败"
-          description={error}
-          type="error"
-          showIcon
-          style={{ maxWidth: "500px" }}
-          action={
-            <button
-              onClick={() => {
-                setError(null);
-                loadData();
-              }}
-              style={{
-                background: "#1890ff",
-                border: "none",
-                color: "white",
-                padding: "4px 15px",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              重试
-            </button>
-          }
-        />
-      </div>
+      />
     );
   }
 

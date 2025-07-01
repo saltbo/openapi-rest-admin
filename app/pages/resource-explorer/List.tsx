@@ -22,6 +22,7 @@ import {
 } from "@ant-design/icons";
 import { JsonViewer } from "~/components/shared/JsonViewer";
 import { ResourceBreadcrumb } from "~/components/shared/ResourceBreadcrumb";
+import { ResourceLoading } from "~/pages/resource-explorer/components/ResourceLoading";
 import { Table } from "~/components/json-schema-ui/themes/antd";
 import { useResourceDialogs } from "./hooks/useResourceDialogs";
 import { capitalizeFirst } from "~/components";
@@ -108,65 +109,44 @@ export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
     onDelete: handleDelete,
   };
 
-  // 如果服务还没有初始化，显示加载状态
-  if (!isInitialized) {
-    return (
-      <div
-        style={{
-          padding: "24px",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "400px",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
+  // 统一处理加载和错误状态
+  if (!isInitialized || !resource || error || !tableSchema) {
+    // 确定加载状态
+    const loading = !isInitialized;
+    
+    // 确定错误信息和标题
+    let errorMessage = "";
+    let errorTitle = "";
+    let showRetry = false;
+    let retryHandler = undefined;
 
-  // 资源不存在的状态
-  if (!resource) {
-    return (
-      <div style={{ padding: "24px" }}>
-        <Alert
-          message="资源不存在"
-          description="请检查URL是否正确或返回上一页"
-          type="warning"
-          showIcon
-        />
-      </div>
-    );
-  }
+    if (!isInitialized) {
+      // 服务未初始化，显示加载状态
+    } else if (!resource) {
+      errorMessage = "资源不存在，请检查URL是否正确或返回上一页";
+      errorTitle = "资源不存在";
+      showRetry = false;
+    } else if (error) {
+      errorMessage = `无法加载资源数据: ${error.message}`;
+      errorTitle = "数据加载失败";
+      showRetry = true;
+      retryHandler = () => refetch();
+    } else if (!tableSchema) {
+      errorMessage = `找不到资源 "${resource.name}" 的表格定义`;
+      errorTitle = "表格配置缺失";
+      showRetry = false;
+    }
 
-  if (error) {
     return (
-      <div style={{ padding: "24px" }}>
-        <Alert
-          message="加载失败"
-          description={`无法加载资源数据: ${error.message}`}
-          type="error"
-          action={
-            <Button size="small" onClick={() => refetch()}>
-              重试
-            </Button>
-          }
-          showIcon
-        />
-      </div>
-    );
-  }
-
-  if (!tableSchema) {
-    return (
-      <div style={{ padding: "24px" }}>
-        <Alert
-          message="表格配置缺失"
-          description={`找不到资源 "${resource.name}" 的表格定义`}
-          type="warning"
-          showIcon
-        />
-      </div>
+      <ResourceLoading
+        loading={loading}
+        error={errorMessage || undefined}
+        loadingText="正在初始化服务..."
+        errorTitle={errorTitle}
+        onRetry={retryHandler}
+        showRetry={showRetry}
+        minHeight="400px"
+      />
     );
   }
 

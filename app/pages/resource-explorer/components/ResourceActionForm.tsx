@@ -15,6 +15,7 @@ import type { ResourceInfo } from '~/lib/api';
 import { openAPIDocumentClient } from '~/lib/client';
 import type { ResourceDataItem } from '~/types/api';
 import type { OpenAPIV3 } from 'openapi-types';
+import { ResourceLoading } from './ResourceLoading';
 
 const { Title, Text } = Typography;
 
@@ -44,41 +45,59 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
   const [uiSchema, setUiSchema] = useState<UiSchema>({});
   const [formData, setFormData] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 提取表单初始化逻辑
+  const initializeForm = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // 检查服务是否可用
+      if (!service) {
+        throw new Error('服务未初始化');
+      }
+      
+      // 直接通过 getResourceFormSchema 获取所有表单渲染数据
+      const formSchema = service.getResourceFormSchema(resource.name, {
+        action,
+        initialData,
+      });
+      
+      if (!formSchema || !formSchema.schema) {
+        throw new Error(`无法获取资源 ${resource.name} 的表单配置`);
+      }
+      
+      setSchema(formSchema.schema);
+      setUiSchema(formSchema.uiSchema || {});
+      setFormData(formSchema.formData || {});
+    } catch (error) {
+      console.error('Failed to initialize form:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      setError(`初始化表单失败: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 初始化API服务和Schema
   useEffect(() => {
-    const initializeForm = async () => {
-      try {
-        setLoading(true);
-        
-        // 检查服务是否可用
-        if (!service) {
-          throw new Error('服务未初始化');
-        }
-        
-        // 直接通过 getResourceFormSchema 获取所有表单渲染数据
-        const formSchema = service.getResourceFormSchema(resource.name, {
-          action,
-          initialData,
-        });
-        
-        if (!formSchema || !formSchema.schema) {
-          throw new Error(`无法获取资源 ${resource.name} 的表单配置`);
-        }
-        
-        setSchema(formSchema.schema);
-        setUiSchema(formSchema.uiSchema || {});
-        setFormData(formSchema.formData || {});
-      } catch (error) {
-        console.error('Failed to initialize form:', error);
-        message.error(`初始化表单失败: ${error instanceof Error ? error.message : '未知错误'}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     initializeForm();
   }, [resource.name, action, initialData, service]);
+
+  // 通用的成功处理函数
+  const handleMutationSuccess = (actionText: string) => {
+    message.success(`${actionText}成功`);
+    queryClient.invalidateQueries({ queryKey: ['resourceListData', resource.name] });
+    queryClient.invalidateQueries({ queryKey: ['resourceDetail'] });
+    onSuccess?.();
+  };
+
+  // 通用的错误处理函数
+  const handleMutationError = (error: unknown, actionText: string) => {
+    console.error(`${actionText} error:`, error);
+    message.error(`${actionText}失败: ${error instanceof Error ? error.message : '未知错误'}`);
+  };
 
   // 创建资源mutation
   const createMutation = useMutation({
@@ -95,16 +114,8 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       const response = await client.request(createOperation, {pathParams, body: data});
       return response;
     },
-    onSuccess: () => {
-      message.success('添加成功');
-      queryClient.invalidateQueries({ queryKey: ['resourceListData', resource.name] });
-      queryClient.invalidateQueries({ queryKey: ['resourceDetail'] });
-      onSuccess?.();
-    },
-    onError: (error) => {
-      console.error('Create error:', error);
-      message.error(`添加失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    },
+    onSuccess: () => handleMutationSuccess('添加'),
+    onError: (error) => handleMutationError(error, '添加'),
   });
 
   // 更新资源mutation
@@ -124,16 +135,8 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       const response = await client.request(updateOperation, { pathParams, body: data});
       return response;
     },
-    onSuccess: () => {
-      message.success('更新成功');
-      queryClient.invalidateQueries({ queryKey: ['resourceListData', resource.name] });
-      queryClient.invalidateQueries({ queryKey: ['resourceDetail'] });
-      onSuccess?.();
-    },
-    onError: (error) => {
-      console.error('Update error:', error);
-      message.error(`更新失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    },
+    onSuccess: () => handleMutationSuccess('更新'),
+    onError: (error) => handleMutationError(error, '更新'),
   });
 
   const submitting = createMutation.isPending || updateMutation.isPending;
@@ -186,68 +189,43 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
     }
   };
 
-  // 如果正在加载或没有schema，显示加载状态
-  if (loading || !schema) {
-    return (
-      <div style={{ 
-        padding: '24px', 
-        backgroundColor: '#fafafa',
-        minHeight: '100%'
-      }}>
-        <div style={{ 
-          backgroundColor: 'white', 
-          padding: '48px 24px', 
-          borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-          textAlign: 'center'
-        }}>
-          <Text>正在加载表单...</Text>
-        </div>
-      </div>
-    );
-  }
+  // 统一处理加载和错误状态
+  if (loading || error || !schema || (schema && Object.keys(schema.properties || {}).length === 0)) {
+    let errorMessage = "";
+    let errorTitle = "";
+    let showRetry = false;
+    let retryHandler = undefined;
 
-  // 如果没有schema，显示错误信息
-  if (!schema || Object.keys(schema.properties || {}).length === 0) {
+    if (loading) {
+      // 正在加载
+    } else if (error) {
+      errorMessage = error;
+      errorTitle = "表单初始化失败";
+      showRetry = true;
+      retryHandler = () => {
+        setError(null);
+        initializeForm();
+      };
+    } else if (!schema || Object.keys(schema.properties || {}).length === 0) {
+      errorMessage = `当前资源 "${resource.name}" 没有定义Schema结构，无法生成表单`;
+      errorTitle = "缺少资源Schema";
+      showRetry = false;
+    }
+
     return (
-      <div style={{ 
-        padding: '24px', 
-        backgroundColor: '#fafafa',
-        minHeight: '100%'
-      }}>
-        <div style={{ 
-          backgroundColor: 'white', 
-          padding: '48px 24px', 
-          borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-          textAlign: 'center'
-        }}>
-          <div style={{ marginBottom: '24px' }}>
-            <QuestionCircleOutlined 
-              style={{ 
-                fontSize: '48px', 
-                color: '#faad14',
-                marginBottom: '16px'
-              }} 
-            />
-            <Title level={3} style={{ marginBottom: '8px', color: '#595959' }}>
-              缺少资源Schema
-            </Title>
-            <Text type="secondary" style={{ fontSize: '16px' }}>
-              当前资源 "{resource.name}" 没有定义Schema结构，无法生成表单
-            </Text>
-          </div>
-          <Space size="middle">
-            <Button 
-              size="large" 
-              onClick={onCancel}
-              style={{ minWidth: '120px' }}
-            >
-              返回列表
-            </Button>
-          </Space>
-        </div>
-      </div>
+      <ResourceLoading
+        loading={loading}
+        error={errorMessage || undefined}
+        loadingText="正在加载表单..."
+        errorTitle={errorTitle}
+        onRetry={retryHandler}
+        showRetry={showRetry}
+        style={{
+          padding: '24px',
+          backgroundColor: '#fafafa',
+          minHeight: '100%'
+        }}
+      />
     );
   }
 
