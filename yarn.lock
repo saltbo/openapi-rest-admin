@@ -525,54 +525,6 @@
   resolved "https://registry.npmmirror.com/@polka/url/-/url-1.0.0-next.29.tgz"
   integrity sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==
 
-"@prisma/client@^6.10.1":
-  version "6.10.1"
-  resolved "https://registry.npmmirror.com/@prisma/client/-/client-6.10.1.tgz"
-  integrity sha512-Re4pMlcUsQsUTAYMK7EJ4Bw2kg3WfZAAlr8GjORJaK4VOP6LxRQUQ1TuLnxcF42XqGkWQ36q5CQF1yVadANQ6w==
-
-"@prisma/config@6.10.1":
-  version "6.10.1"
-  resolved "https://registry.npmmirror.com/@prisma/config/-/config-6.10.1.tgz"
-  integrity sha512-kz4/bnqrOrzWo8KzYguN0cden4CzLJJ+2VSpKtF8utHS3l1JS0Lhv6BLwpOX6X9yNreTbZQZwewb+/BMPDCIYQ==
-  dependencies:
-    jiti "2.4.2"
-
-"@prisma/debug@6.10.1":
-  version "6.10.1"
-  resolved "https://registry.npmmirror.com/@prisma/debug/-/debug-6.10.1.tgz"
-  integrity sha512-k2YT53cWxv9OLjW4zSYTZ6Z7j0gPfCzcr2Mj99qsuvlxr8WAKSZ2NcSR0zLf/mP4oxnYG842IMj3utTgcd7CaA==
-
-"@prisma/engines-version@6.10.1-1.9b628578b3b7cae625e8c927178f15a170e74a9c":
-  version "6.10.1-1.9b628578b3b7cae625e8c927178f15a170e74a9c"
-  resolved "https://registry.npmmirror.com/@prisma/engines-version/-/engines-version-6.10.1-1.9b628578b3b7cae625e8c927178f15a170e74a9c.tgz"
-  integrity sha512-ZJFTsEqapiTYVzXya6TUKYDFnSWCNegfUiG5ik9fleQva5Sk3DNyyUi7X1+0ZxWFHwHDr6BZV5Vm+iwP+LlciA==
-
-"@prisma/engines@6.10.1":
-  version "6.10.1"
-  resolved "https://registry.npmmirror.com/@prisma/engines/-/engines-6.10.1.tgz"
-  integrity sha512-Q07P5rS2iPwk2IQr/rUQJ42tHjpPyFcbiH7PXZlV81Ryr9NYIgdxcUrwgVOWVm5T7ap02C0dNd1dpnNcSWig8A==
-  dependencies:
-    "@prisma/debug" "6.10.1"
-    "@prisma/engines-version" "6.10.1-1.9b628578b3b7cae625e8c927178f15a170e74a9c"
-    "@prisma/fetch-engine" "6.10.1"
-    "@prisma/get-platform" "6.10.1"
-
-"@prisma/fetch-engine@6.10.1":
-  version "6.10.1"
-  resolved "https://registry.npmmirror.com/@prisma/fetch-engine/-/fetch-engine-6.10.1.tgz"
-  integrity sha512-clmbG/Jgmrc/n6Y77QcBmAUlq9LrwI9Dbgy4pq5jeEARBpRCWJDJ7PWW1P8p0LfFU0i5fsyO7FqRzRB8mkdS4g==
-  dependencies:
-    "@prisma/debug" "6.10.1"
-    "@prisma/engines-version" "6.10.1-1.9b628578b3b7cae625e8c927178f15a170e74a9c"
-    "@prisma/get-platform" "6.10.1"
-
-"@prisma/get-platform@6.10.1":
-  version "6.10.1"
-  resolved "https://registry.npmmirror.com/@prisma/get-platform/-/get-platform-6.10.1.tgz"
-  integrity sha512-4CY5ndKylcsce9Mv+VWp5obbR2/86SHOLVV053pwIkhVtT9C9A83yqiqI/5kJM9T1v1u1qco/bYjDKycmei9HA==
-  dependencies:
-    "@prisma/debug" "6.10.1"
-
 "@rc-component/async-validator@^5.0.3":
   version "5.0.4"
   resolved "https://registry.npmmirror.com/@rc-component/async-validator/-/async-validator-5.0.4.tgz"
@@ -1944,7 +1896,7 @@ jackspeak@^3.1.2:
   optionalDependencies:
     "@pkgjs/parseargs" "^0.11.0"
 
-jiti@^2.4.2, jiti@>=1.21.0, jiti@2.4.2:
+jiti@^2.4.2, jiti@>=1.21.0:
   version "2.4.2"
   resolved "https://registry.npmmirror.com/jiti/-/jiti-2.4.2.tgz"
   integrity sha512-rg9zJN+G4n2nfJl5MW3BMygZX56zKPNVEYYqq7adpmMh4Jn2QNEwhvQlFy6jPVdcod7txZtKHWnyZiA3a0zP7A==
@@ -2425,14 +2377,6 @@ prettier@^2.7.1:
   version "2.8.8"
   resolved "https://registry.npmmirror.com/prettier/-/prettier-2.8.8.tgz"
   integrity sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==
-
-prisma@*, prisma@^6.10.1:
-  version "6.10.1"
-  resolved "https://registry.npmmirror.com/prisma/-/prisma-6.10.1.tgz"
-  integrity sha512-khhlC/G49E4+uyA3T3H5PRBut486HD2bDqE2+rvkU0pwk9IAqGFacLFUyIx9Uw+W2eCtf6XGwsp+/strUwMNPw==
-  dependencies:
-    "@prisma/config" "6.10.1"
-    "@prisma/engines" "6.10.1"
 
 proc-log@^3.0.0:
   version "3.0.0"
@@ -3427,7 +3371,7 @@ type-is@~1.6.18:
     media-typer "0.3.0"
     mime-types "~2.1.24"
 
-typescript@^5.0.0, typescript@^5.1.0, typescript@^5.8.3, typescript@>=5, typescript@>=5.1.0:
+typescript@^5.0.0, typescript@^5.1.0, typescript@^5.8.3, typescript@>=5:
   version "5.8.3"
   resolved "https://registry.npmmirror.com/typescript/-/typescript-5.8.3.tgz"
   integrity sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==
