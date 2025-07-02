@@ -54,4 +54,7 @@ coverage/
 tmp/
 temp/
 
+# Generated configuration files
+/public/config.json
+
 /generated/prisma

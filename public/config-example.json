@@ -1,0 +1,6 @@
+{
+  "openapiDocUrl": "/openapi/apidocs.json",
+  "apiBaseUrl": "/api",
+  "appTitle": "OpenAPI Admin",
+  "debugMode": false
+}

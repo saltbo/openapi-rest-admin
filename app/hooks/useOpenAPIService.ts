@@ -1,15 +1,35 @@
 import { useQuery } from "@tanstack/react-query";
 import { createOpenAPIService, type OpenAPIService } from "~/lib/core";
+import type { RuntimeConfig } from "../../config/types";
 
-const openapiDocURL =
-  import.meta.env.VITE_OPENAPI_DOC_URL || "/openapi/apidocs.json";
+/**
+ * 获取运行时配置
+ */
+async function getRuntimeConfig(): Promise<Partial<RuntimeConfig>> {
+  try {
+    const response = await fetch('/config.json');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch config: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.warn('Failed to load runtime config, using defaults:', error);
+    return {};
+  }
+}
 
 /**
  * 初始化 OpenAPI 服务的异步函数
  */
 async function initializeOpenAPIService(): Promise<OpenAPIService> {
+  const config = await getRuntimeConfig();
+  const openapiDocURL = config.openapiDocUrl || 
+    import.meta.env.VITE_OPENAPI_DOC_URL || 
+    "/openapi/apidocs.json";
+  
   const service = createOpenAPIService();
   console.log("Initializing with OpenAPI URL:", openapiDocURL);
+  console.log("Runtime config loaded:", config);
   await service.initialize(openapiDocURL);
   return service;
 }
@@ -20,7 +40,7 @@ async function initializeOpenAPIService(): Promise<OpenAPIService> {
  */
 export function useOpenAPIService() {
   const query = useQuery({
-    queryKey: ["openapi-service", openapiDocURL],
+    queryKey: ["openapi-service"],
     queryFn: initializeOpenAPIService,
     retry: false,
   });
