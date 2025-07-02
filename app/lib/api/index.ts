@@ -4,10 +4,9 @@
  * 统一导出 OpenAPI 相关的核心服务类
  */
 
+import { OpenapiRestClient } from './openapi-reset-client/src';
 import { OpenAPIDocumentParser, type ResourceInfo } from './OpenAPIDocumentParser';
 import { SchemaRenderer } from './SchemaRenderer';
-import { ResourceOperationClient, RESTfulAPIClient } from './client';
-import { PathParamResolver } from './PathParamResolver';
 
 export { OpenAPIDocumentParser } from './OpenAPIDocumentParser';
 export type { 
@@ -25,19 +24,6 @@ export type {
   TableSchema 
 } from './SchemaRenderer';
 
-// 导出新的ResourceOperationClient和向后兼容的别名
-export { ResourceOperationClient, RESTfulAPIClient, APIError } from './client';
-export type { 
-  ResourceRequestOptions,
-  ListRequestOptions,
-  ResourceResponse, 
-  PaginatedResponse, 
-  ValidationError,
-  ResponseTransformer,
-  ParsedResponseData,
-  PaginationInfo
-} from './client';
-
 /**
  * 完整的 OpenAPI 服务包装器
  * 整合三个核心服务，提供统一的接口
@@ -45,12 +31,12 @@ export type {
 export class OpenAPIService {
   private parser: OpenAPIDocumentParser;
   private renderer: SchemaRenderer;
-  private client: ResourceOperationClient;
+  private client: OpenapiRestClient;
 
   constructor(baseURL: string) {
     this.parser = new OpenAPIDocumentParser();
     this.renderer = new SchemaRenderer();
-    this.client = new ResourceOperationClient(baseURL);
+    this.client = new OpenapiRestClient(baseURL);
   }
 
   /**
@@ -70,7 +56,7 @@ export class OpenAPIService {
   /**
    * 获取客户端实例
    */
-  getClient(): ResourceOperationClient {
+  getClient(): OpenapiRestClient {
     return this.client;
   }
 
@@ -84,7 +70,7 @@ export class OpenAPIService {
     const servers = this.parser.getServers();
     if (servers.length > 0) {
       // 重新创建客户端使用正确的基础 URL
-      this.client = new ResourceOperationClient(servers[0]);
+      this.client = new OpenapiRestClient(servers[0]);
     }
   }
 
