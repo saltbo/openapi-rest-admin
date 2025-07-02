@@ -62,13 +62,28 @@ OpenAPI Rest Admin is a **Single Page Application** that automatically creates a
 
 4. **Open http://localhost:5173**
 
-### Try with Demo APIs
+### Try with the Example REST Server
 
-Test the application with included demo APIs:
+The project includes a demo REST server that provides a complete RESTful API with Authors, Books, and Notes resources:
 
-```bash
-# Swagger Petstore
-VITE_OPENAPI_DOC_URL=https://petstore.swagger.io/v2/swagger.json
+1. **Start the example server**
+   ```bash
+   cd example/simple-rest-server
+   chmod +x start.sh
+   ./start.sh
+   ```
+
+   The server will run at `http://localhost:3000` with API documentation available at `http://localhost:3000/api-docs`
+
+2. **Configure the admin interface to use it**
+   ```bash
+   # In your .env file
+   VITE_OPENAPI_DOC_URL=http://localhost:3000/openapi.json
+   ```
+
+3. **Open the admin interface at http://localhost:5173**
+
+This example server includes full CRUD operations for multiple resources and serves as an excellent demonstration of OpenAPI Admin's capabilities.
 ```
 
 ## 📜 Available Scripts
