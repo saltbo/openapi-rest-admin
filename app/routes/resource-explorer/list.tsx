@@ -1,14 +1,13 @@
-import type { Route } from "./+types/resource-list";
 import ResourceList from "~/pages/resource-explorer/List";
+import type { Route } from "../../+types/root";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "资源列表 - OpenAPI Admin" },
-    { name: "description", content: "OpenAPI 资源数据列表管理" },
+    { title: "Resource List - OpenAPI Admin" },
+    { name: "description", content: "OpenAPI Resource List" },
   ];
 }
 
 export default function ResourceListRoute({ params }: Route.ComponentProps) {
-  // 显示顶级资源列表页面
   return <ResourceList />;
 }

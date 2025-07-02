@@ -1,281 +1,285 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Avatar, Button, Typography, Spin } from 'antd';
-import { ApiOutlined, EyeOutlined } from '@ant-design/icons';
-import { Link } from 'react-router';
-import { openAPIDocumentClient } from '~/lib/client';
-import type { OpenAPIDocument } from '~/types/api';
+import React from "react";
+import { useParams, Link } from "react-router";
+import {
+  Card,
+  Row,
+  Col,
+  Statistic,
+  Tag,
+  Typography,
+  Space,
+  Descriptions,
+  Timeline,
+  List,
+  Button,
+} from "antd";
+import {
+  ApiOutlined,
+  DatabaseOutlined,
+  CheckCircleOutlined,
+  InfoCircleOutlined,
+  BugOutlined,
+  ThunderboltOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
+import { useOpenAPIService } from "~/hooks/useOpenAPIService";
+import ResourceLoading from "./resource-explorer/components/ResourceLoading";
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
+
+// 格式化日期时间的工具函数
+function formatDateTime(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch {
+    return dateString;
+  }
+}
 
 export default function Home() {
-  const [loading, setLoading] = useState(true);
-  const [apiConfigs, setApiConfigs] = useState<OpenAPIDocument[]>([]);
+  const { service, isLoading } = useOpenAPIService();
+  const docInfo = service?.getDocumentInfo();
+  const stats = service?.getResourceStatistics();
+  const topLevelResources = service?.getTopLevelResources();
+  if (!stats || !topLevelResources || isLoading) {
+    throw <ResourceLoading />;
+  }
 
-  useEffect(() => {
-    loadAPIConfigs();
-  }, []);
-
-  const loadAPIConfigs = async () => {
-    try {
-      setLoading(true);
-      const configs = await openAPIDocumentClient.getConfigs({ enabled: true });
-      setApiConfigs(configs);
-    } catch (error) {
-      console.error('Failed to load API configs:', error);
-    } finally {
-      setLoading(false);
-    }
+  const httpMethodStats = stats.methodCounts;
+  const displayStats = {
+    totalResources: stats.totalResources,
+    totalPaths: stats.totalPaths,
+    topLevelResources: topLevelResources.length,
+    restfulResources: stats.restfulResources,
+    totalEndpoints: stats.totalOperations,
+    getEndpoints: httpMethodStats.GET || 0,
+    postEndpoints: httpMethodStats.POST || 0,
+    putEndpoints: httpMethodStats.PUT || 0,
+    deleteEndpoints: httpMethodStats.DELETE || 0,
+    patchEndpoints: httpMethodStats.PATCH || 0,
+    totalTags: Object.keys(stats.tagCounts).length,
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '40px 24px'
-    }}>
-      {/* 页面标题 */}
-      <div style={{ 
-        marginBottom: '48px', 
-        textAlign: 'center',
-        color: 'white',
-        maxWidth: '800px',
-        margin: '0 auto 48px auto'
-      }}>
-        <Title level={1} style={{ 
-          color: 'white', 
-          marginBottom: '20px',
-          fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
-          fontWeight: '700',
-          textShadow: '0 4px 8px rgba(0,0,0,0.3)',
-          letterSpacing: '-0.02em'
-        }}>
-          OpenAPI Admin
-        </Title>
-        <div style={{
-          background: 'rgba(255,255,255,0.15)',
-          borderRadius: '20px',
-          padding: '16px 32px',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255,255,255,0.2)',
-          display: 'inline-block'
-        }}>
-          <Text style={{ 
-            color: 'rgba(255,255,255,0.95)', 
-            fontSize: '18px',
-            fontWeight: '500',
-            lineHeight: '1.5'
-          }}>
-            🚀 选择一个 API 服务开始管理和查看资源数据
-          </Text>
-        </div>
-      </div>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+        padding: "24px",
+      }}
+    >
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        {/* 服务头部信息 */}
+        <Card
+          style={{
+            marginBottom: 24,
+            borderRadius: "16px",
+            border: "none",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+            background: "rgba(255,255,255,0.95)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <div
+            style={{ display: "flex", alignItems: "center", marginBottom: 24 }}
+          >
+            <div
+              style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 20,
+                flexShrink: 0,
+                boxShadow: "0 8px 20px rgba(102, 126, 234, 0.3)",
+              }}
+            >
+              <ApiOutlined style={{ fontSize: 28, color: "white" }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Title level={2} style={{ margin: 0, marginBottom: 8 }}>
+                {docInfo?.title || "API 服务"}
+              </Title>
+              <Space>
+                <Tag color="blue">{docInfo?.version || "v1.0"}</Tag>
+                <Text type="secondary">
+                  {displayStats.totalEndpoints} 个接口 ·{" "}
+                  {displayStats.totalResources} 个资源
+                </Text>
+              </Space>
+            </div>
+          </div>
 
-      {/* API 服务卡片 */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {loading ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '80px',
-            background: 'rgba(255,255,255,0.95)',
-            borderRadius: '24px',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-            backdropFilter: 'blur(10px)'
-          }}>
-            <Spin size="large" />
-            <div style={{ marginTop: '24px' }}>
-              <Text style={{ fontSize: '16px', color: '#666' }}>加载 API 服务中...</Text>
-            </div>
-          </div>
-        ) : apiConfigs.length > 0 ? (
-          <Row gutter={[32, 32]} justify="start">
-            {apiConfigs.map(config => (
-              <Col xs={24} sm={12} md={8} lg={6} key={config.id}>
-                <Link to={`/services/${config.id}`} style={{ textDecoration: 'none' }}>
-                  <Card 
-                    hoverable
-                    style={{ 
-                      height: '240px',
-                      borderRadius: '20px',
-                      border: 'none',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                      background: 'rgba(255,255,255,0.98)',
-                      backdropFilter: 'blur(10px)',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      overflow: 'hidden',
-                      cursor: 'pointer'
-                    }}
-                    bodyStyle={{
-                      padding: '24px',
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      textAlign: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-8px)';
-                      e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.15)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
-                    }}
+          {docInfo && (
+            <Descriptions column={2}>
+              {docInfo.description && (
+                <Descriptions.Item label="描述" span={2}>
+                  <Paragraph style={{ marginBottom: 0 }}>
+                    {docInfo.description}
+                  </Paragraph>
+                </Descriptions.Item>
+              )}
+              {docInfo.servers && docInfo.servers.length > 0 && (
+                <Descriptions.Item label="服务器地址" span={2}>
+                  <Space
+                    direction="vertical"
+                    size="small"
+                    style={{ width: "100%" }}
                   >
-                    <div style={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center'
-                    }}>
-                      <div style={{
-                        width: '72px',
-                        height: '72px',
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '16px',
-                        boxShadow: '0 8px 20px rgba(102, 126, 234, 0.3)'
-                      }}>
-                        <ApiOutlined style={{ fontSize: '28px', color: 'white' }} />
-                      </div>
-                      <Title level={4} style={{ 
-                        margin: '0 0 8px 0',
-                        color: '#1a1a1a',
-                        fontSize: '16px',
-                        fontWeight: '600',
-                        lineHeight: '1.2'
-                      }}>
-                        {config.name}
-                      </Title>
-                      <Text style={{ 
-                        fontSize: '13px',
-                        color: '#666',
-                        lineHeight: '1.4',
-                        marginBottom: '12px',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        height: '34px'
-                      }}>
-                        {config.description || '暂无描述'}
-                      </Text>
-                    </div>
-                    
-                    <div style={{
-                      width: '100%',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginTop: '8px'
-                    }}>
-                      {config.version ? (
-                        <div style={{
-                          background: 'linear-gradient(135deg, #e8f4fd, #d1f2eb)',
-                          padding: '6px 12px',
-                          borderRadius: '12px',
-                          border: '1px solid rgba(102, 126, 234, 0.1)'
-                        }}>
-                          <Text style={{ 
-                            fontSize: '11px',
-                            color: '#0369a1',
-                            fontWeight: '500'
-                          }}>
-                            v{config.version}
-                          </Text>
-                        </div>
-                      ) : (
-                        <div style={{
-                          padding: '6px 12px',
-                          borderRadius: '12px',
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          color: 'white'
-                        }}>
-                          <Text style={{ 
-                            fontSize: '11px',
-                            color: 'white',
-                            fontWeight: '500'
-                          }}>
-                            <EyeOutlined style={{ marginRight: '4px' }} />
-                            查看
-                          </Text>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-                </Link>
-              </Col>
-            ))}
+                    {docInfo.servers.map((serverUrl: string, index: number) => (
+                      <Tag
+                        key={index}
+                        color="green"
+                        style={{ margin: "2px 4px 2px 0" }}
+                      >
+                        {serverUrl}
+                      </Tag>
+                    ))}
+                  </Space>
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+          )}
+        </Card>
+
+        {/* HTTP 方法统计 */}
+        <Card
+          title="接口端点统计"
+          style={{
+            marginBottom: 24,
+            borderRadius: "16px",
+            border: "none",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+            background: "rgba(255,255,255,0.95)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <Row gutter={16}>
+            <Col span={4}>
+              <Statistic
+                title="总接口数"
+                value={displayStats.totalEndpoints}
+                prefix={<ApiOutlined />}
+                valueStyle={{ color: "#cf1322" }}
+              />
+            </Col>
+            <Col span={4}>
+              <Statistic
+                title="GET"
+                value={displayStats.getEndpoints}
+                valueStyle={{ color: "#52c41a" }}
+              />
+            </Col>
+            <Col span={4}>
+              <Statistic
+                title="POST"
+                value={displayStats.postEndpoints}
+                valueStyle={{ color: "#1890ff" }}
+              />
+            </Col>
+            <Col span={4}>
+              <Statistic
+                title="PUT"
+                value={displayStats.putEndpoints}
+                valueStyle={{ color: "#faad14" }}
+              />
+            </Col>
+            <Col span={4}>
+              <Statistic
+                title="PATCH"
+                value={displayStats.patchEndpoints}
+                valueStyle={{ color: "#722ed1" }}
+              />
+            </Col>
+            <Col span={4}>
+              <Statistic
+                title="DELETE"
+                value={displayStats.deleteEndpoints}
+                valueStyle={{ color: "#f5222d" }}
+              />
+            </Col>
           </Row>
-        ) : (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '80px 40px',
-            background: 'rgba(255,255,255,0.98)',
-            borderRadius: '24px',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-            backdropFilter: 'blur(10px)',
-            maxWidth: '600px',
-            margin: '0 auto'
-          }}>
-            <div style={{
-              fontSize: '72px',
-              marginBottom: '24px',
-              opacity: 0.7,
-              filter: 'grayscale(20%)'
-            }}>
-              📋
-            </div>
-            <Title level={2} style={{ 
-              color: '#374151', 
-              marginBottom: '16px',
-              fontSize: '24px',
-              fontWeight: '600'
-            }}>
-              暂无 API 服务配置
-            </Title>
-            <Text style={{ 
-              fontSize: '16px', 
-              color: '#6b7280', 
-              marginBottom: '40px',
-              display: 'block',
-              lineHeight: '1.6'
-            }}>
-              还没有配置任何 API 服务，点击下方按钮开始配置您的第一个服务
+        </Card>
+
+        {/* 资源概览 */}
+        <Card
+          title="资源概览"
+          extra={
+            <Text type="secondary">
+              共 {topLevelResources.length} 个顶级资源
             </Text>
-            <Link to="/admin/apis">
-              <Button 
-                type="primary" 
-                size="large"
-                style={{
-                  borderRadius: '16px',
-                  height: '56px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  border: 'none',
-                  boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)',
-                  paddingLeft: '40px',
-                  paddingRight: '40px',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 12px 32px rgba(102, 126, 234, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.3)';
-                }}
+          }
+          style={{
+            marginBottom: 24,
+            borderRadius: "16px",
+            border: "none",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+            background: "rgba(255,255,255,0.95)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <List
+            dataSource={topLevelResources}
+            renderItem={(resource: any) => (
+              <List.Item
+                actions={[
+                  <Link key="view" to={`/r/${resource.name}`}>
+                    <Button type="link" size="small" icon={<EyeOutlined />}>
+                      查看资源
+                    </Button>
+                  </Link>,
+                  <Text key="endpoints" type="secondary">
+                    {resource.operations ? resource.operations.length : 0}{" "}
+                    个接口
+                  </Text>,
+                ].filter(Boolean)}
               >
-                🚀 开始配置
-              </Button>
-            </Link>
-          </div>
-        )}
+                <List.Item.Meta
+                  avatar={<DatabaseOutlined style={{ color: "#1890ff" }} />}
+                  title={
+                    <Space>
+                      <Text strong>{resource.name}</Text>
+                      {resource.operations?.[0]?.description && (
+                        <Text type="secondary">
+                          - {resource.operations[0].description}
+                        </Text>
+                      )}
+                    </Space>
+                  }
+                  description={
+                    <Space wrap>
+                      <Text>路径: {resource.basePath || "/"}</Text>
+                      {resource.operations && (
+                        <Text type="secondary">
+                          方法:
+                          {resource.operations
+                            .map((op: any) => op.method)
+                            .join(", ")}
+                        </Text>
+                      )}
+                      {resource.subResources.length > 0 && (
+                        <Tag color="purple">
+                          {resource.subResources.length} 个子资源
+                        </Tag>
+                      )}
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </Card>
       </div>
     </div>
   );

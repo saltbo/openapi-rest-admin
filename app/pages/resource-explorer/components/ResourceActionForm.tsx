@@ -12,9 +12,7 @@ import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { OpenAPIService, PathParamResolver, SchemaRenderer } from '~/lib/core';
 import type { ResourceInfo } from '~/lib/core';
-import { openAPIDocumentClient } from '~/lib/client';
 import type { ResourceDataItem } from '~/types/api';
-import type { OpenAPIV3 } from 'openapi-types';
 import { ResourceLoading } from './ResourceLoading';
 
 const { Title, Text } = Typography;

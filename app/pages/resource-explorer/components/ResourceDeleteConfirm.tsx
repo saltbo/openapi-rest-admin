@@ -3,7 +3,6 @@ import { Modal, Typography, Space, Tag, Descriptions, message } from 'antd';
 import { ExclamationCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { OpenAPIService, PathParamResolver, type ResourceInfo } from '~/lib/core';
-import { openAPIDocumentClient } from '~/lib/client';
 import type { ResourceDataItem } from '~/types/api';
 
 const { Text, Paragraph } = Typography;

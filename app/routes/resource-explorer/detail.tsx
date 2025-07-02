@@ -1,12 +1,12 @@
-import type { Route } from "./+types/resource-detail";
 import { useParams } from "react-router";
 import ResourceList from "~/pages/resource-explorer/List";
 import ResourceDetail from "~/pages/resource-explorer/Detail";
+import type { Route } from "../../+types/root";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "资源管理 - OpenAPI Admin" },
-    { name: "description", content: "OpenAPI 资源数据管理" },
+    { title: "Resource Data - OpenAPI Admin" },
+    { name: "description", content: "OpenAPI Resource Data" },
   ];
 }
 
