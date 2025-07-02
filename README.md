@@ -96,6 +96,7 @@ This example server includes full CRUD operations for multiple resources and ser
 | `npm run test:ui` | Run tests with interactive UI |
 | `npm run typecheck` | TypeScript type checking |
 | `npm run config:generate` | Generate configuration files |
+```
 
 ## ⚙️ Configuration
 
