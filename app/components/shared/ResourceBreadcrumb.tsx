@@ -1,7 +1,7 @@
 import React from 'react';
 import { Breadcrumb } from 'antd';
 import { Link, useParams, useLocation } from 'react-router';
-import { PathParamResolver } from '~/lib/api';
+import { PathParamResolver } from '~/lib/core';
 
 interface ResourceBreadcrumbProps {
   /** 自定义样式 */

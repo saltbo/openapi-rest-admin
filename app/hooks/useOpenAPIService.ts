@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { createOpenAPIService, type OpenAPIService } from '~/lib/api';
+import { createOpenAPIService, type OpenAPIService } from '~/lib/core';
 
 /**
  * 获取和管理 OpenAPI 服务实例的 hook

@@ -4,7 +4,7 @@ import {
   type OpenAPIService,
   type PaginatedResponse,
   type ResourceInfo,
-} from "~/lib/api";
+} from "~/lib/core";
 
 /**
  * 获取资源数据的 hook

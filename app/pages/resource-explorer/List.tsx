@@ -30,7 +30,7 @@ import { capitalizeFirst } from "~/components";
 import ResourceActionForm from "./components/ResourceActionForm";
 import ResourceDeleteConfirm from "./components/ResourceDeleteConfirm";
 import { useResource } from "./hooks/useResource";
-import { PathParamResolver } from "~/lib/api";
+import { PathParamResolver } from "~/lib/core";
 import { useResourceList } from "./hooks/useResourceList";
 import type { ResourceDataItem } from "~/types/api";
 

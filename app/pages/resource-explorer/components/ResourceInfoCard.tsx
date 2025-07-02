@@ -5,7 +5,7 @@ import { useResourceDialogs } from '~/pages/resource-explorer/hooks/useResourceD
 import { ResourceActionForm } from '~/pages/resource-explorer/components/ResourceActionForm';
 import { ResourceDeleteConfirm } from '~/pages/resource-explorer/components/ResourceDeleteConfirm';
 import { Descriptions } from '~/components/json-schema-ui/themes/antd';
-import type { OpenAPIService, ResourceInfo } from '~/lib/api';
+import type { OpenAPIService, ResourceInfo } from '~/lib/core';
 
 const { Text } = Typography;
 

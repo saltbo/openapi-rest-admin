@@ -8,7 +8,7 @@ import { SubResourcesContainer } from "~/pages/resource-explorer/components/SubR
 import { ResourceLoading } from "~/pages/resource-explorer/components/ResourceLoading";
 import { capitalizeFirst } from "~/components";
 import { useResource } from "./hooks/useResource";
-import { PathParamResolver } from "~/lib/api";
+import { PathParamResolver } from "~/lib/core";
 
 interface ResourceDetailProps {
   serviceName?: string;

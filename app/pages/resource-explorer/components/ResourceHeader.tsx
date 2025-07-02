@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Typography, Button, Space,  Modal } from 'antd';
 import { JsonViewer } from "~/components/shared/JsonViewer";
-import type { ResourceInfo } from '~/lib/api';
+import type { ResourceInfo } from '~/lib/core';
 
 const { Title, Text } = Typography;
 

@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { openAPIDocumentClient } from '~/lib/client';
-import { createOpenAPIService } from '~/lib/api';
+import { createOpenAPIService } from '~/lib/core';
 import { capitalizeFirst } from '../shared';
 
 const { Header, Sider, Content } = Layout;

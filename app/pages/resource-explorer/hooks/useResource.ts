@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { useOpenAPIService } from '~/hooks/useOpenAPIService';
-import type { OpenAPIService, ResourceInfo } from '~/lib/api';
+import type { OpenAPIService, ResourceInfo } from '~/lib/core';
 
 /**
  * 资源标识符信息

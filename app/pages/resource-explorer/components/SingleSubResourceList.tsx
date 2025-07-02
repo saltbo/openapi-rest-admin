@@ -9,8 +9,8 @@ import { ResourceLoading } from "./ResourceLoading";
 import { useResource } from "../hooks/useResource";
 import { capitalizeFirst } from "~/components";
 import { Table } from "~/components/json-schema-ui/themes/antd";
-import type { ResourceInfo } from "~/lib/api";
-import { PathParamResolver } from "~/lib/api";
+import type { ResourceInfo } from "~/lib/core";
+import { PathParamResolver } from "~/lib/core";
 import { useNavigate } from "react-router";
 
 const { Title } = Typography;

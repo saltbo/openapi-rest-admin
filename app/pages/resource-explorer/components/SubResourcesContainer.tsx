@@ -3,7 +3,7 @@ import { Typography, Spin, Alert } from "antd";
 import { SingleSubResourceList } from "./SingleSubResourceList";
 import { ResourceLoading } from "./ResourceLoading";
 import { useResource } from "../hooks/useResource";
-import type { ResourceInfo } from "~/lib/api";
+import type { ResourceInfo } from "~/lib/core";
 
 const { Title } = Typography;
 

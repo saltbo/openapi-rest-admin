@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { Modal, Typography, Space, Tag, Descriptions, message } from 'antd';
 import { ExclamationCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createOpenAPIService, OpenAPIService, PathParamResolver, type ResourceInfo } from '~/lib/api';
+import { createOpenAPIService, OpenAPIService, PathParamResolver, type ResourceInfo } from '~/lib/core';
 import { openAPIDocumentClient } from '~/lib/client';
 import type { ResourceDataItem } from '~/types/api';
 
