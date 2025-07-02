@@ -111,6 +111,7 @@ export default function ServiceDetail() {
 
   const displayStats = {
     totalResources: stats.totalResources,
+    totalPaths: stats.totalPaths,
     topLevelResources: topLevelResources.length,
     restfulResources: stats.restfulResources,
     totalEndpoints: totalEndpoints,
@@ -118,6 +119,8 @@ export default function ServiceDetail() {
     postEndpoints: httpMethodStats.POST || 0,
     putEndpoints: httpMethodStats.PUT || 0,
     deleteEndpoints: httpMethodStats.DELETE || 0,
+    patchEndpoints: httpMethodStats.PATCH || 0,
+    totalTags: Object.keys(stats.tagCounts).length,
   };
 
   return (
@@ -252,12 +255,12 @@ export default function ServiceDetail() {
               boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
               background: 'rgba(255,255,255,0.9)'
             }}>
-              {/* <Statistic
-                title="嵌套资源"
-                value={displayStats.nestedResources}
+              <Statistic
+                title="总路径数"
+                value={displayStats.totalPaths}
                 prefix={<BugOutlined style={{ color: '#722ed1' }} />}
                 valueStyle={{ color: "#722ed1", fontWeight: '600' }}
-              /> */}
+              />
             </Card>
           </Col>
           <Col span={6}>
@@ -290,7 +293,7 @@ export default function ServiceDetail() {
           }}
         >
           <Row gutter={16}>
-            <Col span={5}>
+            <Col span={4}>
               <Statistic
                 title="总接口数"
                 value={displayStats.totalEndpoints}
@@ -298,25 +301,32 @@ export default function ServiceDetail() {
                 valueStyle={{ color: "#cf1322" }}
               />
             </Col>
-            <Col span={5}>
+            <Col span={4}>
               <Statistic
                 title="GET"
                 value={displayStats.getEndpoints}
                 valueStyle={{ color: "#52c41a" }}
               />
             </Col>
-            <Col span={5}>
+            <Col span={4}>
               <Statistic
                 title="POST"
                 value={displayStats.postEndpoints}
                 valueStyle={{ color: "#1890ff" }}
               />
             </Col>
-            <Col span={5}>
+            <Col span={4}>
               <Statistic
                 title="PUT"
                 value={displayStats.putEndpoints}
                 valueStyle={{ color: "#faad14" }}
+              />
+            </Col>
+            <Col span={4}>
+              <Statistic
+                title="PATCH"
+                value={displayStats.patchEndpoints}
+                valueStyle={{ color: "#722ed1" }}
               />
             </Col>
             <Col span={4}>

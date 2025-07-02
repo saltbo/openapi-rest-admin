@@ -136,88 +136,52 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
   const handleApiChange = (apiId: string) => {
     setSelectedApiId(apiId);
     setShouldAutoNavigate(true); // 切换 API 时重新启用自动导航
-    // 切换 API 时，如果当前在资源页面，则导航到首页，让用户重新选择资源
-    if (location.pathname.startsWith('/services/')) {
-      navigate('/');
-    }
   };
+
+  // 判断是否显示侧边栏：不在首页且有选中的服务
+  const showSidebar = location.pathname !== '/' && currentAnalysis;
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider width={250} style={{ background: colorBgContainer, borderRight: '1px solid #f0f0f0' }}>
-        <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0' }}>
-          <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
-            资源中心
-          </Title>
-        </div>
-        
-        {/* 菜单区域 */}
-        <div style={{ height: 'calc(100% - 73px)', display: 'flex', flexDirection: 'column' }}>
-          {/* 首页菜单项 */}
-          <Menu
-            mode="inline"
-            selectedKeys={location.pathname === '/' ? ['/'] : []}
-            style={{ border: 'none', flexShrink: 0 }}
-            items={[{
-              key: '/',
-              icon: <HomeOutlined />,
-              label: <Link to="/">首页</Link>,
-            }]}
-          />
-          
-          {/* API 选择器 */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
-            <div style={{ marginBottom: '8px', fontSize: '12px', color: '#666' }}>
-              选择 API 文档
-            </div>
-            <Select
-              value={selectedApiId}
-              onChange={handleApiChange}
-              style={{ width: '100%' }}
-              placeholder="选择 API"
-              loading={!apiConfigs.length}
-              size="small"
-            >
-              {apiConfigs.map((config: any) => (
-                <Option key={config.id} value={config.id}>
-                  {config.name}
-                </Option>
-              ))}
-            </Select>
+      {showSidebar && (
+        <Sider width={250} style={{ background: colorBgContainer, borderRight: '1px solid #f0f0f0' }}>
+          <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0' }}>
+            <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+              Openapi Admin
+            </Title>
           </div>
-
-          {/* 资源菜单 */}
-          {isLoading ? (
-            <div style={{ padding: '24px', textAlign: 'center', flex: 1 }}>
-              <Spin />
-              <div style={{ marginTop: '8px' }}>加载资源中...</div>
-            </div>
-          ) : currentAnalysis ? (
-            <div style={{ flex: 1 }}>
-              {/* 资源列表 */}
-              <div style={{ padding: '0 16px', marginBottom: '8px' }}>
-                <div style={{ fontSize: '12px', color: '#666' }}>资源列表</div>
+          
+          {/* 菜单区域 */}
+          <div style={{ height: 'calc(100% - 73px)', display: 'flex', flexDirection: 'column' }}>
+            {/* 资源菜单 */}
+            {isLoading ? (
+              <div style={{ padding: '24px', textAlign: 'center', flex: 1 }}>
+                <Spin />
+                <div style={{ marginTop: '8px' }}>加载资源中...</div>
               </div>
-              <Menu
-                mode="inline"
-                selectedKeys={location.pathname.startsWith('/services/') && location.pathname.includes('/resources/') ? [location.pathname] : []}
-                style={{ border: 'none' }}
-                items={currentAnalysis.resources
-                  ?.filter((resource: any) => !resource.parent_resource) // 只显示顶级资源
-                  ?.map((resource: any) => ({
-                    key: `/services/${selectedApiId}/resources/${resource.name}`,
-                    icon: <DatabaseOutlined />,
-                    label: (
-                      <Link to={`/services/${selectedApiId}/resources/${resource.name}`}>
-                        {capitalizeFirst(resource.name)}
-                      </Link>
-                    ),
-                  })) || []}
-              />
-            </div>
-          ) : null}
-        </div>
-      </Sider>
+            ) : currentAnalysis ? (
+              <div style={{ flex: 1 }}>
+                <Menu
+                  mode="inline"
+                  selectedKeys={location.pathname.startsWith('/services/') && location.pathname.includes('/resources/') ? [location.pathname] : []}
+                  style={{ border: 'none' }}
+                  items={currentAnalysis.resources
+                    ?.filter((resource: any) => !resource.parent_resource) // 只显示顶级资源
+                    ?.map((resource: any) => ({
+                      key: `/services/${selectedApiId}/resources/${resource.name}`,
+                      icon: <DatabaseOutlined />,
+                      label: (
+                        <Link to={`/services/${selectedApiId}/resources/${resource.name}`}>
+                          {capitalizeFirst(resource.name)}
+                        </Link>
+                      ),
+                    })) || []}
+                />
+              </div>
+            ) : null}
+          </div>
+        </Sider>
+      )}
       <Layout>
         <Header style={{ 
           padding: '0 24px', 
@@ -227,17 +191,37 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
           alignItems: 'center',
           borderBottom: '1px solid #f0f0f0'
         }}>
-          <Title level={3} style={{ margin: 0 }}>
-            {location.pathname === '/'
-              ? 'OpenAPI Admin - 资源中心'
-              : currentAnalysis 
-                ? `${currentAnalysis.apiName} - ${(() => {
-                    const resource = currentAnalysis.resources?.find((r: any) => location.pathname.includes(r.name));
-                    return resource ? capitalizeFirst(resource.name) : '资源管理';
-                  })()}`
-                : 'OpenAPI Admin - 资源中心'
-            }
-          </Title>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Logo区域，点击可返回首页 */}
+            <div 
+              onClick={() => navigate('/')}
+              style={{ 
+                cursor: 'pointer',
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f0f0f0';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <HomeOutlined style={{ color: '#1890ff' }} />
+              <Title level={3} style={{ margin: 0 }}>
+                {location.pathname === '/'
+                  ? 'OpenAPI Admin'
+                  : currentAnalysis 
+                    ? currentAnalysis.apiName
+                    : 'OpenAPI Admin'
+                }
+              </Title>
+            </div>
+          </div>
           <Space>
             <Link to="/admin">
               <Button icon={<SettingOutlined />}>
