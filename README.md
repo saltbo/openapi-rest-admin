@@ -11,9 +11,9 @@
 
 ---
 
-## What is OpenAPI Admin?
+## What is OpenAPI Rest Admin?
 
-OpenAPI Admin is a **Single Page Application** that automatically creates admin interfaces from your OpenAPI/Swagger specifications. Point it to your API documentation, and get a fully functional admin panel with tables, forms, and CRUD operations - no coding required.
+OpenAPI Rest Admin is a **Single Page Application** that automatically creates admin interfaces from your OpenAPI/Swagger specifications. Point it to your API documentation, and get a fully functional admin panel with tables, forms, and CRUD operations - no coding required.
 
 ### Key Benefits
 
@@ -39,8 +39,8 @@ OpenAPI Admin is a **Single Page Application** that automatically creates admin 
 
 1. **Clone and install**
    ```bash
-   git clone https://github.com/your-username/openapi-admin.git
-   cd openapi-admin
+   git clone https://github.com/your-username/openapi-rest-admin.git
+   cd openapi-rest-admin
    npm install
    ```
 
@@ -145,8 +145,8 @@ The application loads configuration in the following order:
 
 ```dockerfile
 # Dockerfile included in the project
-docker build -t openapi-admin .
-docker run -p 5173:5173 openapi-admin
+docker build -t openapi-rest-admin .
+docker run -p 5173:5173 openapi-rest-admin
 ```
 
 ## 🔧 Supported OpenAPI Features
@@ -174,7 +174,7 @@ docker run -p 5173:5173 openapi-admin
 
 ### Debug Mode
 ```javascript
-localStorage.setItem('debug', 'openapi-admin:*');
+localStorage.setItem('debug', 'openapi-rest-admin:*');
 ```
 
 ## 🤝 Contributing

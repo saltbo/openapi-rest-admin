@@ -7,8 +7,8 @@ We welcome contributions to OpenAPI Admin! This guide will help you get started 
 1. **Fork the repository** on GitHub
 2. **Clone your fork**
    ```bash
-   git clone https://github.com/your-username/openapi-admin.git
-   cd openapi-admin
+   git clone https://github.com/your-username/openapi-rest-admin.git
+   cd openapi-rest-admin
    ```
 
 3. **Install dependencies**

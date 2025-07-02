@@ -1,5 +1,5 @@
 {
-  "name": "openapi-admin",
+  "name": "openapi-rest-admin",
   "private": true,
   "type": "module",
   "scripts": {
