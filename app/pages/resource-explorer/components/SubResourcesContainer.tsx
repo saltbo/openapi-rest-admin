@@ -12,12 +12,11 @@ interface SubResourcesContainerProps {
   resourceName?: string;
   itemId?: string;
   nestedPath?: string;
-  apiId?: string;
 }
 
-export const SubResourcesContainer: React.FC<SubResourcesContainerProps> = ({
-  apiId,
-}) => {
+export const SubResourcesContainer: React.FC<
+  SubResourcesContainerProps
+> = ({}) => {
   const [loading, setLoading] = useState(true);
   const [subResources, setSubResources] = useState<ResourceInfo[]>([]);
   const [error, setError] = useState<string | null>(null);

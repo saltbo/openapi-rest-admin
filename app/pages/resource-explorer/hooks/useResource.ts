@@ -23,10 +23,6 @@ export interface UseResourceReturn {
   // 当前资源的路径: 例如 /books, /books/123, /books/123/authors
   resourcePath: string | undefined;
   
-  // 资源标识符
-  // Deprecated: 请勿使用
-  resourceIdentifier: ResourceIdentifier;
-  
   // 状态
   isInitialized: boolean;
 }
@@ -39,17 +35,16 @@ export interface UseResourceReturn {
  * 2. 从 OpenAPI 获取实际的资源定义 (ResourceInfo)
  * 3. 使用 PathParamResolver 提取路径参数
  * 
- * 路由格式：/services/:sName/resources/:rName/*
+ * 路由格式：/r/:rName/*
  * - sName: 服务名称
  * - rName: 资源名称  
  * - *: 嵌套路径，用于提取路径参数
  */
 export function useResource(): UseResourceReturn {
-  const params = useParams<{ sName: string; rName: string; '*': string }>();
-  const { service, isInitialized } = useOpenAPIService(params.sName);
+  const params = useParams<{rName: string; '*': string }>();
+  const { service, isInitialized } = useOpenAPIService();
   
   return useMemo(() => {
-    const serviceName = params.sName || '';
     const resourceName = params.rName || '';
     const resourcePath = params['*']; // splat parameter
     
@@ -59,17 +54,11 @@ export function useResource(): UseResourceReturn {
       resource = service.getResource(resourceName);
     }
     
-    // 构建资源标识符
-    const resourceIdentifier: ResourceIdentifier = {
-      serviceName,
-    };
-    
     return {
       service,
       resource,
       resourcePath,
-      resourceIdentifier,
       isInitialized,
     };
-  }, [params.sName, params.rName, params['*'], service, isInitialized]);
+  }, [params.rName, params['*'], service, isInitialized]);
 }

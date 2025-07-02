@@ -14,15 +14,15 @@ interface ResourceBreadcrumbProps {
  * 1. 全局部分：基于 routes 中定义的路由结构
  * 2. Resource Explorer 部分：基于 PathParamResolver 的逻辑生成
  * 
- * URL 格式：/services/{serviceName}/resources/{topLevelResource}/{nestedPath}
+ * URL 格式：/r/{topLevelResource}/{nestedPath}
  */
 export const ResourceBreadcrumb: React.FC<ResourceBreadcrumbProps> = ({
   style
 }) => {
-  const params = useParams<{ sName: string; rName: string; '*': string }>();
+  const params = useParams<{ rName: string; '*': string }>();
   const location = useLocation();
   
-  const { sName, rName } = params;
+  const { rName } = params;
   const splat = params['*'] || '';
   
   // 生成全局面包屑项
@@ -36,16 +36,7 @@ export const ResourceBreadcrumb: React.FC<ResourceBreadcrumbProps> = ({
       </Breadcrumb.Item>
     );
     
-    // 服务详情页
-    if (sName) {
-      items.push(
-        <Breadcrumb.Item key="service">
-          <Link to={`/services/${encodeURIComponent(sName)}`} style={{ color: '#1890ff' }}>
-            {sName}
-          </Link>
-        </Breadcrumb.Item>
-      );
-    }
+
     
     return items;
   };
@@ -66,7 +57,7 @@ export const ResourceBreadcrumb: React.FC<ResourceBreadcrumbProps> = ({
     const pathSegments = resourcePath.split('/').filter(Boolean);
     
     // 生成面包屑项
-    let currentPath = `/services/${encodeURIComponent(sName!)}/resources`;
+    let currentPath = `/r`;
     
     for (let i = 0; i < pathSegments.length; i++) {
       const segment = pathSegments[i];

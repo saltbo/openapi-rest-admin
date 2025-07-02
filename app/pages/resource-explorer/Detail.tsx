@@ -10,16 +10,12 @@ import { capitalizeFirst } from "~/components";
 import { useResource } from "./hooks/useResource";
 import { PathParamResolver } from "~/lib/core";
 
-interface ResourceDetailProps {
-  serviceName?: string;
-}
+interface ResourceDetailProps {}
 
 // 定义资源数据的类型
 type ResourceData = Record<string, any>;
 
-export const ResourceDetail: React.FC<ResourceDetailProps> = ({
-  serviceName,
-}) => {
+export const ResourceDetail: React.FC<ResourceDetailProps> = ({}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentItem, setCurrentItem] = useState<ResourceData | null>(null);
@@ -57,7 +53,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({
       .getClient()
       .request(getByIdOperation, resource.schema!, { pathParams });
     console.log(response);
-    
+
     setCurrentItem(response.data);
   };
 
@@ -168,11 +164,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({
         )}
 
         {/* 子资源列表 */}
-        {currentItem && (
-          <SubResourcesContainer
-            apiId={serviceName} // 使用 serviceName 作为 apiId
-          />
-        )}
+        {currentItem && <SubResourcesContainer />}
       </div>
     </div>
   );

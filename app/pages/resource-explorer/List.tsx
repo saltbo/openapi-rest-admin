@@ -44,11 +44,9 @@ interface ResourceListProps {
 // 定义资源数据的类型
 type ResourceData = ResourceDataItem;
 
-interface ResourceListProps {
-  serviceName?: string;
-}
+interface ResourceListProps {}
 
-export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
+export const ResourceList: React.FC<ResourceListProps> = ({}) => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -61,13 +59,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
     isLoading,
     error,
     refetch,
-  } = useResourceList(
-    service,
-    resource,
-    currentPage,
-    pageSize,
-    searchQuery,
-  );
+  } = useResourceList(service, resource, currentPage, pageSize, searchQuery);
 
   // 获取表格 schema
   const tableSchema = service?.getResourceTableSchema(resource!);
@@ -100,11 +92,8 @@ export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
       if (!itemId) {
         throw new Error(`无法获取资源标识符: ${resource?.name}`);
       }
-      if (!serviceName) {
-        throw new Error("服务名称未提供");
-      }
 
-      const path = `/services/${serviceName}/resources/${resource?.name}/${itemId}`;
+      const path = `/r/${resource?.name}/${itemId}`;
       navigate(path);
     },
     onEdit: (record: ResourceData) => handleEdit(record),
@@ -115,7 +104,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
   if (!isInitialized || !resource || error || !tableSchema) {
     // 确定加载状态
     const loading = !isInitialized;
-    
+
     // 确定错误信息和标题
     let errorMessage = "";
     let errorTitle = "";

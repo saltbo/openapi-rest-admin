@@ -10,5 +10,5 @@ export function meta({}: Route.MetaArgs) {
 
 export default function ResourceListRoute({ params }: Route.ComponentProps) {
   // 显示顶级资源列表页面
-  return <ResourceList serviceName={params.sName} />;
+  return <ResourceList />;
 }

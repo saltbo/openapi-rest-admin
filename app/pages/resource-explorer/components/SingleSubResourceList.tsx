@@ -27,8 +27,7 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
 
   // 使用 useResource hook 获取服务和路径参数
-  const { service, resource, isInitialized, resourceIdentifier } =
-    useResource();
+  const { service, resource, isInitialized } = useResource();
 
   // 使用 useResourceList hook 获取子资源数据
   const {
@@ -110,9 +109,7 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
         getOperation?.path!,
         pathParams
       );
-      navigate(
-        `/services/${resourceIdentifier.serviceName}/resources${detailPath}`
-      );
+      navigate(`/r${detailPath}`);
     },
     onEdit: (record: any) => {
       handleEdit(record);

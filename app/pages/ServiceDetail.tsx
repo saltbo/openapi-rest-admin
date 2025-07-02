@@ -22,9 +22,7 @@ import {
   ThunderboltOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
-import { useQuery } from "@tanstack/react-query";
-import { openAPIDocumentClient } from '~/lib/client';
-import { createOpenAPIService } from '~/lib/core';
+import { useOpenAPIService } from "~/hooks/useOpenAPIService";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -32,13 +30,13 @@ const { Title, Text, Paragraph } = Typography;
 function formatDateTime(dateString: string): string {
   try {
     const date = new Date(dateString);
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
+    return date.toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
     });
   } catch {
     return dateString;
@@ -46,75 +44,21 @@ function formatDateTime(dateString: string): string {
 }
 
 export default function ServiceDetail() {
-  const { sName } = useParams();
-
-  // 获取所有 API 配置
-  const { data: apiConfigs = [] } = useQuery({
-    queryKey: ["apiConfigs"],
-    queryFn: () => openAPIDocumentClient.getConfigs({ enabled: true }),
-  });
-
-  // 获取当前服务的 OpenAPI 服务实例和分析数据
-  const { data: serviceData, isLoading } = useQuery({
-    queryKey: ["serviceData", sName],
-    queryFn: async () => {
-      if (!sName || apiConfigs.length === 0) return null;
-      
-      // 获取 API 配置
-      const config = apiConfigs.find((c: any) => c.id === sName);
-      if (!config) return null;
-      
-      // 创建 OpenAPI 服务
-      const openAPIService = createOpenAPIService(config.openapi_url);
-      await openAPIService.initialize(config.openapi_url);
-      
-      // 获取所有数据
-      const docInfo = openAPIService.getDocumentInfo();
-      const stats = openAPIService.getResourceStatistics();
-      const topLevelResources = openAPIService.getTopLevelResources();
-      
-      return {
-        apiId: sName,
-        apiName: config.name || sName,
-        docInfo,
-        stats,
-        topLevelResources
-      };
-    },
-    enabled: !!sName && apiConfigs.length > 0,
-  });
-
-  if (isLoading) {
-    return (
-      <div style={{ textAlign: "center", padding: "50px" }}>
-        <Text>加载服务信息中...</Text>
-      </div>
-    );
+  const { service, isInitialized } = useOpenAPIService();
+  const docInfo = service?.getDocumentInfo();
+  const stats = service?.getResourceStatistics();
+  const topLevelResources = service?.getTopLevelResources();
+  if (!stats || !topLevelResources || !isInitialized) {
+    return "";
   }
 
-  if (!serviceData) {
-    return (
-      <div style={{ textAlign: "center", padding: "50px" }}>
-        <Text type="secondary">未找到服务信息</Text>
-      </div>
-    );
-  }
-
-  // 解构数据
-  const { apiName, docInfo, stats, topLevelResources } = serviceData;
-
-  // HTTP 方法统计
   const httpMethodStats = stats.methodCounts;
-
-  // 计算总接口数
-  const totalEndpoints = stats.totalOperations;
-
   const displayStats = {
     totalResources: stats.totalResources,
     totalPaths: stats.totalPaths,
     topLevelResources: topLevelResources.length,
     restfulResources: stats.restfulResources,
-    totalEndpoints: totalEndpoints,
+    totalEndpoints: stats.totalOperations,
     getEndpoints: httpMethodStats.GET || 0,
     postEndpoints: httpMethodStats.POST || 0,
     putEndpoints: httpMethodStats.PUT || 0,
@@ -124,91 +68,83 @@ export default function ServiceDetail() {
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-      padding: '24px'
-    }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+        padding: "24px",
+      }}
+    >
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        {/* 返回按钮 */}
-        <div style={{ marginBottom: '24px' }}>
-          <Link to="/">
-            <Button 
-              type="text" 
-              style={{ 
-                color: '#666',
-                fontSize: '14px',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                background: 'rgba(255,255,255,0.8)',
-                border: '1px solid rgba(0,0,0,0.06)'
+        {/* 服务头部信息 */}
+        <Card
+          style={{
+            marginBottom: 24,
+            borderRadius: "16px",
+            border: "none",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+            background: "rgba(255,255,255,0.95)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <div
+            style={{ display: "flex", alignItems: "center", marginBottom: 24 }}
+          >
+            <div
+              style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 20,
+                flexShrink: 0,
+                boxShadow: "0 8px 20px rgba(102, 126, 234, 0.3)",
               }}
             >
-              ← 返回首页
-            </Button>
-          </Link>
-        </div>
-
-        {/* 服务头部信息 */}
-        <Card style={{ 
-          marginBottom: 24,
-          borderRadius: '16px',
-          border: 'none',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-          background: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(10px)'
-        }}>
-          <div
-            style={{ display: "flex", alignItems: "center", marginBottom: 16 }}
-          >
-            <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 20,
-              boxShadow: '0 8px 20px rgba(102, 126, 234, 0.3)'
-            }}>
-              <ApiOutlined style={{ fontSize: 28, color: 'white' }} />
+              <ApiOutlined style={{ fontSize: 28, color: "white" }} />
             </div>
-            <div>
-              <Title level={2} style={{ 
-                margin: 0,
-                color: '#1a1a1a',
-                fontWeight: '600'
-              }}>
-                {apiName}
+            <div style={{ flex: 1 }}>
+              <Title level={2} style={{ margin: 0, marginBottom: 8 }}>
+                {docInfo?.title || "API 服务"}
               </Title>
-              <Text type="secondary" style={{ fontSize: '14px' }}>
-                服务 ID: {sName}
-              </Text>
+              <Space>
+                <Tag color="blue">{docInfo?.version || "v1.0"}</Tag>
+                <Text type="secondary">
+                  {displayStats.totalEndpoints} 个接口 ·{" "}
+                  {displayStats.totalResources} 个资源
+                </Text>
+              </Space>
             </div>
           </div>
 
-          {docInfo?.description && (
-            <Descriptions column={2} style={{ marginTop: 16 }}>
-              <Descriptions.Item label="版本">
-                <Tag color="blue">{docInfo.version}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="标题">
-                {docInfo.title}
-              </Descriptions.Item>
-              <Descriptions.Item label="描述" span={2}>
-                <Paragraph>{docInfo.description}</Paragraph>
-              </Descriptions.Item>
+          {docInfo && (
+            <Descriptions column={2}>
+              {docInfo.description && (
+                <Descriptions.Item label="描述" span={2}>
+                  <Paragraph style={{ marginBottom: 0 }}>
+                    {docInfo.description}
+                  </Paragraph>
+                </Descriptions.Item>
+              )}
               {docInfo.servers && docInfo.servers.length > 0 && (
-                <Descriptions.Item label="服务器" span={2}>
-                  <Space direction="vertical" size="small">
-                    {docInfo.servers.map(
-                      (serverUrl: string, index: number) => (
-                        <div key={index}>
-                          <Tag color="green">{serverUrl}</Tag>
-                        </div>
-                      )
-                    )}
+                <Descriptions.Item label="服务器地址" span={2}>
+                  <Space
+                    direction="vertical"
+                    size="small"
+                    style={{ width: "100%" }}
+                  >
+                    {docInfo.servers.map((serverUrl: string, index: number) => (
+                      <Tag
+                        key={index}
+                        color="green"
+                        style={{ margin: "2px 4px 2px 0" }}
+                      >
+                        {serverUrl}
+                      </Tag>
+                    ))}
                   </Space>
                 </Descriptions.Item>
               )}
@@ -216,80 +152,16 @@ export default function ServiceDetail() {
           )}
         </Card>
 
-        {/* 统计数据 */}
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col span={6}>
-            <Card style={{
-              borderRadius: '12px',
-              border: 'none',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-              background: 'rgba(255,255,255,0.9)'
-            }}>
-              <Statistic
-                title="总资源数"
-                value={displayStats.totalResources}
-                prefix={<DatabaseOutlined style={{ color: '#3f8600' }} />}
-                valueStyle={{ color: "#3f8600", fontWeight: '600' }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card style={{
-              borderRadius: '12px',
-              border: 'none',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-              background: 'rgba(255,255,255,0.9)'
-            }}>
-              <Statistic
-                title="顶级资源"
-                value={displayStats.topLevelResources}
-                prefix={<ThunderboltOutlined style={{ color: '#1890ff' }} />}
-                valueStyle={{ color: "#1890ff", fontWeight: '600' }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card style={{
-              borderRadius: '12px',
-              border: 'none',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-              background: 'rgba(255,255,255,0.9)'
-            }}>
-              <Statistic
-                title="总路径数"
-                value={displayStats.totalPaths}
-                prefix={<BugOutlined style={{ color: '#722ed1' }} />}
-                valueStyle={{ color: "#722ed1", fontWeight: '600' }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card style={{
-              borderRadius: '12px',
-              border: 'none',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-              background: 'rgba(255,255,255,0.9)'
-            }}>
-              <Statistic
-                title="RESTful 资源"
-                value={displayStats.restfulResources}
-                prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                valueStyle={{ color: "#52c41a", fontWeight: '600' }}
-              />
-            </Card>
-          </Col>
-        </Row>
-
         {/* HTTP 方法统计 */}
-        <Card 
-          title="接口端点统计" 
-          style={{ 
+        <Card
+          title="接口端点统计"
+          style={{
             marginBottom: 24,
-            borderRadius: '16px',
-            border: 'none',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-            background: 'rgba(255,255,255,0.95)',
-            backdropFilter: 'blur(10px)'
+            borderRadius: "16px",
+            border: "none",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+            background: "rgba(255,255,255,0.95)",
+            backdropFilter: "blur(10px)",
           }}
         >
           <Row gutter={16}>
@@ -340,20 +212,20 @@ export default function ServiceDetail() {
         </Card>
 
         {/* 资源概览 */}
-        <Card 
-          title="资源概览" 
+        <Card
+          title="资源概览"
           extra={
             <Text type="secondary">
               共 {topLevelResources.length} 个顶级资源
             </Text>
           }
-          style={{ 
+          style={{
             marginBottom: 24,
-            borderRadius: '16px',
-            border: 'none',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-            background: 'rgba(255,255,255,0.95)',
-            backdropFilter: 'blur(10px)'
+            borderRadius: "16px",
+            border: "none",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+            background: "rgba(255,255,255,0.95)",
+            backdropFilter: "blur(10px)",
           }}
         >
           <List
@@ -361,20 +233,15 @@ export default function ServiceDetail() {
             renderItem={(resource: any) => (
               <List.Item
                 actions={[
-                  <Link 
-                    key="view" 
-                    to={`/services/${sName}/resources/${resource.name}`}
-                  >
+                  <Link key="view" to={`/r/${resource.name}`}>
                     <Button type="link" size="small" icon={<EyeOutlined />}>
                       查看资源
                     </Button>
                   </Link>,
                   <Text key="endpoints" type="secondary">
-                    {resource.operations ? resource.operations.length : 0} 个接口
+                    {resource.operations ? resource.operations.length : 0}{" "}
+                    个接口
                   </Text>,
-                  resource.isRESTful && (
-                    <Tag key="restful" color="green">RESTful</Tag>
-                  ),
                 ].filter(Boolean)}
               >
                 <List.Item.Meta
@@ -383,7 +250,9 @@ export default function ServiceDetail() {
                     <Space>
                       <Text strong>{resource.name}</Text>
                       {resource.operations?.[0]?.description && (
-                        <Text type="secondary">- {resource.operations[0].description}</Text>
+                        <Text type="secondary">
+                          - {resource.operations[0].description}
+                        </Text>
                       )}
                     </Space>
                   }
@@ -392,75 +261,23 @@ export default function ServiceDetail() {
                       <Text>路径: {resource.basePath || "/"}</Text>
                       {resource.operations && (
                         <Text type="secondary">
-                          方法: {resource.operations.map((op: any) => op.method).join(', ')}
+                          方法:
+                          {resource.operations
+                            .map((op: any) => op.method)
+                            .join(", ")}
                         </Text>
                       )}
-                      {/* {allResources.filter(
-                        (r: any) => resource.subResources.some((sub: any) => sub.name === r.name)
-                      ).length > 0 && (
+                      {resource.subResources.length > 0 && (
                         <Tag color="purple">
                           {resource.subResources.length} 个子资源
                         </Tag>
-                      )} */}
+                      )}
                     </Space>
                   }
                 />
               </List.Item>
             )}
           />
-        </Card>
-
-        {/* API 规范信息 */}
-        <Card 
-          title="API 规范信息"
-          style={{ 
-            borderRadius: '16px',
-            border: 'none',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-            background: 'rgba(255,255,255,0.95)',
-            backdropFilter: 'blur(10px)'
-          }}
-        >
-          <Timeline>
-            <Timeline.Item color="green" dot={<CheckCircleOutlined />}>
-              <Text strong>API 基本信息</Text>
-              <br />
-              <Text type="secondary">
-                版本: {docInfo?.version} | 总路径:{" "}
-                {stats.totalPaths} | 总操作:{" "}
-                {stats.totalOperations}
-              </Text>
-            </Timeline.Item>
-
-            <Timeline.Item color="blue" dot={<InfoCircleOutlined />}>
-              <Text strong>RESTful 接口</Text>
-              <br />
-              <Text type="secondary">
-                已识别 {stats.restfulResources} 个 RESTful 风格的接口
-              </Text>
-            </Timeline.Item>
-
-            <Timeline.Item color="purple" dot={<ApiOutlined />}>
-              <Text strong>标签分类</Text>
-              <br />
-              <Space wrap>
-                {Object.keys(stats.tagCounts).map((tag: string) => (
-                  <Tag key={tag} color="purple">
-                    {tag}
-                  </Tag>
-                )) || <Text type="secondary">无标签</Text>}
-              </Space>
-            </Timeline.Item>
-
-            <Timeline.Item color="gray" dot={<ApiOutlined />}>
-              <Text strong>资源分析完成</Text>
-              <br />
-              <Text type="secondary">
-                最后解析时间:{" "}
-                {formatDateTime(new Date().toISOString())}
-              </Text>
-            </Timeline.Item>
-          </Timeline>
         </Card>
       </div>
     </div>

@@ -5,9 +5,9 @@
 export class PathParamResolver {
   /**
    * 路由前缀常量，用于从完整URL中提取资源路径部分
-   * 格式：/services/{serviceName}/resources/
+   * 格式：/r/
    */
-  static readonly ROUTE_PREFIX_PATTERN = '/services/';
+  static readonly ROUTE_PREFIX_PATTERN = '/r/';
 
   /**
    * 从当前网页地址中解析出路径参数
@@ -19,8 +19,6 @@ export class PathParamResolver {
     
     // 使用 React Router 获取当前路径
     const currentUrl = typeof window !== 'undefined' ? window.location.pathname : '';
-    
-    // 提取资源路径部分，移除 /services/{serviceName}/resources/ 前缀
     const currentPath = this.extractResourcePathFromUrl(currentUrl);
     
     if (!currentPath) {
@@ -55,20 +53,20 @@ export class PathParamResolver {
 
   /**
    * 从完整URL中提取资源路径部分
-   * @param fullUrl 完整URL，如 "/services/test/resources/authors/123/books/456"
+   * @param fullUrl 完整URL，如 "/r/authors/123/books/456"
    * @returns 资源路径部分，如 "/authors/123/books/456"
    */
   static extractResourcePathFromUrl(fullUrl: string): string {
     const segments = fullUrl.split('/').filter(Boolean);
     
     // 查找路由模式：services/{serviceName}/resources/
-    const servicesIndex = segments.findIndex(segment => segment === 'services');
-    if (servicesIndex === -1 || servicesIndex + 2 >= segments.length || segments[servicesIndex + 2] !== 'resources') {
+    const servicesIndex = segments.findIndex(segment => segment === 'r');
+    if (servicesIndex === -1) {
       return '';
     }
     
     // 从 resources 后面开始的所有段就是资源路径
-    const resourceSegments = segments.slice(servicesIndex + 3);
+    const resourceSegments = segments.slice(1);
     
     return resourceSegments.length > 0 ? '/' + resourceSegments.join('/') : '';
   }
