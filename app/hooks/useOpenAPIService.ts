@@ -1,38 +1,37 @@
-import { useState, useEffect } from 'react';
-import { createOpenAPIService, type OpenAPIService } from '~/lib/core';
+import { useQuery } from "@tanstack/react-query";
+import { createOpenAPIService, type OpenAPIService } from "~/lib/core";
 
-const openapiDocURL = import.meta.env.VITE_OPENAPI_DOC_URL || '/openapi/apidocs.json';
+const openapiDocURL =
+  import.meta.env.VITE_OPENAPI_DOC_URL || "/openapi/apidocs.json";
+
 /**
- * 获取和管理 OpenAPI 服务实例的 hook
+ * 初始化 OpenAPI 服务的异步函数
  */
-export function useOpenAPIService() {
-  const [service, setService] = useState<OpenAPIService | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-
-  // 初始化服务
-  useEffect(() => {
-    const initService = async () => {
-      try {
-        const newService = createOpenAPIService();
-        console.log('Initializing with OpenAPI URL:', openapiDocURL);
-        await newService.initialize(openapiDocURL);
-        
-        setService(newService);
-        setIsInitialized(true);
-      } catch (error) {
-        console.error('Failed to initialize OpenAPI service:', error);
-        setService(null);
-        setIsInitialized(false);
-      }
-    };
-
-    initService();
-  }, [openapiDocURL]);
-
-  return {
-    service,
-    isInitialized,
-  };
+async function initializeOpenAPIService(): Promise<OpenAPIService> {
+  const service = createOpenAPIService();
+  console.log("Initializing with OpenAPI URL:", openapiDocURL);
+  await service.initialize(openapiDocURL);
+  return service;
 }
 
+/**
+ * 获取和管理 OpenAPI 服务实例的 hook
+ * 使用 React Query 简化异步状态管理
+ */
+export function useOpenAPIService() {
+  const query = useQuery({
+    queryKey: ["openapi-service", openapiDocURL],
+    queryFn: initializeOpenAPIService,
+    retry: false,
+  });
+
+  if (query.isError) {
+    throw new Error(`Failed to initialize OpenAPI service: ${query.error}`);
+  }
+
+  return {
+    service: query.data,
+    isLoading: query.isLoading,
+    refetch: query.refetch, // 提供手动重试功能
+  };
+}

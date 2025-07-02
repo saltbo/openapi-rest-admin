@@ -16,7 +16,7 @@ import {
   DatabaseOutlined,
   ApiOutlined,
 } from "@ant-design/icons";
-import { capitalizeFirst } from "../shared";
+import { capitalizeFirst, ErrorPage, GeneralErrorPage } from "../shared";
 import { useOpenAPIService } from "~/hooks/useOpenAPIService";
 
 const { Header, Sider, Content } = Layout;
@@ -33,13 +33,14 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
 
-  const { service, isInitialized } = useOpenAPIService();
-  if (!service || !isInitialized) {
-    return "";
+  const { service, isLoading } = useOpenAPIService();
+  if (!service) {
+    return <GeneralErrorPage error={new Error("OpenAPI 服务初始化失败")} />;
   }
 
   // 获取文档信息和资源统计
-  const resources = service.getTopLevelResources();
+  let resources;
+  resources = service.getTopLevelResources();
   const showSidebar = true;
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -66,7 +67,7 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
             }}
           >
             {/* 资源菜单 */}
-            {!isInitialized ? (
+            {!isLoading ? (
               <div style={{ padding: "24px", textAlign: "center", flex: 1 }}>
                 <Spin />
                 <div style={{ marginTop: "8px" }}>加载资源中...</div>
