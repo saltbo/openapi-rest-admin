@@ -7,10 +7,13 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
 import type { Route } from "./+types/root";
 import { AppLayout } from './components/layout/AppLayout';
 import { ErrorPage } from './components/shared/ErrorPage';
+import { AuthProvider } from './components/auth/AuthContext';
+import { initAuthService, getAuthService } from './lib/auth/authService';
 import "./app.css";
 
 // Create a client
@@ -55,11 +58,38 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    // 获取配置并初始化认证服务
+    const loadConfig = async () => {
+      try {
+        const response = await fetch('/config.json');
+        const config = await response.json();
+        initAuthService(config);
+        
+        // 如果有token，设置到API客户端
+        const authService = getAuthService();
+        if (authService && authService.isAuthenticated()) {
+          const token = authService.getAccessToken();
+          if (token) {
+            console.log('Setting auth token to API client');
+            // 可以在这里设置token到API客户端
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load config:', error);
+      }
+    };
+
+    loadConfig();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <AppLayout>
-        <Outlet />
-      </AppLayout>
+      <AuthProvider>
+        <AppLayout>
+          <Outlet />
+        </AppLayout>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

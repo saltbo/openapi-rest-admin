@@ -791,6 +791,11 @@
   resolved "https://registry.npmmirror.com/@types/estree/-/estree-1.0.8.tgz"
   integrity sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==
 
+"@types/history@^4.7.11":
+  version "4.7.11"
+  resolved "https://registry.npmmirror.com/@types/history/-/history-4.7.11.tgz"
+  integrity sha512-qjDJRrmvBMiTx+jyLxvLfJU7UznFuokDv4f3WRuriHKERccVpFU+8XMQUAbDzoiJCsmexxRExQeMwwCdamSKDA==
+
 "@types/json-schema@^7.0.15", "@types/json-schema@^7.0.6":
   version "7.0.15"
   resolved "https://registry.npmmirror.com/@types/json-schema/-/json-schema-7.0.15.tgz"
@@ -808,7 +813,15 @@
   resolved "https://registry.npmmirror.com/@types/react-dom/-/react-dom-19.1.6.tgz"
   integrity sha512-4hOiT/dwO8Ko0gV1m/TJZYk3y0KBnY9vzDh7W+DH17b2HFSOGgdj33dhihPeuy3l0q23+4e+hoXHV6hCC4dCXw==
 
-"@types/react@^19.0.0", "@types/react@^19.1.2":
+"@types/react-router@^5.1.20":
+  version "5.1.20"
+  resolved "https://registry.npmmirror.com/@types/react-router/-/react-router-5.1.20.tgz"
+  integrity sha512-jGjmu/ZqS7FjSH6owMcD5qpq19+1RS9DeVRqfl1FeBMxTDQAGwlMWOcs52NDoXaNKyG3d1cYQFMs9rCrb88o9Q==
+  dependencies:
+    "@types/history" "^4.7.11"
+    "@types/react" "*"
+
+"@types/react@*", "@types/react@^19.0.0", "@types/react@^19.1.2":
   version "19.1.8"
   resolved "https://registry.npmmirror.com/@types/react/-/react-19.1.8.tgz"
   integrity sha512-AwAfQ2Wa5bCx9WP8nZL2uMZWod7J7/JSplxbTmBQ5ms6QpqNYm672H0Vu9ZVKVngQ+ii4R/byguVEUZQyeg44g==
@@ -1997,6 +2010,11 @@ jsonpointer@^5.0.1:
   resolved "https://registry.npmmirror.com/jsonpointer/-/jsonpointer-5.0.1.tgz"
   integrity sha512-p/nXbhSEcu3pZRdkW1OfJhpsVtW1gd4Wa1fnQc9YLiTfAjn0312eMKimbdIQzuZl9aa9xUGaRlP9T/CJE/ditQ==
 
+jwt-decode@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.npmmirror.com/jwt-decode/-/jwt-decode-4.0.0.tgz"
+  integrity sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==
+
 lightningcss-darwin-arm64@1.30.1:
   version "1.30.1"
   resolved "https://registry.npmmirror.com/lightningcss-darwin-arm64/-/lightningcss-darwin-arm64-1.30.1.tgz"
@@ -2274,6 +2292,13 @@ object-inspect@^1.13.3:
   version "1.13.4"
   resolved "https://registry.npmmirror.com/object-inspect/-/object-inspect-1.13.4.tgz"
   integrity sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==
+
+oidc-client-ts@^3.2.1:
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/oidc-client-ts/-/oidc-client-ts-3.2.1.tgz"
+  integrity sha512-hS5AJ5s/x4bXhHvNJT1v+GGvzHUwdRWqNQQbSrp10L1IRmzfRGKQ3VWN3dstJb+oF3WtAyKezwD2+dTEIyBiAA==
+  dependencies:
+    jwt-decode "^4.0.0"
 
 on-finished@~2.3.0:
   version "2.3.0"

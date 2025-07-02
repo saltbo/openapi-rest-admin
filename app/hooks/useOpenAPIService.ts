@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createOpenAPIService, type OpenAPIService } from "~/lib/core";
 import type { RuntimeConfig } from "../../config/types";
+import { initApiClientWithAuth } from "../lib/auth/apiAuthHelper";
 
 /**
  * 获取运行时配置
@@ -27,10 +28,16 @@ async function initializeOpenAPIService(): Promise<OpenAPIService> {
     import.meta.env.VITE_OPENAPI_DOC_URL || 
     "/openapi/apidocs.json";
   
-  const service = createOpenAPIService();
+  let service = createOpenAPIService();
   console.log("Initializing with OpenAPI URL:", openapiDocURL);
   console.log("Runtime config loaded:", config);
   await service.initialize(openapiDocURL);
+  
+  // 初始化API客户端并设置认证令牌
+  if (service.apiClient) {
+    service.apiClient = initApiClientWithAuth(service.apiClient);
+  }
+  
   return service;
 }
 

@@ -16,6 +16,7 @@ import {
   DatabaseOutlined,
   ApiOutlined,
 } from "@ant-design/icons";
+import { LoginButton } from "../auth/LoginButton";
 import { capitalizeFirst, ErrorPage, GeneralErrorPage } from "../shared";
 import { useOpenAPIService } from "~/hooks/useOpenAPIService";
 import ResourceLoading from "~/pages/resource-explorer/components/ResourceLoading";
@@ -53,10 +54,17 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
             borderRight: "1px solid #f0f0f0",
           }}
         >
-          <div style={{ padding: "16px", borderBottom: "1px solid #f0f0f0" }}>
+          <div style={{ 
+            padding: "16px", 
+            borderBottom: "1px solid #f0f0f0",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center" 
+          }}>
             <Title level={4} style={{ margin: 0, color: "#1890ff" }}>
               Openapi Admin
             </Title>
+            <LoginButton />
           </div>
 
           {/* 菜单区域 */}
