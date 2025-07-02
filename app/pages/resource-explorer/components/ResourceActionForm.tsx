@@ -59,7 +59,7 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       }
       
       // 直接通过 getResourceFormSchema 获取所有表单渲染数据
-      const formSchema = service.getResourceFormSchema(resource.name, {
+      const formSchema = service.getResourceFormSchema(resource, {
         action,
         initialData,
       });

@@ -71,7 +71,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
   );
 
   // 获取表格 schema
-  const tableSchema = service?.getResourceTableSchema(resource?.name!);
+  const tableSchema = service?.getResourceTableSchema(resource!);
 
   // 使用自定义 Hook 管理对话框状态
   const {

@@ -145,12 +145,12 @@ export class OpenAPIService {
 
   /**
    * 为特定资源生成表单 schema（支持 create/edit，自动处理初始数据）
-   * @param resourceName 资源名
+   * @param resource 资源
    * @param options 选项 { action, initialData, excludeFields, ... }
    * @returns { schema, uiSchema, formData }
    */
   getResourceFormSchema(
-    resourceName: string,
+    resource: ResourceInfo,
     options: {
       action?: 'create' | 'edit',
       initialData?: any,
@@ -159,9 +159,9 @@ export class OpenAPIService {
     } = {}
   ) {
     const { action = 'create', initialData, excludeFields = [], ...rest } = options;
-    const resourceSchema = this.parser.getResourceSchema(resourceName);
+    const resourceSchema = resource.schema;
     if (!resourceSchema) {
-      throw new Error(`Resource '${resourceName}' not found`);
+      throw new Error(`Resource '${resource.name}' does not have a schema defined`);
     }
 
     // 选择表单 schema 生成器
@@ -205,13 +205,12 @@ export class OpenAPIService {
   /**
    * 为特定资源生成表格 schema
    */
-  getResourceTableSchema(resourceName: string, options?: any) {
-    const resourceSchema = this.parser.getResourceSchema(resourceName);
-    if (!resourceSchema) {
-      throw new Error(`Resource '${resourceName}' not found`);
+  getResourceTableSchema(resource: ResourceInfo, options?: any) {
+    if (!resource || !resource.schema) {
+      throw new Error(`Resource '${resource.name}' does not have a schema defined`);
     }
     
-    return this.renderer.getTableSchema(resourceSchema, options);
+    return this.renderer.getTableSchema(resource.schema, options);
   }
 
   /**

@@ -90,6 +90,7 @@ export function useResource(): UseResourceReturn {
     let resource: ResourceInfo | null = null;
     if (service && currentResourceName) {
       resource = service.getResource(currentResourceName);
+      console.log(`useResource - 获取资源: ${currentResourceName}`, resource);
     }
     
     // 提取路径参数

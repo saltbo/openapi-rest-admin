@@ -47,7 +47,7 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
 
   const data = queryData?.data || [];
   const error = queryError?.message || null;
-  const tableSchema = service?.getResourceTableSchema(subResource.name);
+  const tableSchema = service?.getResourceTableSchema(subResource);
 
   // 使用 useResourceDialogs hook 管理对话框状态
   const {
