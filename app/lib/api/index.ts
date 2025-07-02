@@ -6,8 +6,7 @@
 
 import { OpenAPIDocumentParser, type ResourceInfo } from './OpenAPIDocumentParser';
 import { SchemaRenderer } from './SchemaRenderer';
-import { RESTfulAPIClient } from './RESTfulAPIClient';
-import { DataExtractor } from './DataExtractor';
+import { ResourceOperationClient, RESTfulAPIClient } from './client';
 import { PathParamResolver } from './PathParamResolver';
 
 export { OpenAPIDocumentParser } from './OpenAPIDocumentParser';
@@ -26,19 +25,18 @@ export type {
   TableSchema 
 } from './SchemaRenderer';
 
-export { RESTfulAPIClient, APIError } from './RESTfulAPIClient';
+// 导出新的ResourceOperationClient和向后兼容的别名
+export { ResourceOperationClient, RESTfulAPIClient, APIError } from './client';
 export type { 
-  APIRequestOptions, 
-  APIResponse, 
+  ResourceRequestOptions,
+  ListRequestOptions,
+  ResourceResponse, 
   PaginatedResponse, 
-  ValidationError 
-} from './RESTfulAPIClient';
-
-export { DataExtractor } from './DataExtractor';
-export type {
-  DataExtractionOptions,
-  ExtractedData
-} from './DataExtractor';
+  ValidationError,
+  ResponseTransformer,
+  ParsedResponseData,
+  PaginationInfo
+} from './client';
 
 /**
  * 完整的 OpenAPI 服务包装器
@@ -47,12 +45,12 @@ export type {
 export class OpenAPIService {
   private parser: OpenAPIDocumentParser;
   private renderer: SchemaRenderer;
-  private client: RESTfulAPIClient;
+  private client: ResourceOperationClient;
 
   constructor(baseURL: string) {
     this.parser = new OpenAPIDocumentParser();
     this.renderer = new SchemaRenderer();
-    this.client = new RESTfulAPIClient(baseURL);
+    this.client = new ResourceOperationClient(baseURL);
   }
 
   /**
@@ -72,7 +70,7 @@ export class OpenAPIService {
   /**
    * 获取客户端实例
    */
-  getClient(): RESTfulAPIClient {
+  getClient(): ResourceOperationClient {
     return this.client;
   }
 
@@ -86,7 +84,7 @@ export class OpenAPIService {
     const servers = this.parser.getServers();
     if (servers.length > 0) {
       // 重新创建客户端使用正确的基础 URL
-      this.client = new RESTfulAPIClient(servers[0]);
+      this.client = new ResourceOperationClient(servers[0]);
     }
   }
 

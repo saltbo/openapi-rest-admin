@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { useOpenAPIService } from '~/hooks/useOpenAPIService';
-import { PathParamResolver } from '~/lib/api/PathParamResolver';
 import type { OpenAPIService, ResourceInfo } from '~/lib/api';
 
 /**
@@ -9,8 +8,6 @@ import type { OpenAPIService, ResourceInfo } from '~/lib/api';
  */
 export interface ResourceIdentifier {
   serviceName: string;
-  resourceName: string;
-  pathParams: Record<string, string>;
 }
 
 /**
@@ -23,10 +20,11 @@ export interface UseResourceReturn {
   // OpenAPI 资源信息
   resource: ResourceInfo | null;
   
-  // 路径参数
-  pathParams: Record<string, string>;
+  // 当前资源的路径: 例如 /books, /books/123, /books/123/authors
+  resourcePath: string | undefined;
   
   // 资源标识符
+  // Deprecated: 请勿使用
   resourceIdentifier: ResourceIdentifier;
   
   // 状态
@@ -53,67 +51,23 @@ export function useResource(): UseResourceReturn {
   return useMemo(() => {
     const serviceName = params.sName || '';
     const resourceName = params.rName || '';
-    const nestedPath = params['*']; // splat parameter
-    
-    // 解析当前资源名称和ID
-    let currentResourceName = resourceName;
-    let currentItemId: string | undefined;
-    
-    if (nestedPath) {
-      const pathSegments = nestedPath.split('/').filter(Boolean);
-      
-      if (pathSegments.length === 1) {
-        // 只有一个段，是顶级资源的ID
-        currentItemId = pathSegments[0];
-      } else if (pathSegments.length >= 2) {
-        // 多个段，可能有子资源
-        // 格式：id1/subResource/id2/...
-        currentItemId = pathSegments[0]; // 第一个总是ID
-        
-        // 检查是否有子资源
-        if (pathSegments.length >= 2) {
-          const subResourceName = pathSegments[1];
-          if (pathSegments.length === 2) {
-            // 只到子资源列表
-            currentResourceName = subResourceName;
-            currentItemId = undefined;
-          } else if (pathSegments.length >= 3) {
-            // 子资源的具体项
-            currentResourceName = subResourceName;
-            currentItemId = pathSegments[2];
-          }
-        }
-      }
-    }
+    const resourcePath = params['*']; // splat parameter
     
     // 获取 OpenAPI 资源信息
     let resource: ResourceInfo | null = null;
-    if (service && currentResourceName) {
-      resource = service.getResource(currentResourceName);
-      console.log(`useResource - 获取资源: ${currentResourceName}`, resource);
-    }
-    
-    // 提取路径参数
-    let pathParams: Record<string, string> = {};
-    if (resource?.pathPattern && currentItemId) {
-      pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
-      // 只有当我们有有效的 currentItemId 时才设置标识符字段
-      if (resource.identifierField && currentItemId) {
-        pathParams[resource.identifierField] = currentItemId;
-      }
+    if (service && resourceName) {
+      resource = service.getResource(resourceName);
     }
     
     // 构建资源标识符
     const resourceIdentifier: ResourceIdentifier = {
       serviceName,
-      resourceName: currentResourceName,
-      pathParams,
     };
     
     return {
       service,
       resource,
-      pathParams,
+      resourcePath,
       resourceIdentifier,
       isInitialized,
     };

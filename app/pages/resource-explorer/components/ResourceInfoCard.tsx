@@ -60,6 +60,11 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({
 
   // 获取资源的 schema
   const resourceSchema = service.getParser().getResourceSchema(resource.name);
+  if (!resourceSchema) {
+    return <Text type="danger">无法获取资源 {resource.name} 的 schema</Text>;
+  }
+  console.log(resourceSchema, resourceData);
+  
 
   return (
     <>
@@ -127,25 +132,11 @@ export const ResourceInfoCard: React.FC<ResourceInfoCardProps> = ({
           padding: '24px'
         }}
       >
-        {resourceSchema ? (
-          <Descriptions 
+        <Descriptions 
             schema={resourceSchema as any}
             data={resourceData}
             column={3}
           />
-        ) : (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-            <Text type="secondary">无法获取资源 Schema，使用默认显示</Text>
-            <div style={{ marginTop: '16px' }}>
-              {Object.entries(resourceData).map(([key, value]) => (
-                <div key={key} style={{ marginBottom: '8px', textAlign: 'left' }}>
-                  <Text strong>{key}: </Text>
-                  <Text>{String(value)}</Text>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </Card>
 
       {/* 编辑表单抽屉 */}

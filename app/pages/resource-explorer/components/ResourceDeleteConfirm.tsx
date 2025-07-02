@@ -41,7 +41,7 @@ export const ResourceDeleteConfirm: React.FC<ResourceDeleteConfirmProps> = ({
 
       // 使用RESTful API客户端执行删除
       const client = service.getClient();
-      return await client.request(deleteOperation, { pathParams });
+      return await client.request(deleteOperation, resource.schema!, { pathParams });
     },
     onSuccess: () => {
       message.success('删除成功');

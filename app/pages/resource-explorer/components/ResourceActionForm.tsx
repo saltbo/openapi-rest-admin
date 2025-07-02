@@ -111,7 +111,7 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
 
       const client = service.getClient();
       const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
-      const response = await client.request(createOperation, {pathParams, body: data});
+      const response = await client.request(createOperation, resource.schema!, {pathParams, body: data});
       return response;
     },
     onSuccess: () => handleMutationSuccess('添加'),
@@ -132,7 +132,7 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       const client = service.getClient();
       const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
       pathParams[resource.identifierField] = service.getResourceIdentifier(resource.name, initialData);
-      const response = await client.request(updateOperation, { pathParams, body: data});
+      const response = await client.request(updateOperation, resource.schema!, { pathParams, body: data});
       return response;
     },
     onSuccess: () => handleMutationSuccess('更新'),

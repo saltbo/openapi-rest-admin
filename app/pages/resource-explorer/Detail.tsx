@@ -8,6 +8,7 @@ import { SubResourcesContainer } from "~/pages/resource-explorer/components/SubR
 import { ResourceLoading } from "~/pages/resource-explorer/components/ResourceLoading";
 import { capitalizeFirst } from "~/components";
 import { useResource } from "./hooks/useResource";
+import { PathParamResolver } from "~/lib/api";
 
 interface ResourceDetailProps {
   serviceName?: string;
@@ -22,7 +23,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentItem, setCurrentItem] = useState<ResourceData | null>(null);
-  const { service, resource, pathParams, isInitialized } = useResource();
+  const { service, resource, isInitialized } = useResource();
 
   // 刷新数据的回调函数
   const refreshData = () => {
@@ -31,83 +32,54 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({
     }
   };
 
-  // Debug 信息（仅在开发模式下显示）
-  if (process.env.NODE_ENV === "development") {
-    console.log("ResourceDetail Debug:", {
-      isInitialized,
-      serviceName,
-      resource: resource?.name,
-      pathParams,
-      currentItem: !!currentItem,
-    });
-  }
-
   // 加载数据
   const loadData = async () => {
     if (!service || !resource || !isInitialized) {
       return;
     }
 
-    // 检查是否有必要的路径参数
-    const hasRequiredParams =
-      resource.identifierField && pathParams[resource.identifierField];
-    if (!hasRequiredParams) {
-      setError(`Missing required parameter: ${resource.identifierField}`);
-      setLoading(false);
-      return;
+    // 查找 GET 单个资源的操作
+    const getByIdOperation = resource.operations.find(
+      (op) => op.method.toLowerCase() === "get" && op.path.includes("{")
+    );
+    if (!getByIdOperation) {
+      throw new Error(
+        `No GET by ID operation found for resource ${resource.name}`
+      );
     }
+    const pathParams = PathParamResolver.extractPathParams(
+      getByIdOperation.path
+    );
+    console.log(pathParams);
 
+    // 使用新的 API 客户端获取资源详情
+    const response = await service
+      .getClient()
+      .request(getByIdOperation, resource.schema!, { pathParams });
+    console.log(response);
+    
+    setCurrentItem(response.data);
+  };
+
+  // 当依赖项变化时重新加载数据
+  useEffect(() => {
     try {
       setLoading(true);
       setError(null);
-
-      // 查找 GET 单个资源的操作
-      const getByIdOperation = resource.operations.find(
-        (op) => op.method.toLowerCase() === "get" && op.path.includes("{")
-      );
-
-      if (!getByIdOperation) {
-        throw new Error(
-          `No GET by ID operation found for resource ${resource.name}`
-        );
-      }
-
-      // 使用新的 API 客户端获取资源详情
-      const response = await service
-        .getClient()
-        .request(getByIdOperation, { pathParams });
-
-      setCurrentItem(response.data);
+      loadData();
     } catch (error) {
       console.error("Failed to load resource detail:", error);
       setError(error instanceof Error ? error.message : "Unknown error");
     } finally {
       setLoading(false);
     }
-  };
-
-  // 当依赖项变化时重新加载数据
-  useEffect(() => {
-    if (isInitialized && service && resource) {
-      // 只有当我们有必要的路径参数时才加载数据
-      const hasRequiredParams =
-        resource.identifierField && pathParams[resource.identifierField];
-      if (hasRequiredParams) {
-        loadData();
-      } else {
-        setLoading(false);
-        setError(
-          `Missing required parameter: ${resource.identifierField || "id"}`
-        );
-      }
-    }
-  }, [isInitialized, service, resource, JSON.stringify(pathParams)]);
+  }, [isInitialized, service, resource]);
 
   // 统一处理加载和错误状态
   if (!isInitialized || !resource || loading || error) {
     // 确定加载状态
     const isLoading = !isInitialized || loading;
-    
+
     // 确定错误信息和标题
     let errorMessage = "";
     let errorTitle = "";

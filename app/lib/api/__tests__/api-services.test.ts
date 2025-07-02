@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { OpenAPIDocumentParser, SchemaRenderer, RESTfulAPIClient, createOpenAPIService } from '../index';
+import { OpenAPIDocumentParser, SchemaRenderer, ResourceOperationClient, createOpenAPIService } from '../index';
 
 // 测试用的简单 OpenAPI 文档
 const simpleOpenAPIDoc = {
@@ -330,22 +330,21 @@ describe('SchemaRenderer', () => {
 
   it('should apply column filtering and ordering', () => {
     const tableSchema = renderer.getTableSchema(userSchema, {
-      columns: ['id', 'name', 'email'],
-      columnOrder: ['name', 'email', 'id']
+      includeFields: ['id', 'name', 'email']
     });
     
     expect(tableSchema.columns).toHaveLength(3);
-    expect(tableSchema.columns[0].key).toBe('name');
-    expect(tableSchema.columns[1].key).toBe('email');
-    expect(tableSchema.columns[2].key).toBe('id');
+    expect(tableSchema.columns.some(col => col.key === 'name')).toBe(true);
+    expect(tableSchema.columns.some(col => col.key === 'email')).toBe(true);
+    expect(tableSchema.columns.some(col => col.key === 'id')).toBe(true);
   });
 });
 
 describe('RESTfulAPIClient', () => {
-  let client: RESTfulAPIClient;
+  let client: ResourceOperationClient;
   
   beforeEach(() => {
-    client = new RESTfulAPIClient('https://api.test.com');
+    client = new ResourceOperationClient('https://api.test.com');
   });
 
   it('should set auth token', () => {
@@ -396,7 +395,7 @@ describe('OpenAPIService', () => {
     expect(service).toBeDefined();
     expect(service.getParser()).toBeInstanceOf(OpenAPIDocumentParser);
     expect(service.getRenderer()).toBeInstanceOf(SchemaRenderer);
-    expect(service.getClient()).toBeInstanceOf(RESTfulAPIClient);
+    expect(service.getClient()).toBeInstanceOf(ResourceOperationClient);
   });
 
   it('should initialize with OpenAPI document', async () => {

@@ -3,14 +3,14 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RESTfulAPIClient, APIError } from '../RESTfulAPIClient';
-import type { ResponseTransformer, PaginationInfo } from '../RESTfulAPIClient';
+import { ResourceOperationClient, APIError } from '../client';
+import type { ResponseTransformer, PaginationInfo } from '../client';
 
 describe('RESTfulAPIClient Response Transformation', () => {
-  let client: RESTfulAPIClient;
+  let client: ResourceOperationClient;
 
   beforeEach(() => {
-    client = new RESTfulAPIClient('https://api.test.com');
+    client = new ResourceOperationClient('https://api.test.com');
   });
 
   describe('Default Response Transformer', () => {
@@ -155,7 +155,7 @@ describe('RESTfulAPIClient Response Transformation', () => {
         };
       };
 
-      const clientWithCustomTransformer = new RESTfulAPIClient('https://api.test.com', customTransformer);
+      const clientWithCustomTransformer = new ResourceOperationClient('https://api.test.com', customTransformer);
       
       const mockResponse = {
         custom_data: [{ id: 1 }],

@@ -67,7 +67,6 @@ export const ResourceList: React.FC<ResourceListProps> = ({ serviceName }) => {
     currentPage,
     pageSize,
     searchQuery,
-    {}
   );
 
   // 获取表格 schema

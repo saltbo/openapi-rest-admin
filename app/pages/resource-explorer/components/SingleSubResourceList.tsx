@@ -27,7 +27,7 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
 
   // 使用 useResource hook 获取服务和路径参数
-  const { service, pathParams, isInitialized, resourceIdentifier } =
+  const { service, resource, isInitialized, resourceIdentifier } =
     useResource();
 
   // 使用 useResourceList hook 获取子资源数据
@@ -41,8 +41,7 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
     subResource,
     currentPage,
     10, // pageSize
-    searchQuery,
-    pathParams // 传递路径参数
+    searchQuery
   );
 
   const data = queryData?.data || [];
@@ -96,15 +95,21 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
       }
 
       // 从当前路径参数构建详情页路径
-      const currentParams = { ...pathParams };
-      currentParams[subResource.identifierField] = String(id);
-
-      // 构建详情页路径
-      const detailPath = PathParamResolver.buildPath(
-        subResource.pathPattern,
-        currentParams
+      const getOperation = subResource.operations.find(
+        (op) => op.method.toLowerCase() === "get" && op.path.endsWith("}")
       );
+      if (!getOperation) {
+        throw new Error(`未找到 GET 操作以获取 ${subResource.name} 的详情`);
+      }
 
+      const pathParams = PathParamResolver.extractPathParams(
+        resource?.pathPattern!
+      );
+      pathParams[subResource.identifierField] = id;
+      const detailPath = PathParamResolver.buildPath(
+        getOperation?.path!,
+        pathParams
+      );
       navigate(
         `/services/${resourceIdentifier.serviceName}/resources${detailPath}`
       );
