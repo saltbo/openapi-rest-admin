@@ -79,7 +79,7 @@ export function ErrorPage({
   
   if (showReload) {
     actions.push(
-      <Button type="primary" icon={<ReloadOutlined />} onClick={handleReload}>
+      <Button key="reload" type="primary" icon={<ReloadOutlined />} onClick={handleReload}>
         重新加载
       </Button>
     );
@@ -87,7 +87,7 @@ export function ErrorPage({
   
   if (showHome) {
     actions.push(
-      <Button icon={<HomeOutlined />} onClick={handleGoHome}>
+      <Button key="home" icon={<HomeOutlined />} onClick={handleGoHome}>
         返回首页
       </Button>
     );

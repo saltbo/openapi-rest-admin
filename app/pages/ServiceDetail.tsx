@@ -23,6 +23,7 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import { useOpenAPIService } from "~/hooks/useOpenAPIService";
+import ResourceLoading from "./resource-explorer/components/ResourceLoading";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -44,12 +45,12 @@ function formatDateTime(dateString: string): string {
 }
 
 export default function ServiceDetail() {
-  const { service, isInitialized } = useOpenAPIService();
+  const { service, isLoading } = useOpenAPIService();
   const docInfo = service?.getDocumentInfo();
   const stats = service?.getResourceStatistics();
   const topLevelResources = service?.getTopLevelResources();
-  if (!stats || !topLevelResources || !isInitialized) {
-    return "";
+  if (!stats || !topLevelResources || isLoading) {
+    throw <ResourceLoading />;
   }
 
   const httpMethodStats = stats.methodCounts;

@@ -19,18 +19,18 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentItem, setCurrentItem] = useState<ResourceData | null>(null);
-  const { service, resource, isInitialized } = useResource();
+  const { service, resource, isLoading } = useResource();
 
   // 刷新数据的回调函数
   const refreshData = () => {
-    if (service && resource && isInitialized) {
+    if (service && resource && !isLoading) {
       loadData();
     }
   };
 
   // 加载数据
   const loadData = async () => {
-    if (!service || !resource || !isInitialized) {
+    if (!service || !resource || isLoading) {
       return;
     }
 
@@ -69,12 +69,10 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({}) => {
     } finally {
       setLoading(false);
     }
-  }, [isInitialized, service, resource]);
+  }, [isLoading, service, resource]);
 
   // 统一处理加载和错误状态
-  if (!isInitialized || !resource || loading || error) {
-    // 确定加载状态
-    const isLoading = !isInitialized || loading;
+  if (isLoading || !resource || loading || error) {
 
     // 确定错误信息和标题
     let errorMessage = "";
@@ -83,7 +81,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({}) => {
     let retryHandler = undefined;
     let loadingText = "正在初始化服务...";
 
-    if (!isInitialized) {
+    if (isLoading) {
       // 服务未初始化，显示加载状态
       loadingText = "正在初始化服务...";
     } else if (loading) {

@@ -30,7 +30,7 @@ export function useOpenAPIService() {
   }
 
   return {
-    service: query.data,
+    service: query.data || null,
     isLoading: query.isLoading,
     refetch: query.refetch, // 提供手动重试功能
   };

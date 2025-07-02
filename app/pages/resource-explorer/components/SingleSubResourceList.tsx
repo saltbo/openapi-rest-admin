@@ -27,7 +27,7 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
 
   // 使用 useResource hook 获取服务和路径参数
-  const { service, resource, isInitialized } = useResource();
+  const { service, resource } = useResource();
 
   // 使用 useResourceList hook 获取子资源数据
   const {
@@ -168,14 +168,14 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
   };
 
   // 统一处理加载和错误状态
-  if (!isInitialized || loading || error || !tableSchema) {
+  if (loading || error || !tableSchema) {
     // 确定错误信息
     let errorMessage = "";
     let errorTitle = "";
     let showRetry = false;
     let retryHandler = undefined;
 
-    if (!isInitialized || loading) {
+    if (loading) {
       // 加载状态
     } else if (error) {
       errorMessage = error;
@@ -199,7 +199,7 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
         }}
       >
         <ResourceLoading
-          loading={!isInitialized || loading}
+          loading={loading}
           error={errorMessage || undefined}
           loadingText="正在加载数据..."
           errorTitle={errorTitle}

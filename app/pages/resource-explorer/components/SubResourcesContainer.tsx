@@ -22,7 +22,7 @@ export const SubResourcesContainer: React.FC<
   const [error, setError] = useState<string | null>(null);
 
   // 使用 useResource hook 获取资源信息
-  const { service, resource, isInitialized } = useResource();
+  const { service, resource, isLoading } = useResource();
 
   // 加载子资源信息
   const loadSubResources = async () => {
@@ -50,10 +50,10 @@ export const SubResourcesContainer: React.FC<
   };
 
   useEffect(() => {
-    if (isInitialized && service && resource) {
+    if (service && resource) {
       loadSubResources();
     }
-  }, [isInitialized, service, resource]);
+  }, [service, resource]);
 
   // 提取标题组件
   const SectionTitle = () => (
@@ -88,12 +88,12 @@ export const SubResourcesContainer: React.FC<
   );
 
   // 统一处理加载和错误状态
-  if (!isInitialized || loading || error) {
+  if (isLoading || loading || error) {
     return (
       <div>
         <SectionTitle />
         <ResourceLoading
-          loading={!isInitialized || loading}
+          loading={isLoading || loading}
           error={error || undefined}
           loadingText="正在加载关联资源..."
           errorTitle="关联资源加载失败"

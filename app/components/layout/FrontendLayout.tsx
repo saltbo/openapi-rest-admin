@@ -18,6 +18,7 @@ import {
 } from "@ant-design/icons";
 import { capitalizeFirst, ErrorPage, GeneralErrorPage } from "../shared";
 import { useOpenAPIService } from "~/hooks/useOpenAPIService";
+import ResourceLoading from "~/pages/resource-explorer/components/ResourceLoading";
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -35,7 +36,7 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
 
   const { service, isLoading } = useOpenAPIService();
   if (!service) {
-    return <GeneralErrorPage error={new Error("OpenAPI 服务初始化失败")} />;
+    return <ResourceLoading />;
   }
 
   // 获取文档信息和资源统计
@@ -67,7 +68,7 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
             }}
           >
             {/* 资源菜单 */}
-            {!isLoading ? (
+            {isLoading ? (
               <div style={{ padding: "24px", textAlign: "center", flex: 1 }}>
                 <Spin />
                 <div style={{ marginTop: "8px" }}>加载资源中...</div>

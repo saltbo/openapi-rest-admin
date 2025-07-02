@@ -51,7 +51,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({}) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
-  const { service, resource, isInitialized } = useResource();
+  const { service, resource } = useResource();
 
   // 获取资源数据
   const {
@@ -101,9 +101,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({}) => {
   };
 
   // 统一处理加载和错误状态
-  if (!isInitialized || !resource || error || !tableSchema) {
-    // 确定加载状态
-    const loading = !isInitialized;
+  if (!resource || error || !tableSchema) {
 
     // 确定错误信息和标题
     let errorMessage = "";
@@ -111,7 +109,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({}) => {
     let showRetry = false;
     let retryHandler = undefined;
 
-    if (!isInitialized) {
+    if (isLoading) {
       // 服务未初始化，显示加载状态
     } else if (!resource) {
       errorMessage = "资源不存在，请检查URL是否正确或返回上一页";
@@ -130,7 +128,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({}) => {
 
     return (
       <ResourceLoading
-        loading={loading}
+        loading={isLoading}
         error={errorMessage || undefined}
         loadingText="正在初始化服务..."
         errorTitle={errorTitle}

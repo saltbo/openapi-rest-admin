@@ -24,7 +24,7 @@ export interface UseResourceReturn {
   resourcePath: string | undefined;
   
   // 状态
-  isInitialized: boolean;
+  isLoading: boolean;
 }
 
 /**
@@ -42,7 +42,7 @@ export interface UseResourceReturn {
  */
 export function useResource(): UseResourceReturn {
   const params = useParams<{rName: string; '*': string }>();
-  const { service, isInitialized } = useOpenAPIService();
+  const { service, isLoading } = useOpenAPIService();
   
   return useMemo(() => {
     const resourceName = params.rName || '';
@@ -58,7 +58,7 @@ export function useResource(): UseResourceReturn {
       service,
       resource,
       resourcePath,
-      isInitialized,
+      isLoading,
     };
-  }, [params.rName, params['*'], service, isInitialized]);
+  }, [params.rName, params['*'], service, isLoading]);
 }
