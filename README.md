@@ -84,10 +84,10 @@ The project includes a demo REST server that provides a complete RESTful API wit
 3. **Open the admin interface at http://localhost:5173**
 
 This example server includes full CRUD operations for multiple resources and serves as an excellent demonstration of OpenAPI Admin's capabilities.
-```
 
 ## 📜 Available Scripts
 
+```
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start development server |
