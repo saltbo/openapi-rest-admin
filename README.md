@@ -7,6 +7,8 @@
   [![React](https://img.shields.io/badge/React-19.1-blue.svg)](https://reactjs.org/)
   [![Ant Design](https://img.shields.io/badge/Ant%20Design-5.26-red.svg)](https://ant.design/)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+  <img src="docs/snapshots/home.png" alt="OpenAPI Admin Dashboard" width="100%" />
 </div>
 
 ---
@@ -38,6 +40,7 @@ OpenAPI Rest Admin is a **Single Page Application** that automatically creates a
 ### Installation
 
 1. **Clone and install**
+
    ```bash
    git clone https://github.com/your-username/openapi-rest-admin.git
    cd openapi-rest-admin
@@ -45,17 +48,19 @@ OpenAPI Rest Admin is a **Single Page Application** that automatically creates a
    ```
 
 2. **Configure your API**
-   
+
    Create a `.env` file:
+
    ```bash
    # Your OpenAPI specification URL
    VITE_OPENAPI_DOC_URL=https://your-api.com/openapi.json
-   
+
    # Optional: Custom title
    VITE_APP_TITLE=My API Admin
    ```
 
 3. **Start development server**
+
    ```bash
    npm run dev
    ```
@@ -67,6 +72,7 @@ OpenAPI Rest Admin is a **Single Page Application** that automatically creates a
 The project includes a demo REST server that provides a complete RESTful API with Authors, Books, and Notes resources:
 
 1. **Start the example server**
+
    ```bash
    cd example/simple-rest-server
    chmod +x start.sh
@@ -76,6 +82,7 @@ The project includes a demo REST server that provides a complete RESTful API wit
    The server will run at `http://localhost:3000` with API documentation available at `http://localhost:3000/api-docs`
 
 2. **Configure the admin interface to use it**
+
    ```bash
    # In your .env file
    VITE_OPENAPI_DOC_URL=http://localhost:3000/openapi.json
@@ -126,30 +133,34 @@ You can also configure the application at runtime by editing `public/config.json
 ### Configuration Priority
 
 The application loads configuration in the following order:
+
 1. Environment variables (highest priority)
-3. Default values
+2. Default values
 
 ## 🚀 Production Deployment
 
 ### Static File Hosting
 
 1. **Build the application**
+
    ```bash
    npm run build
    ```
 
 2. **Deploy to any static hosting**
+
    ```bash
    # Copy built files to your web server
    cp -r build/client/* /var/www/html/
-   
+
    # Or use a static file server
    npx serve build/client
    ```
 
 3. **Update configuration**
-   
+
    Edit `config.json` in your deployed files:
+
    ```json
    {
      "openapiDocUrl": "https://your-production-api.com/openapi.json",
@@ -168,18 +179,23 @@ docker run -p 5173:5173 openapi-rest-admin
 ## 🔧 Supported OpenAPI Features
 
 ### Resource Detection
+
 - Standard REST patterns (GET, POST, PUT, DELETE)
 - Path parameters (`/users/{id}`)
 - Query parameters (filtering, pagination)
 - Request/response schemas
 
 ### Schema Support
+
 - Basic types (string, number, boolean)
 - Complex types (objects, arrays)
 - Validation (required fields, formats, enums)
 - Example values
 
 ## � Troubleshooting
+
+<img src="docs/snapshots/list.png" width="100%" />
+<img src="docs/snapshots/detail.png" width="100%" />
 
 ### Common Issues
 
@@ -189,8 +205,9 @@ docker run -p 5173:5173 openapi-rest-admin
 4. **Config Loading Failed**: Check browser console for errors
 
 ### Debug Mode
+
 ```javascript
-localStorage.setItem('debug', 'openapi-rest-admin:*');
+localStorage.setItem("debug", "openapi-rest-admin:*");
 ```
 
 ## 🤝 Contributing
@@ -198,12 +215,13 @@ localStorage.setItem('debug', 'openapi-rest-admin:*');
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 Quick start for contributors:
+
 1. Fork and clone the repository
 2. Run `npm install` and `npm run dev`
 3. Make your changes and add tests
 4. Submit a pull request
 
-##  License
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
