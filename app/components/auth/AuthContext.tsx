@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: () => void;
+  login: () => Promise<void>;
   logout: () => void;
 }
 
@@ -15,7 +15,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   loading: true,
-  login: () => {},
+  login: async () => {},
   logout: () => {},
 });
 
@@ -91,16 +91,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [authService]);
 
-  const login = () => {
+  const login = async () => {
     if (authService) {
       // 保存当前URL作为登录后的返回地址，但排除登录相关页面
       const currentPath = window.location.pathname;
       if (!currentPath.startsWith('/auth/') && currentPath !== '/login') {
         localStorage.setItem('returnUrl', currentPath);
       }
-      authService.login();
+      try {
+        await authService.login();
+      } catch (error) {
+        throw error; // 重新抛出错误，让调用方处理
+      }
     } else {
-      console.error('Authentication service is not initialized. Cannot start login process.');
+      throw new Error('Authentication service is not initialized. Cannot start login process.');
     }
   };
 

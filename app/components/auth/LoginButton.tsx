@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Button, Dropdown, Avatar } from "antd";
+import { Button, Dropdown, Avatar, message } from "antd";
 import type { MenuProps } from "antd";
 import { UserOutlined, LogoutOutlined, LoginOutlined } from "@ant-design/icons";
 import { getAuthService } from "../../lib/auth/authService";
@@ -46,11 +46,17 @@ export function LoginButton() {
     };
   }, [authService]);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (authService) {
-      // 保存当前URL作为登录后的返回地址
-      localStorage.setItem("returnUrl", window.location.pathname);
-      authService.login();
+      try {
+        // 保存当前URL作为登录后的返回地址
+        localStorage.setItem("returnUrl", window.location.pathname);
+        await authService.login();
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : "Login failed");
+      }
+    } else {
+      message.error("Authentication service is not available");
     }
   };
 
