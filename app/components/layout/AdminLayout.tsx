@@ -7,6 +7,7 @@ import {
   DashboardOutlined,
   UserOutlined
 } from '@ant-design/icons';
+import { useRuntimeConfig } from '~/hooks/useRuntimeConfig';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -17,10 +18,14 @@ interface AdminLayoutProps {
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const location = useLocation();
+  const { config } = useRuntimeConfig();
   
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+
+  // 获取站点标题，如果没有配置则使用默认值
+  const siteTitle = config?.siteTitle || 'OpenAPI Admin';
 
   // 后台导航菜单
   const adminMenuItems = [
@@ -78,7 +83,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           borderBottom: '1px solid #f0f0f0'
         }}>
           <Title level={3} style={{ margin: 0 }}>
-            OpenAPI Admin - 管理后台
+            {siteTitle} - 管理后台
           </Title>
           <Space>
             <Link to="/">

@@ -29,6 +29,13 @@ const queryClient = new QueryClient({
   },
 });
 
+export const meta: Route.MetaFunction = () => {
+  return [
+    { title: "OpenAPI Admin" },
+    { name: "description", content: "OpenAPI Admin Dashboard" },
+  ];
+};
+
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
@@ -84,6 +91,13 @@ function AppContent() {
       }
     }
   }, [config, isLoading, isError]);
+
+  // 动态设置页面标题
+  useEffect(() => {
+    if (config?.siteTitle) {
+      document.title = config.siteTitle;
+    }
+  }, [config?.siteTitle]);
 
   return (
     <AuthProvider>
