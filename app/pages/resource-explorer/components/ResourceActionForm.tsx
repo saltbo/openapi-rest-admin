@@ -11,8 +11,7 @@ import Form from '@rjsf/antd';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { OpenAPIService, PathParamResolver, SchemaRenderer } from '~/lib/core';
-import type { ResourceInfo } from '~/lib/core';
-import type { ResourceDataItem } from '~/types/api';
+import type { ResourceInfo, ResourceDataItem } from '~/lib/core';
 import { ResourceLoading } from './ResourceLoading';
 
 const { Title, Text } = Typography;

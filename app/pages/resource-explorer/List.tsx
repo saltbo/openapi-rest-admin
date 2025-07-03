@@ -30,9 +30,8 @@ import { capitalizeFirst } from "~/components";
 import ResourceActionForm from "./components/ResourceActionForm";
 import ResourceDeleteConfirm from "./components/ResourceDeleteConfirm";
 import { useResource } from "./hooks/useResource";
-import { PathParamResolver } from "~/lib/core";
+import { PathParamResolver, type ResourceDataItem } from "~/lib/core";
 import { useResourceList } from "./hooks/useResourceList";
-import type { ResourceDataItem } from "~/types/api";
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -40,9 +39,6 @@ const { Search } = Input;
 interface ResourceListProps {
   serviceName?: string;
 }
-
-// 定义资源数据的类型
-type ResourceData = ResourceDataItem;
 
 interface ResourceListProps {}
 
@@ -87,7 +83,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({}) => {
   };
 
   const actionHandlers = {
-    onDetail: (record: ResourceData) => {
+    onDetail: (record: ResourceDataItem) => {
       const itemId = service?.getResourceIdentifier(resource?.name!, record);
       if (!itemId) {
         throw new Error(`无法获取资源标识符: ${resource?.name}`);
@@ -96,7 +92,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({}) => {
       const path = `/r/${resource?.name}/${itemId}`;
       navigate(path);
     },
-    onEdit: (record: ResourceData) => handleEdit(record),
+    onEdit: (record: ResourceDataItem) => handleEdit(record),
     onDelete: handleDelete,
   };
 

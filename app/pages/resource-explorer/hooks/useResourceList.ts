@@ -2,9 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import {
   PathParamResolver,
   type OpenAPIService,
-  type PaginatedResponse,
   type ResourceInfo,
 } from "~/lib/core";
+import type { PaginatedResponse } from "~/lib/core/openapi-reset-client/lib/types";
 
 /**
  * 获取资源数据的 hook

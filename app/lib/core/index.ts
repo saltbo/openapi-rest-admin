@@ -16,6 +16,7 @@ export type {
   ResourceStatistics,
   ResourceInfo,
   ResourceOperation,
+  ResourceDataItem,
 } from "./OpenAPIDocumentParser";
 
 export { SchemaRenderer } from "./SchemaRenderer";

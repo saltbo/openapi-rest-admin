@@ -2,8 +2,7 @@ import React, { useCallback } from 'react';
 import { Modal, Typography, Space, Tag, Descriptions, message } from 'antd';
 import { ExclamationCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { OpenAPIService, PathParamResolver, type ResourceInfo } from '~/lib/core';
-import type { ResourceDataItem } from '~/types/api';
+import { OpenAPIService, PathParamResolver, type ResourceDataItem, type ResourceInfo } from '~/lib/core';
 
 const { Text, Paragraph } = Typography;
 

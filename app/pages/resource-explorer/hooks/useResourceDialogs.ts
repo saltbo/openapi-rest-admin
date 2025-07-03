@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ResourceDataItem } from '~/types/api';
+import type { ResourceDataItem } from '~/lib/core';
 import type { ActionType } from '~/pages/resource-explorer/components/ResourceActionForm';
 
 /**

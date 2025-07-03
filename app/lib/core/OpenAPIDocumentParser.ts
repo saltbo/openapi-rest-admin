@@ -80,6 +80,13 @@ export interface ResourceOperation {
 }
 
 /**
+ * 资源数据项
+ */
+export interface ResourceDataItem {
+  [key: string]: any;
+}
+
+/**
  * 浏览器友好的 OpenAPI 文档解析器
  * 使用简化的解析逻辑，避免重量级的 Node.js 依赖
  */
