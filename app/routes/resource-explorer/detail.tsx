@@ -1,16 +1,9 @@
-import { useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
 import ResourceList from "~/pages/resource-explorer/List";
 import ResourceDetail from "~/pages/resource-explorer/Detail";
-import type { Route } from "../../+types/root";
 
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "Resource Data - OpenAPI Admin" },
-    { name: "description", content: "OpenAPI Resource Data" },
-  ];
-}
-
-export default function NestedResourceRoute({ params }: Route.ComponentProps) {
+export default function NestedResourceRoute() {
+  const params = useParams<{ rName: string; "*": string }>();
   const splat = params["*"] || "";
   const pathSegments = splat.split("/").filter(Boolean);
 

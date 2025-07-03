@@ -10,6 +10,7 @@ import {
 
 export class BaseOpenapiClient {
   protected baseURL: string;
+  protected unauthenticatedErrorHandler: (() => void) | null = null;
   protected defaultHeaders: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -32,6 +33,10 @@ export class BaseOpenapiClient {
     this.defaultHeaders["Authorization"] = `${type} ${token}`;
     console.debug(`Auth token set: ${type} ${token}`);
     console.debug("Current default headers:", this.defaultHeaders);
+  }
+
+  setUnauthenticatedErrorHandler(handler: () => void): void {
+    this.unauthenticatedErrorHandler = handler;
   }
 
   /**
@@ -70,10 +75,7 @@ export class BaseOpenapiClient {
 
       // 如果响应状态为401未授权，可能需要登录
       if (response.status === 401) {
-        // 保存当前URL
-        localStorage.setItem("returnUrl", window.location.pathname);
-        // 跳转到登录页
-        window.location.href = "/login";
+        this.unauthenticatedErrorHandler?.();
         throw new APIError("Authentication required", 401, "Unauthorized", {
           redirectedToLogin: true,
         });

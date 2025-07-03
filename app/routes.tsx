@@ -6,6 +6,7 @@ import ResourceList from "./pages/resource-explorer/List";
 import Login from "./pages/auth/Login";
 import AuthCallback from "./pages/auth/AuthCallback";
 import { RouterErrorBoundary } from "./components/ui";
+import NestedResourceRoute from "./routes/resource-explorer/detail";
 
 export const routes: RouteObject[] = [
   {
@@ -28,7 +29,7 @@ export const routes: RouteObject[] = [
           },
           {
             path: ":rName/*",
-            element: <ResourceDetail />,
+            element: <NestedResourceRoute />,
           },
         ],
       },

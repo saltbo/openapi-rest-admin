@@ -13,6 +13,7 @@ import validator from '@rjsf/validator-ajv8';
 import { OpenAPIService, PathParamResolver, SchemaRenderer } from '~/lib/core';
 import type { ResourceInfo, ResourceDataItem } from '~/lib/core';
 import { ResourceLoading } from './ResourceLoading';
+import { useLocation } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 
@@ -37,6 +38,8 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
   onCancel,
   title
 }) => {
+  const location = useLocation();
+  const resourcePath = location.pathname.substring(2); // 去掉前缀 "/r"
   const queryClient = useQueryClient();
   const [schema, setSchema] = useState<RJSFSchema | null>(null);
   const [uiSchema, setUiSchema] = useState<UiSchema>({});
@@ -107,7 +110,7 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       
 
       const client = service.getClient();
-      const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
+      const pathParams = PathParamResolver.extractPathParams(resourcePath, resource.pathPattern);
       const response = await client.request(createOperation, resource.schema!, {pathParams, body: data});
       return response;
     },
@@ -127,7 +130,7 @@ export const ResourceActionForm: React.FC<ResourceActionFormProps> = ({
       if (!updateOperation) throw new Error(`Update operation not found for ${resource.name}`);
       
       const client = service.getClient();
-      const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
+      const pathParams = PathParamResolver.extractPathParams(resourcePath, resource.pathPattern);
       pathParams[resource.identifierField] = service.getResourceIdentifier(resource.name, initialData);
       const response = await client.request(updateOperation, resource.schema!, { pathParams, body: data});
       return response;
