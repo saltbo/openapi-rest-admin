@@ -25,6 +25,8 @@ export function useResourceList(
       pageSize,
       searchQuery,
     ],
+    staleTime: 5,
+    refetchOnMount: 'always',
     queryFn: async (): Promise<PaginatedResponse<any>> => {
       if (!service || !resource) {
         throw new Error("Service or resource not available");

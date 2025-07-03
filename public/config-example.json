@@ -1,4 +1,10 @@
 {
   "openapiDocUrl": "/openapi/apidocs.json",
-  "appTitle": "OpenAPI Admin"
+  "appTitle": "OpenAPI Admin",
+  "oidcIssuer": "",
+  "oidcClientId": "",
+  "oidcRedirectUri": "/auth/callback",
+  "oidcResponseType": "code",
+  "oidcScope": "openid profile email",
+  "oidcAudience": ""
 }

@@ -1,45 +1,83 @@
 /**
- * 运行时配置类型定义
+ * Configuration runtime types
  */
 export interface RuntimeConfig {
-  /** OpenAPI 文档 URL */
   openapiDocUrl: string;
-  /** 应用标题 */
   appTitle?: string;
+  oidcIssuer?: string;
+  oidcClientId?: string;
+  oidcRedirectUri?: string;
+  oidcResponseType?: string;
+  oidcScope?: string;
+  oidcAudience?: string;
 }
 
 /**
- * 配置字段元数据
+ * Configuration field metadata
  */
 export interface ConfigFieldMeta {
-  /** 字段名 */
   key: keyof RuntimeConfig;
-  /** 环境变量名 */
   envKey: string;
-  /** 默认值 */
   defaultValue: string | boolean;
-  /** 字段描述 */
   description: string;
-  /** 是否必需 */
   required: boolean;
 }
 
-/**
- * 配置字段定义
- */
 export const CONFIG_FIELDS: ConfigFieldMeta[] = [
   {
     key: 'openapiDocUrl',
     envKey: 'VITE_OPENAPI_DOC_URL',
     defaultValue: '/openapi/apidocs.json',
-    description: 'OpenAPI 文档 URL',
+    description: 'OpenAPI Doc URL',
     required: true,
   },
   {
     key: 'appTitle',
     envKey: 'VITE_APP_TITLE',
     defaultValue: 'OpenAPI Admin',
-    description: '应用标题',
+    description: 'Application title',
+    required: false,
+  },
+  {
+    key: 'oidcIssuer',
+    envKey: 'VITE_OIDC_ISSUER',
+    defaultValue: '',
+    description: 'OIDC Identity Provider Issuer URL',
+    required: false,
+  },
+  {
+    key: 'oidcClientId',
+    envKey: 'VITE_OIDC_CLIENT_ID',
+    defaultValue: '',
+    description: 'OIDC Client ID',
+    required: false,
+  },
+  {
+    key: 'oidcRedirectUri',
+    envKey: 'VITE_OIDC_REDIRECT_URI',
+    defaultValue: '/auth/callback',
+    description: 'OIDC Redirect URI after login',
+    required: false,
+  },
+  {
+    key: 'oidcResponseType',
+    envKey: 'VITE_OIDC_RESPONSE_TYPE',
+    defaultValue: 'code',
+    description: 'OIDC Response Type',
+    required: false,
+  },
+  {
+    key: 'oidcScope',
+    envKey: 'VITE_OIDC_SCOPE',
+    defaultValue: 'openid profile email',
+    description: 'OIDC Scope',
+    required: false,
+  },
+  {
+    key: 'oidcAudience',
+    envKey: 'VITE_OIDC_AUDIENCE',
+    defaultValue: '',
+    description: 'OIDC Audience',
     required: false,
   },
 ];

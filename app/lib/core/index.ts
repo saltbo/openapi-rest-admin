@@ -35,6 +35,7 @@ export type {
 export class OpenAPIService {
   private parser: OpenAPIDocumentParser;
   private renderer: SchemaRenderer;
+  public apiClient: OpenapiRestClient | null = null;
 
   constructor() {
     this.parser = new OpenAPIDocumentParser();
@@ -59,11 +60,11 @@ export class OpenAPIService {
    * 获取客户端实例
    */
   getClient(): OpenapiRestClient {
-    const servers = this.parser.getServers();
-    if (servers.length === 0) {
-      throw new Error("No servers defined in OpenAPI document");
+    if (!this.apiClient) {
+      throw new Error("API client is not initialized. Call initialize() first.");
     }
-    return new OpenapiRestClient(servers[0] || "");
+
+    return this.apiClient;
   }
 
   /**
@@ -71,6 +72,13 @@ export class OpenAPIService {
    */
   async initialize(apiDocumentUrl: string): Promise<void> {
     await this.parser.parseDocument(apiDocumentUrl);
+
+    // 初始化API客户端
+    const servers = this.parser.getServers();
+    if (servers.length === 0) {
+      throw new Error("No servers defined in OpenAPI document");
+    }
+    this.apiClient = new OpenapiRestClient(servers[0] || "");
   }
 
   /**

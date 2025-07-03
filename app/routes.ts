@@ -7,4 +7,8 @@ export default [
   // Resources
   route("/r/:rName", "routes/resource-explorer/list.tsx"),
   route("/r/:rName/*", "routes/resource-explorer/detail.tsx"),
+
+  // Auth
+  route("/login", "routes/auth/login.tsx"),
+  route("/auth/callback", "routes/auth/callback.tsx"),
 ] satisfies RouteConfig;
