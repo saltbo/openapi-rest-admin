@@ -1,12 +1,12 @@
-export { JsonViewer } from './JsonViewer';
-export { ResourceBreadcrumb } from './ResourceBreadcrumb';
-export { 
-  ErrorPage, 
-  NotFoundPage, 
-  GeneralErrorPage, 
-  NetworkErrorPage, 
-  PermissionErrorPage 
-} from './ErrorPage';
+export { JsonViewer } from "./JsonViewer";
+export { ResourceBreadcrumb } from "./ResourceBreadcrumb";
+export {
+  ErrorPage,
+  NotFoundPage,
+  GeneralErrorPage,
+  NetworkErrorPage,
+  PermissionErrorPage,
+} from "./ErrorPage";
 
 // 工具函数：首字母大写
 export const capitalizeFirst = (str: string) => {
