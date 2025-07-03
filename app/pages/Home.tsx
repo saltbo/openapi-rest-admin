@@ -73,10 +73,9 @@ export default function Home() {
       style={{
         minHeight: "100vh",
         background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-        padding: "24px",
       }}
     >
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 0" }}>
         {/* 服务头部信息 */}
         <Card
           style={{

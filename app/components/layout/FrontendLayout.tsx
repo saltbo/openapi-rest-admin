@@ -43,10 +43,38 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
   // 获取文档信息和资源统计
   let resources;
   resources = service.getTopLevelResources();
-  const showSidebar = true;
+
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      {showSidebar && (
+      {/* Header区域 */}
+      <Header 
+        style={{ 
+          backgroundColor: colorBgContainer,
+          borderBottom: "1px solid #f0f0f0",
+          padding: "0 24px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          height: 64
+        }}
+      >
+        {/* Logo区域 */}
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <Title level={3} style={{ margin: 0, color: "#1890ff" }}>
+            <ApiOutlined style={{ marginRight: 8 }} />
+            OpenAPI Admin
+          </Title>
+        </div>
+        
+        {/* 登录按钮区域 */}
+        <div>
+          <LoginButton />
+        </div>
+      </Header>
+
+      {/* 主内容区域 */}
+      <Layout>
+        {/* 左侧菜单 */}
         <Sider
           width={250}
           style={{
@@ -54,23 +82,10 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
             borderRight: "1px solid #f0f0f0",
           }}
         >
-          <div style={{ 
-            padding: "16px", 
-            borderBottom: "1px solid #f0f0f0",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center" 
-          }}>
-            <Title level={4} style={{ margin: 0, color: "#1890ff" }}>
-              Openapi Admin
-            </Title>
-            <LoginButton />
-          </div>
-
-          {/* 菜单区域 */}
+          {/* 菜单内容 */}
           <div
             style={{
-              height: "calc(100% - 73px)",
+              height: "100%",
               display: "flex",
               flexDirection: "column",
             }}
@@ -82,7 +97,7 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
                 <div style={{ marginTop: "8px" }}>加载资源中...</div>
               </div>
             ) : (
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, padding: "16px 0" }}>
                 <Menu
                   mode="inline"
                   selectedKeys={
@@ -107,19 +122,21 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
             )}
           </div>
         </Sider>
-      )}
-      <Layout>
-        <Content
-          style={{
-            padding: 24,
-            margin: 0,
-            minHeight: 280,
-            background: colorBgContainer,
-            borderRadius: borderRadiusLG,
-          }}
-        >
-          {children}
-        </Content>
+
+        {/* 右侧内容区域 */}
+        <Layout>
+          <Content
+            style={{
+              padding: 24,
+              margin: 0,
+              minHeight: 280,
+              background: colorBgContainer,
+              borderRadius: borderRadiusLG,
+            }}
+          >
+            {children}
+          </Content>
+        </Layout>
       </Layout>
     </Layout>
   );

@@ -73,7 +73,6 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({}) => {
 
   // 统一处理加载和错误状态
   if (isLoading || !resource || loading || error) {
-
     // 确定错误信息和标题
     let errorMessage = "";
     let errorTitle = "";
@@ -128,7 +127,7 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({}) => {
       <div
         style={{
           background: "#fff",
-          padding: "16px 24px",
+          padding: "0 24px",
           borderBottom: "1px solid #f0f0f0",
           boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
         }}

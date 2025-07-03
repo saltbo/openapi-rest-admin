@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Button, Dropdown } from 'antd';
-import type { MenuProps } from 'antd';
-import { UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
-import { getAuthService } from '../../lib/auth/authService';
-import type { User } from 'oidc-client-ts';
+import React, { useEffect, useState } from "react";
+import { Button, Dropdown, Avatar } from "antd";
+import type { MenuProps } from "antd";
+import { UserOutlined, LogoutOutlined, LoginOutlined } from "@ant-design/icons";
+import { getAuthService } from "../../lib/auth/authService";
+import type { User } from "oidc-client-ts";
 
 /**
  * 登录状态按钮组件
@@ -33,15 +33,15 @@ export function LoginButton() {
     };
 
     if (authService) {
-      authService.addEventListener('login', handleLoginEvent);
-      authService.addEventListener('logout', handleLogoutEvent);
+      authService.addEventListener("login", handleLoginEvent);
+      authService.addEventListener("logout", handleLogoutEvent);
     }
 
     // 清理监听器
     return () => {
       if (authService) {
-        authService.removeEventListener('login', handleLoginEvent);
-        authService.removeEventListener('logout', handleLogoutEvent);
+        authService.removeEventListener("login", handleLoginEvent);
+        authService.removeEventListener("logout", handleLogoutEvent);
       }
     };
   }, [authService]);
@@ -49,7 +49,7 @@ export function LoginButton() {
   const handleLogin = () => {
     if (authService) {
       // 保存当前URL作为登录后的返回地址
-      localStorage.setItem('returnUrl', window.location.pathname);
+      localStorage.setItem("returnUrl", window.location.pathname);
       authService.login();
     }
   };
@@ -66,27 +66,33 @@ export function LoginButton() {
 
   if (user && authService.isAuthenticated()) {
     // 用户已登录
-    const items: MenuProps['items'] = [
+    const items: MenuProps["items"] = [
       {
-        key: 'profile',
-        icon: <UserOutlined />,
-        label: user.profile?.name || user.profile?.email || 'User Profile'
-      },
-      {
-        type: 'divider'
-      },
-      {
-        key: 'logout',
+        key: "logout",
         icon: <LogoutOutlined />,
-        label: 'Logout',
-        onClick: handleLogout
-      }
+        label: "Logout",
+        onClick: handleLogout,
+      },
     ];
+
+    const userName =
+      user.profile?.name ||
+      user.profile.nickname ||
+      user.profile?.email ||
+      "User";
+    const userAvatar = user.profile?.picture;
 
     return (
       <Dropdown menu={{ items }} placement="bottomRight">
-        <Button type="text" icon={<UserOutlined />}>
-          {user.profile?.name || user.profile?.email || 'User'}
+        <Button type="text" style={{ padding: "4px 8px", height: "auto" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Avatar
+              size="small"
+              src={userAvatar}
+              icon={!userAvatar && <UserOutlined />}
+            />
+            <span>{userName}</span>
+          </div>
         </Button>
       </Dropdown>
     );
@@ -94,11 +100,7 @@ export function LoginButton() {
 
   // 用户未登录
   return (
-    <Button
-      type="primary"
-      icon={<LoginOutlined />}
-      onClick={handleLogin}
-    >
+    <Button type="primary" icon={<LoginOutlined />} onClick={handleLogin}>
       Login
     </Button>
   );

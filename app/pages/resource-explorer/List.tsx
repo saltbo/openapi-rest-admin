@@ -136,7 +136,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({}) => {
   }
 
   return (
-    <div style={{ padding: "24px" }}>
+    <div style={{ padding: "0 24px" }}>
       <ResourceBreadcrumb style={{ marginBottom: "16px" }} />
       <div style={{ marginBottom: "24px" }}>
         <Space align="start">
