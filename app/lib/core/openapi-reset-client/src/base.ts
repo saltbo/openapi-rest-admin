@@ -30,6 +30,8 @@ export class BaseOpenapiClient {
    */
   setAuthToken(token: string, type: "Bearer" | "Basic" = "Bearer"): void {
     this.defaultHeaders["Authorization"] = `${type} ${token}`;
+    console.debug(`Auth token set: ${type} ${token}`);
+    console.debug("Current default headers:", this.defaultHeaders);
   }
 
   /**
@@ -37,6 +39,7 @@ export class BaseOpenapiClient {
    */
   removeAuthToken(): void {
     delete this.defaultHeaders["Authorization"];
+    console.debug("Auth token removed, current headers:", this.defaultHeaders);
   }
 
   /**
@@ -54,23 +57,22 @@ export class BaseOpenapiClient {
       defaultHeaders: this.defaultHeaders,
     });
 
+    console.debug("Executing request:", {
+      url: requestInfo.url,
+      method: operation.method,
+      headers: requestInfo.requestInit.headers,
+      defaultHeaders: this.defaultHeaders,
+    });
+
     try {
       // 发送请求
       const response = await fetch(requestInfo.url, requestInfo.requestInit);
 
       // 如果响应状态为401未授权，可能需要登录
       if (response.status === 401) {
-        // 保存当前URL
-        localStorage.setItem('returnUrl', window.location.pathname);
-        // 跳转到登录页
-        window.location.href = '/login';
-        
-        throw new APIError(
-          'Authentication required',
-          401,
-          'Unauthorized',
-          { redirectedToLogin: true }
-        );
+        throw new APIError("Authentication required", 401, "Unauthorized", {
+          redirectedToLogin: true,
+        });
       }
 
       // 解析响应

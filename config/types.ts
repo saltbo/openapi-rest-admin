@@ -9,6 +9,7 @@ export interface RuntimeConfig {
   oidcRedirectUri?: string;
   oidcResponseType?: string;
   oidcScope?: string;
+  oidcAudience?: string;
 }
 
 /**
@@ -70,6 +71,13 @@ export const CONFIG_FIELDS: ConfigFieldMeta[] = [
     envKey: 'VITE_OIDC_SCOPE',
     defaultValue: 'openid profile email',
     description: 'OIDC Scope',
+    required: false,
+  },
+  {
+    key: 'oidcAudience',
+    envKey: 'VITE_OIDC_AUDIENCE',
+    defaultValue: '',
+    description: 'OIDC Audience',
     required: false,
   },
 ];

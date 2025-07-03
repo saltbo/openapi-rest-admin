@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { createOpenAPIService, type OpenAPIService } from "~/lib/core";
 import type { RuntimeConfig } from "../../config/types";
 import { initApiClientWithAuth } from "../lib/auth/apiAuthHelper";
+import { useAuth } from "../components/auth/AuthContext";
 
 /**
  * 获取运行时配置
@@ -33,9 +35,9 @@ async function initializeOpenAPIService(): Promise<OpenAPIService> {
   console.log("Runtime config loaded:", config);
   await service.initialize(openapiDocURL);
   
-  // 初始化API客户端并设置认证令牌
+  // 初始化API客户端并设置认证令牌，确保等待完成
   if (service.apiClient) {
-    service.apiClient = initApiClientWithAuth(service.apiClient);
+    service.apiClient = await initApiClientWithAuth(service.apiClient);
   }
   
   return service;
@@ -46,11 +48,31 @@ async function initializeOpenAPIService(): Promise<OpenAPIService> {
  * 使用 React Query 简化异步状态管理
  */
 export function useOpenAPIService() {
+  const { isAuthenticated, user } = useAuth();
+  
   const query = useQuery({
     queryKey: ["openapi-service"],
     queryFn: initializeOpenAPIService,
     retry: false,
   });
+
+  // 当认证状态变化时，重新配置API客户端的认证
+  useEffect(() => {
+    if (query.data?.apiClient) {
+      console.log('Auth state changed, reconfiguring API client...');
+      console.log('Is authenticated:', isAuthenticated);
+      console.log('User:', user);
+      
+      // 重新初始化API客户端的认证配置
+      const reconfigureAuth = async () => {
+        if (query.data?.apiClient) {
+          query.data.apiClient = await initApiClientWithAuth(query.data.apiClient);
+        }
+      };
+      
+      reconfigureAuth();
+    }
+  }, [isAuthenticated, user, query.data?.apiClient]);
 
   if (query.isError) {
     throw new Error(`Failed to initialize OpenAPI service: ${query.error}`);

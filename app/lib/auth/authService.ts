@@ -31,7 +31,8 @@ export class AuthService {
       oidcClientId, 
       oidcRedirectUri, 
       oidcResponseType, 
-      oidcScope 
+      oidcScope,
+      oidcAudience 
     } = this.config;
 
     // 检查必要的OIDC配置是否存在
@@ -51,10 +52,13 @@ export class AuthService {
       client_id: oidcClientId,
       redirect_uri: fullRedirectUri,
       response_type: oidcResponseType || 'code',
-      scope: oidcScope || 'openid profile email',
+      scope: oidcScope || 'openid profile email offline_access',
       automaticSilentRenew: true,
-      loadUserInfo: true,
       userStore: new WebStorageStateStore({ store: window.localStorage }),
+      ...(oidcAudience && { 
+        extraQueryParams: { audience: oidcAudience },
+        extraTokenParams: { audience: oidcAudience }
+      }),
     });
 
     // 添加事件监听器
@@ -155,7 +159,15 @@ export class AuthService {
    * 检查是否已认证
    */
   isAuthenticated(): boolean {
-    return !!this.user && !this.isTokenExpired();
+    console.log('Checking authentication status...');
+    console.log('Current user:', this.user);
+    console.log('User access token:', this.user?.access_token);
+    console.log('Token expired:', this.isTokenExpired());
+    
+    const authenticated = !!this.user && !this.isTokenExpired();
+    console.log('Final authentication result:', authenticated);
+    
+    return authenticated;
   }
 
   /**

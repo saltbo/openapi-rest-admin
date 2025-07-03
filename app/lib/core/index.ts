@@ -61,12 +61,9 @@ export class OpenAPIService {
    */
   getClient(): OpenapiRestClient {
     if (!this.apiClient) {
-      const servers = this.parser.getServers();
-      if (servers.length === 0) {
-        throw new Error("No servers defined in OpenAPI document");
-      }
-      this.apiClient = new OpenapiRestClient(servers[0] || "");
+      throw new Error("API client is not initialized. Call initialize() first.");
     }
+
     return this.apiClient;
   }
 
@@ -75,12 +72,13 @@ export class OpenAPIService {
    */
   async initialize(apiDocumentUrl: string): Promise<void> {
     await this.parser.parseDocument(apiDocumentUrl);
-    
+
     // 初始化API客户端
     const servers = this.parser.getServers();
-    if (servers.length > 0) {
-      this.apiClient = new OpenapiRestClient(servers[0] || "");
+    if (servers.length === 0) {
+      throw new Error("No servers defined in OpenAPI document");
     }
+    this.apiClient = new OpenapiRestClient(servers[0] || "");
   }
 
   /**
