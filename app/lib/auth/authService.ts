@@ -137,6 +137,10 @@ export class AuthService {
     
     try {
       this.user = await this.userManager.signinRedirectCallback();
+      // 手动触发登录事件，确保监听器得到通知
+      if (this.user) {
+        this.notifyListeners('login');
+      }
       return this.user;
     } catch (error) {
       console.error('Error handling login callback:', error);

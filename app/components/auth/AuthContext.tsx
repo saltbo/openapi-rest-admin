@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { getAuthService } from '../../lib/auth/authService';
+import { getAuthService, type AuthService } from '../../lib/auth/authService';
 import type { User } from 'oidc-client-ts';
 
 interface AuthContextType {
@@ -29,7 +29,23 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const authService = getAuthService();
+  const [authService, setAuthService] = useState<AuthService | null>(getAuthService());
+
+  useEffect(() => {
+    // 检查认证服务是否已初始化，如果没有则等待初始化
+    const checkAuthService = () => {
+      const service = getAuthService();
+      if (service && service !== authService) {
+        setAuthService(service);
+      }
+    };
+
+    // 如果认证服务还未初始化，定期检查
+    if (!authService) {
+      const interval = setInterval(checkAuthService, 100);
+      return () => clearInterval(interval);
+    }
+  }, [authService]);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -51,7 +67,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // 添加认证事件监听器
     const handleLoginEvent = () => {
-      setUser(authService?.getUser() || null);
+      const currentUser = authService?.getUser() || null;
+      setUser(currentUser);
     };
 
     const handleLogoutEvent = () => {
@@ -76,9 +93,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = () => {
     if (authService) {
-      // 保存当前URL作为登录后的返回地址
-      localStorage.setItem('returnUrl', window.location.pathname);
+      // 保存当前URL作为登录后的返回地址，但排除登录相关页面
+      const currentPath = window.location.pathname;
+      if (!currentPath.startsWith('/auth/') && currentPath !== '/login') {
+        localStorage.setItem('returnUrl', currentPath);
+      }
       authService.login();
+    } else {
+      console.error('Authentication service is not initialized. Cannot start login process.');
     }
   };
 
@@ -88,7 +110,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const isAuthenticated = authService?.isAuthenticated() || false;
+  const isAuthenticated = user !== null && (authService?.isAuthenticated() || false);
 
   const value = {
     user,

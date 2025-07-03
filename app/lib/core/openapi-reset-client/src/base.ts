@@ -70,6 +70,10 @@ export class BaseOpenapiClient {
 
       // 如果响应状态为401未授权，可能需要登录
       if (response.status === 401) {
+        // 保存当前URL
+        localStorage.setItem("returnUrl", window.location.pathname);
+        // 跳转到登录页
+        window.location.href = "/login";
         throw new APIError("Authentication required", 401, "Unauthorized", {
           redirectedToLogin: true,
         });

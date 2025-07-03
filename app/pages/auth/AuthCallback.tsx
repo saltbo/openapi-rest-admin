@@ -2,14 +2,18 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { Spin } from 'antd';
 import { getAuthService } from '../../lib/auth/authService';
+import { useAuth } from '../../components/auth/AuthContext';
 
 /**
  * OIDC认证回调处理组件
  */
 export default function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
+  const [callbackProcessed, setCallbackProcessed] = useState(false);
+  const [redirected, setRedirected] = useState(false);
   const navigate = useNavigate();
   const authService = getAuthService();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     async function handleCallback() {
@@ -19,12 +23,10 @@ export default function AuthCallback() {
       }
 
       try {
-        const user = await authService.handleLoginCallback();
-        if (user) {
-          // 登录成功，重定向到首页或登录前的页面
-          const returnUrl = localStorage.getItem('returnUrl') || '/';
-          localStorage.removeItem('returnUrl');
-          navigate(returnUrl);
+        const callbackUser = await authService.handleLoginCallback();
+        if (callbackUser) {
+          // 标记回调已处理
+          setCallbackProcessed(true);
         } else {
           setError('Failed to log in');
         }
@@ -35,7 +37,17 @@ export default function AuthCallback() {
     }
 
     handleCallback();
-  }, [navigate, authService]);
+  }, [authService]);
+
+  // 当回调处理完成且用户状态已更新时，进行跳转
+  useEffect(() => {
+    if (callbackProcessed && !loading && user && !redirected) {
+      const returnUrl = localStorage.getItem('returnUrl') || '/';
+      localStorage.removeItem('returnUrl');
+      setRedirected(true);
+      navigate(returnUrl);
+    }
+  }, [callbackProcessed, loading, user, redirected, navigate]);
 
   if (error) {
     return (
