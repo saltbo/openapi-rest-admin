@@ -1,77 +1,39 @@
-import React, { useEffect, useState } from "react";
-import { Button, Dropdown, Avatar, message } from "antd";
+import React from "react";
+import { Button, Dropdown, Avatar } from "antd";
 import type { MenuProps } from "antd";
 import { UserOutlined, LogoutOutlined, LoginOutlined } from "@ant-design/icons";
-import { getAuthService } from "../../lib/auth/authService";
-import type { User } from "oidc-client-ts";
+import { useAuth } from "./AuthContext";
+import { useAuthError } from "../../hooks/useAuthError";
 
 /**
  * 登录状态按钮组件
  */
 export function LoginButton() {
-  const [user, setUser] = useState<User | null>(null);
-  const authService = getAuthService();
-
-  useEffect(() => {
-    // 加载当前用户
-    const loadUser = async () => {
-      if (authService) {
-        const currentUser = await authService.loadUser();
-        setUser(currentUser);
-      }
-    };
-
-    loadUser();
-
-    // 添加监听器
-    const handleLoginEvent = () => {
-      setUser(authService?.getUser() || null);
-    };
-
-    const handleLogoutEvent = () => {
-      setUser(null);
-    };
-
-    if (authService) {
-      authService.addEventListener("login", handleLoginEvent);
-      authService.addEventListener("logout", handleLogoutEvent);
-    }
-
-    // 清理监听器
-    return () => {
-      if (authService) {
-        authService.removeEventListener("login", handleLoginEvent);
-        authService.removeEventListener("logout", handleLogoutEvent);
-      }
-    };
-  }, [authService]);
+  const { user, isAuthenticated, loading, login, logout } = useAuth();
+  
+  // 自动显示错误信息
+  useAuthError();
 
   const handleLogin = async () => {
-    if (authService) {
-      try {
-        // 保存当前URL作为登录后的返回地址
-        localStorage.setItem("returnUrl", window.location.pathname);
-        await authService.login();
-      } catch (error) {
-        message.error(error instanceof Error ? error.message : "Login failed");
-      }
-    } else {
-      message.error("Authentication service is not available");
+    try {
+      await login();
+    } catch (err) {
+      // 错误已经在上下文中处理，这里不需要额外处理
+      console.error('Login failed:', err);
     }
   };
 
   const handleLogout = () => {
-    if (authService) {
-      authService.logout();
-    }
+    logout();
   };
 
-  if (!authService) {
-    return null; // 认证服务未初始化，不显示按钮
+  // 加载状态
+  if (loading) {
+    return <Button loading>Loading...</Button>;
   }
 
-  if (user && authService.isAuthenticated()) {
-    // 用户已登录
+  // 用户已登录
+  if (isAuthenticated && user) {
     const items: MenuProps["items"] = [
       {
         key: "logout",

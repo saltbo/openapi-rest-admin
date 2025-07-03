@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router';
-import { Spin } from 'antd';
+import { useNavigate } from 'react-router';
+import { Spin, Alert, Button } from 'antd';
 import { getAuthService } from '../../lib/auth/authService';
+import { AUTH_STORAGE_KEYS, AUTH_ERROR_MESSAGES } from '../../lib/auth/constants';
 import { useAuth } from '../../components/auth/AuthContext';
 
 /**
@@ -9,46 +10,49 @@ import { useAuth } from '../../components/auth/AuthContext';
  */
 export default function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
-  const [callbackProcessed, setCallbackProcessed] = useState(false);
-  const [redirected, setRedirected] = useState(false);
+  const [processing, setProcessing] = useState(true);
   const navigate = useNavigate();
   const authService = getAuthService();
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    async function handleCallback() {
+    const handleCallback = async () => {
       if (!authService) {
-        setError('Authentication service is not initialized');
+        setError(AUTH_ERROR_MESSAGES.SERVICE_NOT_AVAILABLE);
+        setProcessing(false);
         return;
       }
 
       try {
-        const callbackUser = await authService.handleLoginCallback();
-        if (callbackUser) {
-          // 标记回调已处理
-          setCallbackProcessed(true);
-        } else {
-          setError('Failed to log in');
-        }
-      } catch (error) {
-        console.error('Error during login callback:', error);
-        setError(error instanceof Error ? error.message : 'Unknown error during login');
+        await authService.handleLoginCallback();
+        // 认证成功，等待上下文状态更新
+      } catch (err) {
+        console.error('Error during login callback:', err);
+        const errorMessage = err instanceof Error ? err.message : AUTH_ERROR_MESSAGES.CALLBACK_FAILED;
+        setError(errorMessage);
+      } finally {
+        setProcessing(false);
       }
-    }
+    };
 
     handleCallback();
   }, [authService]);
 
-  // 当回调处理完成且用户状态已更新时，进行跳转
+  // 当认证成功且用户状态已更新时，进行跳转
   useEffect(() => {
-    if (callbackProcessed && !loading && user && !redirected) {
-      const returnUrl = localStorage.getItem('returnUrl') || '/';
-      localStorage.removeItem('returnUrl');
-      setRedirected(true);
-      navigate(returnUrl);
+    if (!processing && !loading && user && !error) {
+      const returnUrl = localStorage.getItem(AUTH_STORAGE_KEYS.RETURN_URL) || '/';
+      localStorage.removeItem(AUTH_STORAGE_KEYS.RETURN_URL);
+      navigate(returnUrl, { replace: true });
     }
-  }, [callbackProcessed, loading, user, redirected, navigate]);
+  }, [processing, loading, user, error, navigate]);
 
+  const handleReturnHome = () => {
+    localStorage.removeItem(AUTH_STORAGE_KEYS.RETURN_URL);
+    navigate('/', { replace: true });
+  };
+
+  // 显示错误状态
   if (error) {
     return (
       <div style={{ 
@@ -56,15 +60,24 @@ export default function AuthCallback() {
         flexDirection: 'column',
         alignItems: 'center', 
         justifyContent: 'center', 
-        height: '100vh' 
+        height: '100vh',
+        padding: '20px'
       }}>
-        <h2>Authentication Error</h2>
-        <p>{error}</p>
-        <button onClick={() => navigate('/')}>Return to Home</button>
+        <Alert
+          message="Authentication Error"
+          description={error}
+          type="error"
+          showIcon
+          style={{ marginBottom: '20px' }}
+        />
+        <Button type="primary" onClick={handleReturnHome}>
+          Return to Home
+        </Button>
       </div>
     );
   }
 
+  // 显示处理中状态
   return (
     <div style={{ 
       display: 'flex', 

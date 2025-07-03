@@ -132,19 +132,18 @@ export class AuthService {
    */
   async handleLoginCallback(): Promise<User | null> {
     if (!this.userManager) {
-      return null;
+      throw new Error('OIDC not configured');
     }
     
     try {
       this.user = await this.userManager.signinRedirectCallback();
-      // 手动触发登录事件，确保监听器得到通知
       if (this.user) {
         this.notifyListeners('login');
       }
       return this.user;
     } catch (error) {
       console.error('Error handling login callback:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -163,15 +162,7 @@ export class AuthService {
    * 检查是否已认证
    */
   isAuthenticated(): boolean {
-    console.log('Checking authentication status...');
-    console.log('Current user:', this.user);
-    console.log('User access token:', this.user?.access_token);
-    console.log('Token expired:', this.isTokenExpired());
-    
-    const authenticated = !!this.user && !this.isTokenExpired();
-    console.log('Final authentication result:', authenticated);
-    
-    return authenticated;
+    return !!this.user && !this.isTokenExpired();
   }
 
   /**

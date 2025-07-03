@@ -1,8 +1,8 @@
 import React from "react";
-import { Button, Card, message, Modal, Typography } from "antd";
+import { Button, Card, Typography, Alert } from "antd";
 import { LoginOutlined } from "@ant-design/icons";
 import { useAuth } from "../../components/auth/AuthContext";
-import { ErrorPage } from "~/components";
+import { useAuthError } from "../../hooks/useAuthError";
 
 const { Title, Paragraph } = Typography;
 
@@ -10,15 +10,17 @@ const { Title, Paragraph } = Typography;
  * 登录页面
  */
 export default function Login() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, loading, error } = useAuth();
+  
+  // 自动显示错误信息
+  useAuthError();
 
   const handleLogin = async () => {
     try {
       await login();
-    } catch (error) {
-      Modal.error({
-        content: error instanceof Error ? error.message : "Login failed",
-      });
+    } catch (err) {
+      // 错误已经在上下文中处理，这里不需要额外处理
+      console.error('Login failed:', err);
     }
   };
 
@@ -56,10 +58,21 @@ export default function Login() {
       <Card style={{ width: 400, textAlign: "center" }}>
         <Title level={2}>Login</Title>
         <Paragraph>Please log in to access protected resources.</Paragraph>
+        
+        {error && (
+          <Alert
+            message={error}
+            type="error"
+            style={{ marginBottom: 16 }}
+            showIcon
+          />
+        )}
+        
         <Button
           type="primary"
           icon={<LoginOutlined />}
           size="large"
+          loading={loading}
           onClick={handleLogin}
           style={{ marginTop: 16 }}
         >

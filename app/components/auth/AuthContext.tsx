@@ -1,23 +1,20 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { getAuthService, type AuthService } from '../../lib/auth/authService';
+import { AUTH_STORAGE_KEYS, AUTH_PATHS, AUTH_ERROR_MESSAGES } from '../../lib/auth/constants';
 import type { User } from 'oidc-client-ts';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
+  error: string | null;
   login: () => Promise<void>;
   logout: () => void;
+  clearError: () => void;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  isAuthenticated: false,
-  loading: true,
-  login: async () => {},
-  logout: () => {},
-});
+const AuthContext = createContext<AuthContextType | null>(null);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -29,99 +26,118 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authService, setAuthService] = useState<AuthService | null>(getAuthService());
+  const [error, setError] = useState<string | null>(null);
+  const authService = getAuthService();
 
-  useEffect(() => {
-    // 检查认证服务是否已初始化，如果没有则等待初始化
-    const checkAuthService = () => {
-      const service = getAuthService();
-      if (service && service !== authService) {
-        setAuthService(service);
-      }
-    };
-
-    // 如果认证服务还未初始化，定期检查
-    if (!authService) {
-      const interval = setInterval(checkAuthService, 100);
-      return () => clearInterval(interval);
+  // 保存返回URL的辅助函数
+  const saveReturnUrl = useCallback(() => {
+    const currentPath = window.location.pathname;
+    if (!currentPath.startsWith('/auth/') && currentPath !== AUTH_PATHS.LOGIN) {
+      localStorage.setItem(AUTH_STORAGE_KEYS.RETURN_URL, currentPath);
     }
-  }, [authService]);
+  }, []);
 
+  // 处理认证状态变化
+  const handleAuthStateChange = useCallback((newUser: User | null) => {
+    setUser(newUser);
+    setError(null);
+  }, []);
+
+  // 处理认证错误
+  const handleAuthError = useCallback((errorMessage: string) => {
+    setError(errorMessage);
+    setUser(null);
+  }, []);
+
+  // 初始化用户状态
   useEffect(() => {
-    const loadUser = async () => {
-      if (authService) {
-        try {
-          const loadedUser = await authService.loadUser();
-          setUser(loadedUser);
-        } catch (error) {
-          console.error('Failed to load user:', error);
-        } finally {
-          setLoading(false);
-        }
-      } else {
+    if (!authService) {
+      setLoading(false);
+      setError(AUTH_ERROR_MESSAGES.SERVICE_NOT_AVAILABLE);
+      return;
+    }
+
+    const initializeAuth = async () => {
+      try {
+        const loadedUser = await authService.loadUser();
+        handleAuthStateChange(loadedUser);
+      } catch (err) {
+        console.error('Failed to load user:', err);
+        handleAuthError('Failed to load user session');
+      } finally {
         setLoading(false);
       }
     };
 
-    loadUser();
+    initializeAuth();
 
-    // 添加认证事件监听器
-    const handleLoginEvent = () => {
-      const currentUser = authService?.getUser() || null;
-      setUser(currentUser);
+    // 设置事件监听器
+    const handleLogin = () => {
+      const currentUser = authService.getUser();
+      handleAuthStateChange(currentUser);
     };
 
-    const handleLogoutEvent = () => {
-      setUser(null);
+    const handleLogout = () => {
+      handleAuthStateChange(null);
     };
 
-    if (authService) {
-      authService.addEventListener('login', handleLoginEvent);
-      authService.addEventListener('logout', handleLogoutEvent);
-      authService.addEventListener('expired', handleLogoutEvent);
+    const handleExpired = () => {
+      handleAuthError(AUTH_ERROR_MESSAGES.SESSION_EXPIRED);
+    };
+
+    authService.addEventListener('login', handleLogin);
+    authService.addEventListener('logout', handleLogout);
+    authService.addEventListener('expired', handleExpired);
+
+    return () => {
+      authService.removeEventListener('login', handleLogin);
+      authService.removeEventListener('logout', handleLogout);
+      authService.removeEventListener('expired', handleExpired);
+    };
+  }, [authService, handleAuthStateChange, handleAuthError]);
+
+  const login = useCallback(async () => {
+    if (!authService) {
+      throw new Error(AUTH_ERROR_MESSAGES.SERVICE_NOT_AVAILABLE);
     }
 
-    // 清理监听器
-    return () => {
-      if (authService) {
-        authService.removeEventListener('login', handleLoginEvent);
-        authService.removeEventListener('logout', handleLogoutEvent);
-        authService.removeEventListener('expired', handleLogoutEvent);
-      }
-    };
+    try {
+      saveReturnUrl();
+      await authService.login();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : AUTH_ERROR_MESSAGES.LOGIN_FAILED;
+      handleAuthError(errorMessage);
+      throw err;
+    }
+  }, [authService, saveReturnUrl, handleAuthError]);
+
+  const logout = useCallback(() => {
+    if (!authService) {
+      return;
+    }
+
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEYS.RETURN_URL);
+      authService.logout();
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
   }, [authService]);
 
-  const login = async () => {
-    if (authService) {
-      // 保存当前URL作为登录后的返回地址，但排除登录相关页面
-      const currentPath = window.location.pathname;
-      if (!currentPath.startsWith('/auth/') && currentPath !== '/login') {
-        localStorage.setItem('returnUrl', currentPath);
-      }
-      try {
-        await authService.login();
-      } catch (error) {
-        throw error; // 重新抛出错误，让调用方处理
-      }
-    } else {
-      throw new Error('Authentication service is not initialized. Cannot start login process.');
-    }
-  };
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
 
-  const logout = () => {
-    if (authService) {
-      authService.logout();
-    }
-  };
-
-  const isAuthenticated = user !== null && (authService?.isAuthenticated() || false);
+  const isAuthenticated = Boolean(user && authService?.isAuthenticated());
 
   const value = {
     user,
     isAuthenticated,
     loading,
+    error,
     login,
     logout,
+    clearError,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -131,5 +147,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
  * 使用认证上下文的钩子
  */
 export function useAuth() {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  
+  return context;
 }
