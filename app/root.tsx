@@ -16,6 +16,8 @@ import { AuthProvider } from "./components/auth/AuthContext";
 import { initAuthService, getAuthService } from "./lib/auth/authService";
 import "@ant-design/v5-patch-for-react-19";
 import "./app.css";
+import { useRuntimeConfig } from "./hooks/useRuntimeConfig";
+import type { RuntimeConfig } from "config/types";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -58,14 +60,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
+// 内部组件，用于在 QueryClientProvider 内部处理配置
+function AppContent() {
+  const { config, isLoading, isError } = useRuntimeConfig();
+
   useEffect(() => {
-    // 获取配置并初始化认证服务
-    const loadConfig = async () => {
+    // 当配置加载完成且没有错误时，初始化认证服务
+    if (!isLoading && !isError && config && config.openapiDocUrl) {
       try {
-        const response = await fetch("/config.json");
-        const config = await response.json();
-        initAuthService(config);
+        initAuthService(config as RuntimeConfig);
 
         // 如果有token，设置到API客户端
         const authService = getAuthService();
@@ -77,20 +80,24 @@ export default function App() {
           }
         }
       } catch (error) {
-        console.error("Failed to load config:", error);
+        console.error("Failed to initialize auth service:", error);
       }
-    };
-
-    loadConfig();
-  }, []);
+    }
+  }, [config, isLoading, isError]);
 
   return (
+    <AuthProvider>
+      <AppLayout>
+        <Outlet />
+      </AppLayout>
+    </AuthProvider>
+  );
+}
+
+export default function App() {
+  return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AppLayout>
-          <Outlet />
-        </AppLayout>
-      </AuthProvider>
+      <AppContent />
     </QueryClientProvider>
   );
 }
