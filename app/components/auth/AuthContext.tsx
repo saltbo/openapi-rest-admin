@@ -27,7 +27,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const authService = getAuthService();
 
   // 保存返回URL的辅助函数
   const saveReturnUrl = useCallback(() => {
@@ -51,13 +50,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // 初始化用户状态
   useEffect(() => {
-    if (!authService) {
-      setLoading(false);
-      setError(AUTH_ERROR_MESSAGES.SERVICE_NOT_AVAILABLE);
-      return;
-    }
-
+    let cleanup: (() => void) | undefined;
+    let pollInterval: NodeJS.Timeout | undefined;
+    let attempts = 0;
+    const maxAttempts = 50; // 最多尝试5秒 (50 * 100ms)
+    
     const initializeAuth = async () => {
+      const authService = getAuthService();
+      
+      if (!authService) {
+        attempts++;
+        if (attempts < maxAttempts) {
+          // 如果认证服务未初始化，等待一段时间后重试
+          pollInterval = setTimeout(initializeAuth, 100);
+          return;
+        } else {
+          // 超时后停止加载
+          console.warn('Authentication service initialization timeout');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 清除轮询定时器
+      if (pollInterval) {
+        clearTimeout(pollInterval);
+        pollInterval = undefined;
+      }
+
       try {
         const loadedUser = await authService.loadUser();
         handleAuthStateChange(loadedUser);
@@ -67,38 +87,49 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } finally {
         setLoading(false);
       }
+
+      // 设置事件监听器
+      const handleLogin = () => {
+        const currentUser = authService.getUser();
+        handleAuthStateChange(currentUser);
+      };
+
+      const handleLogout = () => {
+        handleAuthStateChange(null);
+      };
+
+      const handleExpired = () => {
+        handleAuthError(AUTH_ERROR_MESSAGES.SESSION_EXPIRED);
+      };
+
+      authService.addEventListener('login', handleLogin);
+      authService.addEventListener('logout', handleLogout);
+      authService.addEventListener('expired', handleExpired);
+
+      cleanup = () => {
+        authService.removeEventListener('login', handleLogin);
+        authService.removeEventListener('logout', handleLogout);
+        authService.removeEventListener('expired', handleExpired);
+      };
     };
 
     initializeAuth();
 
-    // 设置事件监听器
-    const handleLogin = () => {
-      const currentUser = authService.getUser();
-      handleAuthStateChange(currentUser);
-    };
-
-    const handleLogout = () => {
-      handleAuthStateChange(null);
-    };
-
-    const handleExpired = () => {
-      handleAuthError(AUTH_ERROR_MESSAGES.SESSION_EXPIRED);
-    };
-
-    authService.addEventListener('login', handleLogin);
-    authService.addEventListener('logout', handleLogout);
-    authService.addEventListener('expired', handleExpired);
-
     return () => {
-      authService.removeEventListener('login', handleLogin);
-      authService.removeEventListener('logout', handleLogout);
-      authService.removeEventListener('expired', handleExpired);
+      if (pollInterval) {
+        clearTimeout(pollInterval);
+      }
+      cleanup?.();
     };
-  }, [authService, handleAuthStateChange, handleAuthError]);
+  }, [handleAuthStateChange, handleAuthError]);
 
   const login = useCallback(async () => {
+    const authService = getAuthService();
+    
     if (!authService) {
-      throw new Error(AUTH_ERROR_MESSAGES.SERVICE_NOT_AVAILABLE);
+      const errorMessage = 'Authentication service is not initialized. Please check your OIDC configuration.';
+      handleAuthError(errorMessage);
+      throw new Error(errorMessage);
     }
 
     try {
@@ -109,9 +140,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       handleAuthError(errorMessage);
       throw err;
     }
-  }, [authService, saveReturnUrl, handleAuthError]);
+  }, [saveReturnUrl, handleAuthError]);
 
   const logout = useCallback(() => {
+    const authService = getAuthService();
+    
     if (!authService) {
       return;
     }
@@ -122,17 +155,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (err) {
       console.error('Logout failed:', err);
     }
-  }, [authService]);
+  }, []);
 
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  const isAuthenticated = Boolean(user && authService?.isAuthenticated());
+  const getIsAuthenticated = useCallback(() => {
+    const authService = getAuthService();
+    return Boolean(user && authService?.isAuthenticated());
+  }, [user]);
 
   const value = {
     user,
-    isAuthenticated,
+    isAuthenticated: getIsAuthenticated(),
     loading,
     error,
     login,

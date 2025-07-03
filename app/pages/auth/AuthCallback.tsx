@@ -18,7 +18,7 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       if (!authService) {
-        setError(AUTH_ERROR_MESSAGES.SERVICE_NOT_AVAILABLE);
+        setError(AUTH_ERROR_MESSAGES.SERVICE_NOT_INITIALIZED);
         setProcessing(false);
         return;
       }

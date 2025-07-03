@@ -16,7 +16,7 @@ export const AUTH_PATHS = {
 
 // 错误消息
 export const AUTH_ERROR_MESSAGES = {
-  SERVICE_NOT_AVAILABLE: 'Authentication service is not available',
+  SERVICE_NOT_INITIALIZED: 'Authentication service is not initialized. Please check your OIDC configuration.',
   LOGIN_FAILED: 'Login failed',
   SESSION_EXPIRED: 'Session expired',
   CALLBACK_FAILED: 'Authentication callback failed',
