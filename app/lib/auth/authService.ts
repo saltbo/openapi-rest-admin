@@ -1,5 +1,5 @@
 import { UserManager, User, WebStorageStateStore, Log } from 'oidc-client-ts';
-import type { RuntimeConfig } from '../../../config/types';
+import type { RuntimeConfig } from '../config/types';
 
 // 设置日志级别，生产环境可以关闭
 Log.setLogger(console);

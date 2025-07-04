@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router';
 import { Spin, Alert } from 'antd';
 import { useAuth } from './AuthContext';
+import { AUTH_PATHS } from '~/lib/auth/constants';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -52,7 +53,7 @@ export function ProtectedRoute({ children, requireAuth = true }: ProtectedRouteP
 
   // 需要认证但用户未登录，重定向到登录页
   if (requireAuth && !isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to={AUTH_PATHS.LOGIN} state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

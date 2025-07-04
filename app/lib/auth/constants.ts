@@ -9,9 +9,9 @@ export const AUTH_STORAGE_KEYS = {
 
 // 认证路径
 export const AUTH_PATHS = {
-  LOGIN: '/login',
+  LOGIN: '/auth/login',
   CALLBACK: '/auth/callback',
-  LOGOUT: '/logout',
+  LOGOUT: '/auth/logout',
 } as const;
 
 // 错误消息

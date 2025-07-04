@@ -19,7 +19,6 @@ import {
 import { LoginButton } from "../auth/LoginButton";
 import { capitalizeFirst, ErrorPage, GeneralErrorPage } from "../shared";
 import { useOpenAPIService } from "~/hooks/useOpenAPIService";
-import { useRuntimeConfig } from "~/hooks/useRuntimeConfig";
 import ResourceLoading from "~/pages/resource-explorer/components/ResourceLoading";
 
 const { Header, Sider, Content } = Layout;
@@ -36,7 +35,6 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
 
-  const { config } = useRuntimeConfig();
   const { service, isLoading } = useOpenAPIService();
   if (!service) {
     return <ResourceLoading />;
@@ -45,32 +43,28 @@ export const FrontendLayout: React.FC<FrontendLayoutProps> = ({ children }) => {
   // 获取文档信息和资源统计
   let resources;
   resources = service.getTopLevelResources();
-
-  // 获取站点标题，如果没有配置则使用默认值
-  const siteTitle = config?.siteTitle || 'OpenAPI Admin';
-
   return (
     <Layout style={{ minHeight: "100vh" }}>
       {/* Header区域 */}
-      <Header 
-        style={{ 
+      <Header
+        style={{
           backgroundColor: colorBgContainer,
           borderBottom: "1px solid #f0f0f0",
           padding: "0 24px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          height: 64
+          height: 64,
         }}
       >
         {/* Logo区域 */}
         <div style={{ display: "flex", alignItems: "center" }}>
           <Title level={3} style={{ margin: 0, color: "#1890ff" }}>
             <ApiOutlined style={{ marginRight: 8 }} />
-            {siteTitle}
+            {document.title}
           </Title>
         </div>
-        
+
         {/* 登录按钮区域 */}
         <div>
           <LoginButton />

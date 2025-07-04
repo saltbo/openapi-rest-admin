@@ -1,5 +1,5 @@
 import { useParams, type RouteObject } from "react-router-dom";
-import { AppContent } from "./app";
+import { Layout } from "./app";
 import Home from "./pages/Home";
 import ResourceDetail from "./pages/resource-explorer/Detail";
 import ResourceList from "./pages/resource-explorer/List";
@@ -28,7 +28,7 @@ export default function NestedResourceRoute() {
 export const routes: RouteObject[] = [
   {
     path: "/",
-    element: <AppContent />,
+    element: <Layout />,
     errorElement: <RouterErrorBoundary />,
     children: [
       // 首页

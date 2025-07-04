@@ -2,7 +2,7 @@
  * Configuration runtime types
  */
 export interface RuntimeConfig {
-  openapiDocUrl: string;
+  openapiDocUrl?: string;
   siteTitle?: string;
   basename?: string;
   oidcIssuer?: string;

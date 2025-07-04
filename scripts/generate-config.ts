@@ -3,7 +3,7 @@
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { loadEnv } from 'vite';
-import { CONFIG_FIELDS, type RuntimeConfig } from '../config/types.js';
+import { CONFIG_FIELDS, type RuntimeConfig } from '../app/lib/config/types.js';
 
 /**
  * 生成运行时配置文件
