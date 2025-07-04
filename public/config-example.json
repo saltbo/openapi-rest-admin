@@ -1,6 +1,7 @@
 {
   "openapiDocUrl": "/openapi/apidocs.json",
-  "appTitle": "OpenAPI Admin",
+  "siteTitle": "OpenAPI Admin",
+  "basename": "/",
   "oidcIssuer": "",
   "oidcClientId": "",
   "oidcRedirectUri": "/auth/callback",

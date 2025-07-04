@@ -1,10 +1,40 @@
 {
   "name": "openapi-rest-admin",
-  "private": true,
+  "version": "0.2.0",
+  "description": "A REST API admin interface built with React and OpenAPI",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "dist/assets",
+    "index.js",
+    "index.d.ts",
+    "README.md"
+  ],
+  "keywords": [
+    "openapi",
+    "rest",
+    "admin",
+    "react",
+    "api"
+  ],
+  "author": "saltbo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saltbo/openapi-rest-admin.git"
+  },
+  "private": false,
   "type": "module",
   "scripts": {
     "dev": "tsx scripts/generate-config.ts runtime && vite dev",
     "build": "tsx scripts/generate-config.ts example && vite build",
+    "build:standalone": "tsx scripts/generate-config.ts example && BUILD_MODE=standalone vite build",
+    "build:publish": "tsx scripts/generate-config.ts example && BUILD_MODE=standalone vite build",
+    "publish:npm": "node scripts/publish.js",
+    "publish:patch": "node scripts/publish.js patch",
+    "publish:minor": "node scripts/publish.js minor",
+    "publish:major": "node scripts/publish.js major",
+    "publish:dry-run": "node scripts/publish.js --dry-run",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
