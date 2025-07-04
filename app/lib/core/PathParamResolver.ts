@@ -59,23 +59,4 @@ export class PathParamResolver {
     
     return result;
   }
-
-  /**
-   * 从路径模式中提取所有参数名
-   * @param pathPattern 路径模式，如 "/authors/{authorId}/books/{bookId}"
-   * @returns 参数名数组，如 ["authorId", "bookId"]
-   */
-  static extractParamNames(pathPattern: string): string[] {
-    const paramNames: string[] = [];
-    const segments = pathPattern.split('/').filter(Boolean);
-    
-    for (const segment of segments) {
-      if (segment.startsWith('{') && segment.endsWith('}')) {
-        const paramName = segment.slice(1, -1);
-        paramNames.push(paramName);
-      }
-    }
-    
-    return paramNames;
-  }
 }
