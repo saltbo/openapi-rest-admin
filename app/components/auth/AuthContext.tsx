@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getAuthService, type AuthService } from '../../lib/auth/authService';
 import { AUTH_STORAGE_KEYS, AUTH_PATHS, AUTH_ERROR_MESSAGES } from '../../lib/auth/constants';
 import type { User } from 'oidc-client-ts';
@@ -27,10 +28,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
 
   // 保存返回URL的辅助函数
   const saveReturnUrl = useCallback(() => {
-    const currentPath = window.location.pathname;
+    const currentPath = location.pathname;
     if (!currentPath.startsWith('/auth/') && currentPath !== AUTH_PATHS.LOGIN) {
       localStorage.setItem(AUTH_STORAGE_KEYS.RETURN_URL, currentPath);
     }

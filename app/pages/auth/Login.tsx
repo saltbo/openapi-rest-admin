@@ -1,6 +1,7 @@
 import React from "react";
 import { Button, Card, Typography, Alert } from "antd";
 import { LoginOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router";
 import { useAuth } from "../../components/auth/AuthContext";
 import { useAuthError } from "../../hooks/useAuthError";
 
@@ -11,6 +12,7 @@ const { Title, Paragraph } = Typography;
  */
 export default function Login() {
   const { login, isAuthenticated, loading, error } = useAuth();
+  const navigate = useNavigate();
   
   // 自动显示错误信息
   useAuthError();
@@ -38,7 +40,7 @@ export default function Login() {
         <Card style={{ width: 400, textAlign: "center" }}>
           <Title level={2}>Already logged in</Title>
           <Paragraph>You are already authenticated.</Paragraph>
-          <Button type="primary" onClick={() => (window.location.href = "/")}>
+          <Button type="primary" onClick={() => navigate("/")}>
             Go to Home
           </Button>
         </Card>

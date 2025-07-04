@@ -3,7 +3,8 @@
  */
 export interface RuntimeConfig {
   openapiDocUrl: string;
-  appTitle?: string;
+  siteTitle?: string;
+  basename?: string;
   oidcIssuer?: string;
   oidcClientId?: string;
   oidcRedirectUri?: string;
@@ -32,10 +33,17 @@ export const CONFIG_FIELDS: ConfigFieldMeta[] = [
     required: true,
   },
   {
-    key: 'appTitle',
-    envKey: 'VITE_APP_TITLE',
+    key: 'siteTitle',
+    envKey: 'VITE_SITE_TITLE',
     defaultValue: 'OpenAPI Admin',
-    description: 'Application title',
+    description: 'Website title',
+    required: false,
+  },
+  {
+    key: 'basename',
+    envKey: 'VITE_BASENAME',
+    defaultValue: '/',
+    description: 'Base URL for the application',
     required: false,
   },
   {

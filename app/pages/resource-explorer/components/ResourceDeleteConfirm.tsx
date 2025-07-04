@@ -3,6 +3,7 @@ import { Modal, Typography, Space, Tag, Descriptions, message } from 'antd';
 import { ExclamationCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { OpenAPIService, PathParamResolver, type ResourceDataItem, type ResourceInfo } from '~/lib/core';
+import { useLocation } from 'react-router-dom';
 
 const { Text, Paragraph } = Typography;
 
@@ -24,6 +25,8 @@ export const ResourceDeleteConfirm: React.FC<ResourceDeleteConfirmProps> = ({
   onCancel
 }) => {
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const resourcePath = location.pathname.substring(2); // 去掉前缀 "/r
 
   // 删除资源项
   const deleteMutation = useMutation({
@@ -34,7 +37,7 @@ export const ResourceDeleteConfirm: React.FC<ResourceDeleteConfirmProps> = ({
         throw new Error(`资源 '${resource.name}' 不支持删除操作`);
       }
       
-      const pathParams = PathParamResolver.extractPathParams(resource.pathPattern);
+      const pathParams = PathParamResolver.extractPathParams(resourcePath, resource.pathPattern);
       pathParams[resource.identifierField] = service.getResourceIdentifier(resource.name, item);
 
       // 使用RESTful API客户端执行删除

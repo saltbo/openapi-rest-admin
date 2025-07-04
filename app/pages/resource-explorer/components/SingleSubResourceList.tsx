@@ -11,7 +11,7 @@ import { capitalizeFirst } from "~/components";
 import { Table } from "~/components/json-schema-ui/themes/antd";
 import type { ResourceInfo } from "~/lib/core";
 import { PathParamResolver } from "~/lib/core";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 
 const { Title } = Typography;
 
@@ -23,6 +23,8 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
   subResource,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const resourcePath = location.pathname.substring(2); // 去掉前缀 "/r"
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -102,6 +104,7 @@ export const SingleSubResourceList: React.FC<SingleSubResourceListProps> = ({
       }
 
       const pathParams = PathParamResolver.extractPathParams(
+        resourcePath,
         resource?.pathPattern!
       );
       pathParams[subResource.identifierField] = id;

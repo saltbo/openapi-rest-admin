@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { Modal, Spin, Alert } from "antd";
 import { ResourceBreadcrumb } from "~/components/shared/ResourceBreadcrumb";
 import { ResourceHeader } from "~/pages/resource-explorer/components/ResourceHeader";
@@ -20,6 +20,8 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({}) => {
   const [error, setError] = useState<string | null>(null);
   const [currentItem, setCurrentItem] = useState<ResourceData | null>(null);
   const { service, resource, isLoading } = useResource();
+  const location = useLocation();
+  const resourcePath = location.pathname.substring(2); // 去掉前缀 "/r"
 
   // 刷新数据的回调函数
   const refreshData = () => {
@@ -43,7 +45,9 @@ export const ResourceDetail: React.FC<ResourceDetailProps> = ({}) => {
         `No GET by ID operation found for resource ${resource.name}`
       );
     }
+
     const pathParams = PathParamResolver.extractPathParams(
+      resourcePath,
       getByIdOperation.path
     );
     console.log(pathParams);

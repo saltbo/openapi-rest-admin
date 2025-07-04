@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "react-router-dom";
 import {
   PathParamResolver,
   type OpenAPIService,
@@ -17,6 +18,8 @@ export function useResourceList(
   pageSize: number = 10,
   searchQuery: string = ""
 ) {
+  const location = useLocation();
+  const resourcePath = location.pathname.substring(2); // 去掉前缀 "/r"
   return useQuery({
     queryKey: [
       "resourceListData",
@@ -26,7 +29,7 @@ export function useResourceList(
       searchQuery,
     ],
     staleTime: 5,
-    refetchOnMount: 'always',
+    refetchOnMount: "always",
     queryFn: async (): Promise<PaginatedResponse<any>> => {
       if (!service || !resource) {
         throw new Error("Service or resource not available");
@@ -42,6 +45,7 @@ export function useResourceList(
       }
 
       const pathParams = PathParamResolver.extractPathParams(
+        resourcePath,
         listOperation.path
       );
 
