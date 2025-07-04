@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAPI REST Admin - Standalone Example</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        }
+        #app {
+            height: 100vh;
+            width: 100vw;
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="loading">Loading OpenAPI REST Admin...</div>
+    </div>
+
+    <!-- Load the CSS -->
+    <link rel="stylesheet" href="./dist/assets/openapi-rest-admin.css">
+
+    <!-- Load the Script -->
+    <script src="./dist/assets/openapi-rest-admin.js"></script>
+    
+    <script>
+        // Initialize the OpenAPI REST Admin
+        OpenAPIRestAdmin.createAdminInterface('#app', {
+            // The URL of the OpenAPI/Swagger document
+            openapiDocUrl: 'https://petstore3.swagger.io/api/v3/openapi.json',
+            
+            // Optional: Set a custom title
+            siteTitle: 'Pet Store API Admin',
+            
+            // Optional: Set a base path
+            basename: '',
+            
+            // Optional: Configure authentication
+            // auth: {
+            //     enabled: false
+            // }
+        });
+        
+        // For development instructions, see docs/STANDALONE_USAGE.md
+    </script>
+</body>
+</html>

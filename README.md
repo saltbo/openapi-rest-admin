@@ -137,7 +137,51 @@ The application loads configuration in the following order:
 1. Environment variables (highest priority)
 2. Default values
 
-## 🚀 Production Deployment
+## � Standalone Usage (Script Tag)
+
+You can use OpenAPI Rest Admin as a standalone library, similar to Scalar API Reference:
+
+### Quick Setup
+
+1. **Build the standalone version**
+
+   ```bash
+   npm run build:standalone
+   ```
+
+2. **Use in your HTML**
+
+   ```html
+   <!DOCTYPE html>
+   <html>
+   <head>
+       <title>My API Admin</title>
+       <link rel="stylesheet" href="path/to/openapi-rest-admin.css">
+   </head>
+   <body>
+       <div id="app"></div>
+       <script src="path/to/openapi-rest-admin.js"></script>
+       <script>
+           OpenAPIRestAdmin.createAdminInterface('#app', {
+               openapiDocUrl: 'https://api.example.com/openapi.json',
+               siteTitle: 'My API Admin'
+           });
+       </script>
+   </body>
+   </html>
+   ```
+
+### Try the Demo
+
+```bash
+npm run demo:standalone
+```
+
+This will build the standalone version and start a demo server at http://localhost:3000
+
+For complete standalone usage documentation, see [docs/STANDALONE_USAGE.md](docs/STANDALONE_USAGE.md).
+
+## �🚀 Production Deployment
 
 ### Static File Hosting
 

@@ -29,18 +29,50 @@ export interface OpenAPIRestAdminAssets {
   css: string[];
 }
 
+// Runtime configuration interface
+export interface RuntimeConfig {
+  openapiDocUrl?: string;
+  siteTitle?: string;
+  basename?: string;
+  auth?: {
+    enabled?: boolean;
+    type?: 'oauth2' | 'basic' | 'apikey';
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
 // Usage instructions in comments
 /*
-Usage:
-1. Install: npm install openapi-rest-admin
-2. Import the built assets in your project:
-   - Copy files from node_modules/openapi-rest-admin/dist/assets/
-   - Or use a bundler to include them
-3. Include the CSS and JS files in your HTML
-
-Example:
+Usage Method 1 - CDN/Script Tag:
 ```html
-<link rel="stylesheet" href="path/to/openapi-rest-admin/assets/index.css">
-<script src="path/to/openapi-rest-admin/assets/index.js"></script>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My API Admin</title>
+  <link rel="stylesheet" href="path/to/openapi-rest-admin.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="path/to/openapi-rest-admin.js"></script>
+  <script>
+    OpenAPIRestAdmin.createAdminInterface('#app', {
+      openapiDocUrl: 'https://api.example.com/openapi.json',
+      siteTitle: 'My API Admin',
+      basename: '/admin'
+    });
+  </script>
+</body>
+</html>
+```
+
+Usage Method 2 - NPM Package:
+```javascript
+import { createAdminInterface } from 'openapi-rest-admin';
+
+createAdminInterface('#app', {
+  openapiDocUrl: 'https://api.example.com/openapi.json',
+  siteTitle: 'My API Admin'
+});
 ```
 */
