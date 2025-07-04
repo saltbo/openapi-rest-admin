@@ -1,45 +1,47 @@
-// Entry point for the npm package
-// This file exports the built assets for consumption
+// Entry point for the npm package - Standalone Mode
+// This package is designed to be used as a standalone library via script tags
 
-// Note: The actual built JS and CSS files are in dist/assets/
-// Users should import these files directly in their projects
+// For standalone usage, users should include these files:
+export const standaloneAssets = {
+    js: './dist/assets/openapi-rest-admin.js',
+    css: './dist/assets/openapi-rest-admin.css'
+} as const;
 
-export const assetsPath = './assets/';
-
-// Helper function to get asset URLs
-export function getAssetUrl(filename: string): string {
-  return `${assetsPath}${filename}`;
+// Helper function to get asset URLs for CDN usage
+export function getAssetUrl(baseUrl: string, filename: string): string {
+    return `${baseUrl.replace(/\/$/, '')}/${filename}`;
 }
 
-// Export asset information
-export const assets = {
-  js: [
-    // These will be populated after build
-    // Users can check dist/assets/ for actual filenames
-  ],
-  css: [
-    // These will be populated after build  
-    // Users can check dist/assets/ for actual filenames
-  ]
-};
+// Re-export the standalone interface for programmatic usage
+// Note: This is available after building the standalone version
+export interface CreateAdminInterface {
+    (selector: string, config?: RuntimeConfig): {
+        unmount: () => void;
+    };
+}
+
+// This will be available after building
+declare const createAdminInterface: CreateAdminInterface;
+export { createAdminInterface };
 
 // For TypeScript users
-export interface OpenAPIRestAdminAssets {
-  js: string[];
-  css: string[];
+export interface StandaloneAssets {
+    js: string;
+    css: string;
 }
 
-// Runtime configuration interface
+// Runtime configuration interface (re-exported from the main app)
 export interface RuntimeConfig {
-  openapiDocUrl?: string;
-  siteTitle?: string;
-  basename?: string;
-  auth?: {
-    enabled?: boolean;
-    type?: 'oauth2' | 'basic' | 'apikey';
+    openapiDocUrl?: string;
+    siteTitle?: string;
+    basename?: string;
+    oidcIssuer?: string;
+    oidcClientId?: string;
+    oidcRedirectUri?: string;
+    oidcResponseType?: string;
+    oidcScope?: string;
+    oidcAudience?: string;
     [key: string]: any;
-  };
-  [key: string]: any;
 }
 
 // Usage instructions in comments

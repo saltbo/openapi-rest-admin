@@ -1,26 +1,26 @@
-// Type definitions for openapi-rest-admin
+// Type definitions for openapi-rest-admin - Standalone Mode
 
-export declare const assetsPath: string;
-
-export declare function getAssetUrl(filename: string): string;
-
-export interface OpenAPIRestAdminAssets {
-  js: string[];
-  css: string[];
+// Standalone assets information
+export interface StandaloneAssets {
+  js: string;
+  css: string;
 }
 
-export declare const assets: OpenAPIRestAdminAssets;
+export declare const standaloneAssets: StandaloneAssets;
+
+export declare function getAssetUrl(baseUrl: string, filename: string): string;
 
 // Runtime configuration interface
 export interface RuntimeConfig {
   openapiDocUrl?: string;
   siteTitle?: string;
   basename?: string;
-  auth?: {
-    enabled?: boolean;
-    type?: 'oauth2' | 'basic' | 'apikey';
-    [key: string]: any;
-  };
+  oidcIssuer?: string;
+  oidcClientId?: string;
+  oidcRedirectUri?: string;
+  oidcResponseType?: string;
+  oidcScope?: string;
+  oidcAudience?: string;
   [key: string]: any;
 }
 
