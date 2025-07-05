@@ -171,14 +171,6 @@ You can use OpenAPI Rest Admin as a standalone library, similar to Scalar API Re
    </html>
    ```
 
-### Try the Demo
-
-```bash
-npm run demo:standalone
-```
-
-This will build the standalone version and start a demo server at http://localhost:3000
-
 For complete standalone usage documentation, see [docs/STANDALONE_USAGE.md](docs/STANDALONE_USAGE.md).
 
 ## �🚀 Production Deployment

@@ -159,8 +159,8 @@ OpenAPIRestAdmin.createAdminInterface('#app', config);
 You can also host the built files on a CDN and reference them directly:
 
 ```html
-<link rel="stylesheet" href="https://cdn.example.com/openapi-rest-admin@latest/openapi-rest-admin.css">
-<script src="https://cdn.example.com/openapi-rest-admin@latest/openapi-rest-admin.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/openapi-rest-admin@latest/dist/assets/openapi-rest-admin.css">
+<script src="https://cdn.jsdelivr.net/npm/openapi-rest-admin@latest/dist/assets/openapi-rest-admin.js"></script>
 ```
 
 ## Troubleshooting
