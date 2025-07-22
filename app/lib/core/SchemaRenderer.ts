@@ -115,10 +115,29 @@ export type TableSchema = JsonSchemaTableSchema;
  * Schema 渲染器
  */
 export class SchemaRenderer {
+  // 添加缓存以提高性能
+  private schemaCache = new Map<string, RJSFSchema>();
+  private uiSchemaCache = new Map<string, UiSchema>();
+  /**
+   * 清理所有缓存
+   * 当 schema 发生变化时调用
+   */
+  public clearCache(): void {
+    this.schemaCache.clear();
+    this.uiSchemaCache.clear();
+  }
+
   /**
    * 深拷贝对象的工具方法
+   * 使用现代浏览器原生的 structuredClone API，提供更好的性能和支持
    */
   private deepClone<T>(obj: T): T {
+    // 检查是否支持 structuredClone（Node.js 17+ 和现代浏览器）
+    if (typeof structuredClone !== 'undefined') {
+      return structuredClone(obj);
+    }
+
+    // 备用方案：自定义深拷贝实现
     if (obj === null || typeof obj !== "object") {
       return obj;
     }
@@ -291,11 +310,6 @@ export class SchemaRenderer {
     // 深拷贝 schema 以避免修改原始数据
     let schema = this.deepClone(openApiSchema) as RJSFSchema;
 
-    // 移除 OpenAPI 特有的属性
-    OPENAPI_ONLY_FIELDS.forEach((field) => {
-      delete (schema as any)[field];
-    });
-
     // 递归解析所有引用
     if (schemaResolver) {
       schema = this.resolveAllReferences(schema, schemaResolver) as RJSFSchema;
@@ -309,6 +323,9 @@ export class SchemaRenderer {
         fieldOrder,
       });
     }
+
+    // 一次性清理所有 OpenAPI 特有字段（但保留 x-order）
+    this.cleanOpenAPIFields(schema);
 
     // 确保基本结构
     if (!schema.type) {
@@ -355,12 +372,14 @@ export class SchemaRenderer {
       );
     }
 
-    // 应用字段顺序
-    if (fieldOrder && fieldOrder.length > 0) {
+    // 应用字段顺序（优先级：fieldOrder > x-order 扩展 > 原始顺序）
+    const finalFieldOrder = fieldOrder || this.extractXOrderFromProperties(properties);
+    
+    if (finalFieldOrder && finalFieldOrder.length > 0) {
       const orderedProperties: Record<string, any> = {};
 
       // 按指定顺序添加字段
-      fieldOrder.forEach((field) => {
+      finalFieldOrder.forEach((field) => {
         if (properties[field]) {
           orderedProperties[field] = properties[field];
         }
@@ -368,7 +387,7 @@ export class SchemaRenderer {
 
       // 添加未在顺序中指定的字段
       Object.keys(properties).forEach((field) => {
-        if (!fieldOrder.includes(field)) {
+        if (!finalFieldOrder.includes(field)) {
           orderedProperties[field] = properties[field];
         }
       });
@@ -377,6 +396,32 @@ export class SchemaRenderer {
     }
 
     return schema;
+  }
+
+  /**
+   * 从属性中提取 x-order 扩展定义的字段顺序
+   */
+  private extractXOrderFromProperties(properties: Record<string, any>): string[] | null {
+    const fieldsWithOrder = Object.entries(properties)
+      .map(([fieldName, fieldSchema]) => ({
+        field: fieldName,
+        order: typeof fieldSchema?.["x-order"] === "number" ? fieldSchema["x-order"] : 0,
+      }));
+
+    // 检查是否有任何字段定义了非零的 x-order
+    const hasCustomOrder = fieldsWithOrder.some(item => 
+      typeof properties[item.field]?.["x-order"] === "number"
+    );
+    
+    // 如果没有字段定义了 x-order，返回 null（保持原始顺序）
+    if (!hasCustomOrder) {
+      return null;
+    }
+
+    // 按 x-order 数值排序，相同数值时保持原始顺序（稳定排序）
+    fieldsWithOrder.sort((a, b) => a.order - b.order);
+
+    return fieldsWithOrder.map(item => item.field);
   }
 
   /**
@@ -499,9 +544,8 @@ export class SchemaRenderer {
     const formData: Record<string, unknown> = {};
     const properties = jsonSchema.properties as Record<string, any>;
 
-    Object.keys(properties).forEach((fieldName) => {
-      const fieldSchema = properties[fieldName];
-
+    Object.entries(properties).forEach(([fieldName, fieldSchema]) => {
+      // 优先使用 default，然后是 example
       if (fieldSchema.default !== undefined) {
         formData[fieldName] = fieldSchema.default;
       } else if (fieldSchema.example !== undefined) {
@@ -546,5 +590,46 @@ export class SchemaRenderer {
     }
 
     return result;
+  }
+
+  /**
+   * 递归清理 OpenAPI 特有字段（但保留 x-order）
+   */
+  private cleanOpenAPIFields(schema: any): void {
+    if (!schema || typeof schema !== "object") {
+      return;
+    }
+
+    // 如果是数组，递归处理每个元素
+    if (Array.isArray(schema)) {
+      schema.forEach((item) => this.cleanOpenAPIFields(item));
+      return;
+    }
+
+    // 清理当前对象的 OpenAPI 特有字段
+    OPENAPI_ONLY_FIELDS.forEach((field) => {
+      delete schema[field];
+    });
+
+    // 递归处理属性
+    if (schema.properties) {
+      Object.values(schema.properties).forEach((property: any) => {
+        this.cleanOpenAPIFields(property);
+      });
+    }
+
+    // 递归处理数组项
+    if (schema.items) {
+      this.cleanOpenAPIFields(schema.items);
+    }
+
+    // 递归处理 oneOf, anyOf, allOf
+    ["oneOf", "anyOf", "allOf"].forEach((key) => {
+      if (schema[key] && Array.isArray(schema[key])) {
+        schema[key].forEach((subSchema: any) => {
+          this.cleanOpenAPIFields(subSchema);
+        });
+      }
+    });
   }
 }
