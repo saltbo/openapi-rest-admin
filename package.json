@@ -23,7 +23,6 @@
     "type": "git",
     "url": "git+https://github.com/saltbo/openapi-rest-admin.git"
   },
-  "private": false,
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -84,5 +83,10 @@
     "vite": "^6.3.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
+  },
+  "volta": {
+    "node": "22.17.1",
+    "yarn": "4.9.2",
+    "npm": "11.4.2"
   }
 }
